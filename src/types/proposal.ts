@@ -71,10 +71,10 @@ export const DEFAULT_CHALLENGES: Challenge[] = [
 ];
 
 export const DEFAULT_PHASES: Phase[] = [
-  { label: "Phase 1", title: "Discovery & AI Audit", duration: "2 wks", tasks: ["On-site process mapping", "Shadow AI usage audit", "Data-flow analysis", "Compliance gap review"], price: "£4,500" },
-  { label: "Phase 2", title: "Strategy & Architecture", duration: "2 wks", tasks: ["AI policy framework", "Platform selection", "Integration architecture", "Security & GDPR design"], price: "£5,000" },
-  { label: "Phase 3", title: "Build & Integrate", duration: "4 wks", tasks: ["Central knowledge hub", "AI assistant deployment", "Workflow automation", "Audit trail system"], price: "£11,000" },
-  { label: "Phase 4", title: "Training & Adoption", duration: "2 wks", tasks: ["Staff training programme", "Champion network setup", "Adoption metrics dashboard", "Change management support"], price: "£4,000" },
+  { label: "Phase 1", title: "Discovery & AI Audit", duration: "2 wks", tasks: ["On-site process mapping", "Shadow AI usage audit", "Data-flow analysis", "Compliance gap review"], price: "4500" },
+  { label: "Phase 2", title: "Strategy & Architecture", duration: "2 wks", tasks: ["AI policy framework", "Platform selection", "Integration architecture", "Security & GDPR design"], price: "5000" },
+  { label: "Phase 3", title: "Build & Integrate", duration: "4 wks", tasks: ["Central knowledge hub", "AI assistant deployment", "Workflow automation", "Audit trail system"], price: "11000" },
+  { label: "Phase 4", title: "Training & Adoption", duration: "2 wks", tasks: ["Staff training programme", "Champion network setup", "Adoption metrics dashboard", "Change management support"], price: "4000" },
 ];
 
 export const DEFAULT_RETAINER_OPTIONS: RetainerOption[] = [

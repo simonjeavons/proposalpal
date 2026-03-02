@@ -115,7 +115,7 @@ export default function ProposalEditor() {
             tech_stack: data.tech_stack,
             challenge_intro: data.challenge_intro,
             challenges: (data.challenges || []) as unknown as Challenge[],
-            phases: (data.phases || []) as unknown as Phase[],
+            phases: ((data.phases as any[]) || []).map(p => ({ ...p, price: String(p.price || '').replace(/^£/, '').replace(/,/g, '') })) as Phase[],
             upfront_total: Number(data.upfront_total),
             payment_terms: data.payment_terms,
             timeline: data.timeline,
@@ -188,7 +188,6 @@ export default function ProposalEditor() {
       contact_name: user.full_name,
       contact_email: user.email,
       contact_phone: user.phone_number,
-      contact_mobile: '',
     }));
   };
 
@@ -393,7 +392,7 @@ export default function ProposalEditor() {
                   <Field label="Badge" value={r.badge} onChange={v => updateRetainer(i, 'badge', v)} />
                   <Field label="Name" value={r.name} onChange={v => updateRetainer(i, 'name', v)} />
                   <Field label="Hours" value={r.hours} onChange={v => updateRetainer(i, 'hours', v)} />
-                  <Field label="Price (£/month)" value={String(r.price)} onChange={v => updateRetainer(i, 'price', Number(v) || 0)} type="number" />
+                  <Field label="Price (£/month)" value={String(r.price)} onChange={v => updateRetainer(i, 'price', Number(v) || 0)} type="number" step="0.01" />
                 </Grid>
                 <div>
                   <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Features (one per line)</Label>
@@ -411,7 +410,6 @@ export default function ProposalEditor() {
             <Field label="Contact Name" value={form.contact_name} onChange={v => updateField('contact_name', v)} />
             <Field label="Email" value={form.contact_email} onChange={v => updateField('contact_email', v)} />
             <Field label="Phone" value={form.contact_phone} onChange={v => updateField('contact_phone', v)} />
-            <Field label="Mobile" value={form.contact_mobile} onChange={v => updateField('contact_mobile', v)} />
           </Grid>
         </Section>
 
@@ -479,11 +477,11 @@ function Grid({ children }: { children: React.ReactNode }) {
   return <div className="grid grid-cols-2 gap-4">{children}</div>;
 }
 
-function Field({ label, value, onChange, type = 'text' }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
+function Field({ label, value, onChange, type = 'text', step }: { label: string; value: string; onChange: (v: string) => void; type?: string; step?: string }) {
   return (
     <div>
       <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{label}</Label>
-      <Input type={type} value={value} onChange={e => onChange(e.target.value)} className="text-sm" />
+      <Input type={type} value={value} onChange={e => onChange(e.target.value)} className="text-sm" step={step} />
     </div>
   );
 }

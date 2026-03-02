@@ -231,7 +231,7 @@ export default function ProposalView() {
                             </li>
                           ))}
                         </ul>
-                        <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.1)', fontSize: 12, fontWeight: 800, color: '#009FE3' }}>{phase.price}</div>
+                        <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.1)', fontSize: 12, fontWeight: 800, color: '#009FE3' }}>{phase.price ? (phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`) : ''}</div>
                       </div>
                       <div style={{ width: 2, height: 36, background: 'rgba(0,159,227,.5)', flexShrink: 0 }} />
                     </div>
@@ -257,7 +257,7 @@ export default function ProposalView() {
                             </li>
                           ))}
                         </ul>
-                        <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.1)', fontSize: 12, fontWeight: 800, color: '#009FE3' }}>{phase.price}</div>
+                        <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.1)', fontSize: 12, fontWeight: 800, color: '#009FE3' }}>{phase.price ? (phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`) : ''}</div>
                       </div>
                     </div>
                   ) : (
@@ -291,7 +291,7 @@ export default function ProposalView() {
                       <div style={{ fontSize: 12, color: '#3A6278', lineHeight: 1.6, flex: 1, paddingBottom: 14, borderBottom: '1px solid #DDE8EE', marginBottom: 12 }}>
                         {phase.tasks.join(', ')}
                       </div>
-                      <div style={{ fontSize: 22, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1 }}>{phase.price}</div>
+                      <div style={{ fontSize: 22, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1 }}>{phase.price ? (phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`) : ''}</div>
                     </div>
                   ))}
                   {/* Launch included card */}
@@ -340,7 +340,7 @@ export default function ProposalView() {
                         <div style={{ fontSize: 15, fontWeight: 800, color: '#043D5D', marginBottom: 2 }}>{r.name}</div>
                         <div style={{ fontSize: 12, color: '#AAAAAA', marginBottom: 12 }}>{r.hours}</div>
                         <div style={{ fontSize: 24, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>
-                          £{r.price.toLocaleString('en-GB')} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>/ month</span>
+                          £{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>/ month</span>
                         </div>
                         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12, paddingTop: 12, borderTop: '1px solid #DDE8EE', padding: 0 }}>
                           {r.features.map((f, j) => (
@@ -361,7 +361,7 @@ export default function ProposalView() {
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.45)', marginBottom: 6 }}>Investment summary</div>
                   <div style={{ fontSize: 13, color: 'rgba(255,255,255,.5)' }}>
                     One-time project: <span style={{ color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>£{Number(proposal.upfront_total).toLocaleString('en-GB')}</span> + VAT &nbsp;·&nbsp;
-                    Monthly retainer: <span style={{ color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>£{currentRetainer.price.toLocaleString('en-GB')}</span> + VAT / month
+                    Monthly retainer: <span style={{ color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>£{currentRetainer.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> + VAT / month
                   </div>
                 </div>
                 <div>
@@ -385,7 +385,7 @@ export default function ProposalView() {
           </div>
           <div style={{ padding: '0 24px', borderRight: '1px solid #DDE8EE' }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>Monthly retainer</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 2 }}>£{currentRetainer.price.toLocaleString('en-GB')}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 2 }}>£{currentRetainer.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             <div style={{ fontSize: 12, color: '#AAAAAA' }}>Excl. VAT / month</div>
           </div>
           <div style={{ padding: '0 24px', borderRight: '1px solid #DDE8EE' }}>
