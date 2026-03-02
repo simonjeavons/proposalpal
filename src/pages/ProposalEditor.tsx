@@ -391,7 +391,7 @@ export default function ProposalEditor() {
                   <Field label="Badge" value={r.badge} onChange={v => updateRetainer(i, 'badge', v)} />
                   <Field label="Name" value={r.name} onChange={v => updateRetainer(i, 'name', v)} />
                   <Field label="Hours" value={r.hours} onChange={v => updateRetainer(i, 'hours', v)} />
-                  <Field label="Price (£/month)" value={String(r.price)} onChange={v => updateRetainer(i, 'price', Number(v) || 0)} type="number" step="0.01" />
+                  <CurrencyField label="Price (£/month)" value={r.price} onChange={v => updateRetainer(i, 'price', v)} />
                 </Grid>
                 <div>
                   <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Features (one per line)</Label>
@@ -481,6 +481,35 @@ function Field({ label, value, onChange, type = 'text', step }: { label: string;
     <div>
       <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{label}</Label>
       <Input type={type} value={value} onChange={e => onChange(e.target.value)} className="text-sm" step={step} />
+    </div>
+  );
+}
+
+function CurrencyField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  const [display, setDisplay] = useState((value || 0).toFixed(2));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setDisplay((value || 0).toFixed(2));
+  }, [value, focused]);
+
+  return (
+    <div>
+      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{label}</Label>
+      <Input
+        type="text"
+        inputMode="decimal"
+        value={display}
+        onChange={e => setDisplay(e.target.value.replace(/[^0-9.]/g, ''))}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          const num = parseFloat(display) || 0;
+          setDisplay(num.toFixed(2));
+          onChange(num);
+          setFocused(false);
+        }}
+        className="text-sm"
+      />
     </div>
   );
 }
