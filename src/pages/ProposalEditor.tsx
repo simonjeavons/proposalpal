@@ -450,7 +450,7 @@ export default function ProposalEditor() {
 
         {/* Ongoing */}
         <Section title="Ongoing" action={
-          <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('retainer_options', [...form.retainer_options, { type: '', name: '', hours: '', quantity: 1, price: 0, features: [], option_type: 'standard', default_selected: false }])}>
+          <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('retainer_options', [...form.retainer_options, { type: '', name: '', hours: '', quantity: 1, price: 0, features: [], option_type: 'standard', recommended: false }])}>
             <Plus className="w-4 h-4" /> Add Option
           </Button>
         }>
@@ -460,12 +460,27 @@ export default function ProposalEditor() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-foreground">{r.name || r.type || 'Untitled'}</span>
-                    {r.default_selected && <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5">{r.option_type === 'standard' ? 'DEFAULT' : 'PRE-CHECKED'}</span>}
+                    {r.recommended && <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5">★ RECOMMENDED</span>}
                     <span className={`text-[10px] font-bold px-2 py-0.5 ${r.option_type === 'optional_extra' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
                       {r.option_type === 'optional_extra' ? 'Optional Extra' : 'Standard'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={!!r.recommended}
+                        onChange={() => {
+                          const updated = form.retainer_options.map((opt, j) => ({
+                            ...opt,
+                            recommended: j === i ? !opt.recommended : (r.option_type === 'standard' ? false : opt.recommended),
+                          }));
+                          updateField('retainer_options', updated);
+                        }}
+                        className="w-3.5 h-3.5 accent-amber-500"
+                      />
+                      <span className="text-xs text-muted-foreground">Recommended</span>
+                    </label>
                     <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7 px-2"
                       onClick={() => {
                         const updated = [...form.retainer_options];
@@ -473,16 +488,6 @@ export default function ProposalEditor() {
                         updateField('retainer_options', updated);
                       }}>
                       Toggle type
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7 px-2"
-                      onClick={() => {
-                        const updated = form.retainer_options.map((opt, j) => ({
-                          ...opt,
-                          default_selected: j === i ? !opt.default_selected : (r.option_type === 'standard' ? false : opt.default_selected),
-                        }));
-                        updateField('retainer_options', updated);
-                      }}>
-                      {r.default_selected ? 'Unset default' : (r.option_type === 'standard' ? 'Set default' : 'Pre-check')}
                     </Button>
                     <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
                       onClick={() => updateField('retainer_options', form.retainer_options.filter((_, j) => j !== i))}>
@@ -503,8 +508,17 @@ export default function ProposalEditor() {
                       }}
                       className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
                     >
-                      <option value="">Select product…</option>
-                      {products.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                      <option value="">Select…</option>
+                      {products.length > 0 && (
+                        <optgroup label="Products">
+                          {products.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                        </optgroup>
+                      )}
+                      {serviceTypes.length > 0 && (
+                        <optgroup label="Services">
+                          {serviceTypes.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                        </optgroup>
+                      )}
                     </select>
                   </div>
                   <Field label="Name / Tier" value={r.name} onChange={v => updateRetainer(i, 'name', v)} />

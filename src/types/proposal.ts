@@ -19,7 +19,7 @@ export interface RetainerOption {
   price: number;
   features: string[];
   option_type: 'standard' | 'optional_extra';
-  default_selected: boolean;
+  recommended: boolean;
 }
 
 export interface LaunchPhase {
