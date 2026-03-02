@@ -231,7 +231,7 @@ export default function ProposalView() {
                             </li>
                           ))}
                         </ul>
-                        <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.1)', fontSize: 12, fontWeight: 800, color: '#009FE3' }}>{phase.price ? (phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`) : ''}</div>
+                        {phase.price ? <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.1)', fontSize: 12, fontWeight: 800, color: '#009FE3' }}>{phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`}</div> : null}
                       </div>
                       <div style={{ width: 2, height: 36, background: 'rgba(0,159,227,.5)', flexShrink: 0 }} />
                     </div>
@@ -257,7 +257,7 @@ export default function ProposalView() {
                             </li>
                           ))}
                         </ul>
-                        <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.1)', fontSize: 12, fontWeight: 800, color: '#009FE3' }}>{phase.price ? (phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`) : ''}</div>
+                        {phase.price ? <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.1)', fontSize: 12, fontWeight: 800, color: '#009FE3' }}>{phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`}</div> : null}
                       </div>
                     </div>
                   ) : (
@@ -291,7 +291,7 @@ export default function ProposalView() {
                       <div style={{ fontSize: 12, color: '#3A6278', lineHeight: 1.6, flex: 1, paddingBottom: 14, borderBottom: '1px solid #DDE8EE', marginBottom: 12 }}>
                         {phase.tasks.join(', ')}
                       </div>
-                      <div style={{ fontSize: 22, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1 }}>{phase.price ? (phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`) : ''}</div>
+                      {phase.price ? <div style={{ fontSize: 22, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1 }}>{phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`}</div> : null}
                     </div>
                   ))}
                   {/* Launch included card */}
