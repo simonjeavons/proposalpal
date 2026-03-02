@@ -49,7 +49,9 @@ export default function ProposalView() {
           retainer_options: (data.retainer_options || []) as unknown as RetainerOption[],
           launch_phase: ((data as any).launch_phase || { ...DEFAULT_LAUNCH_PHASE }),
         } as Proposal);
-        setSelectedRetainer(data.default_retainer_index || 1);
+        const opts = (data.retainer_options || []) as RetainerOption[];
+        const defaultIdx = data.default_retainer_index ?? 1;
+        setSelectedRetainer(opts.length <= 1 ? 0 : Math.min(defaultIdx, opts.length - 1));
       }
       setLoading(false);
     };
