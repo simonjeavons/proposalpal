@@ -515,7 +515,7 @@ export default function ProposalView() {
               { src: 'https://shoothill.com/wp-content/uploads/2024/09/disney.jpg', alt: 'Disney' },
               { src: 'https://shoothill.com/wp-content/uploads/2024/09/warnerBros.jpg', alt: 'Warner Bros' },
               { src: 'https://shoothill.com/wp-content/uploads/2024/09/environmentAgency.jpg', alt: 'Environment Agency' },
-              { src: 'https://shoothill.com/wp-content/uploads/2024/09/bbc.jpg', alt: 'BBC' },
+              { src: 'https://shoothill.com/wp-content/uploads/2024/09/bbcNews.jpg', alt: 'BBC' },
             ].map(logo => (
               <div key={logo.alt} style={{ background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', minHeight: 96 }}>
                 <img style={{ width: '100%', height: 96, objectFit: 'cover', objectPosition: 'center', filter: 'grayscale(100%)', opacity: .75 }} src={logo.src} alt={logo.alt} />
