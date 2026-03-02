@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { Proposal } from "@/types/proposal";
-import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X } from "lucide-react";
+import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,22 @@ interface Profile {
   created_at: string;
 }
 
-type Tab = "proposals" | "users";
+type Tab = "proposals" | "users" | "services";
+
+interface ServiceTypeChallenge {
+  id: string | null;
+  service_type_id: string;
+  title: string;
+  description: string;
+  sort_order: number;
+}
+
+interface ServiceTypeWithChallenges {
+  id: string;
+  name: string;
+  sort_order: number;
+  challenges: ServiceTypeChallenge[];
+}
 
 export default function AdminDashboard() {
   const { user, signOut } = useAuth();
@@ -42,6 +57,105 @@ export default function AdminDashboard() {
   const [inviting, setInviting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ full_name: "", job_title: "", phone_number: "" });
+
+  // Services state
+  const [serviceTypes, setServiceTypes] = useState<ServiceTypeWithChallenges[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+  const [newServiceName, setNewServiceName] = useState("");
+
+  const fetchServiceTypes = async () => {
+    const { data: types } = await supabase.from("service_types" as any).select("id, name, sort_order").order("sort_order");
+    if (!types) { setServicesLoading(false); return; }
+    const { data: challenges } = await supabase.from("service_type_challenges" as any).select("id, service_type_id, title, description, sort_order").order("sort_order");
+    const challengeMap: Record<string, ServiceTypeChallenge[]> = {};
+    (challenges || []).forEach((c: any) => {
+      if (!challengeMap[c.service_type_id]) challengeMap[c.service_type_id] = [];
+      challengeMap[c.service_type_id].push(c);
+    });
+    setServiceTypes((types as any[]).map(t => ({ ...t, challenges: challengeMap[t.id] || [] })));
+    setServicesLoading(false);
+  };
+
+  const addServiceType = async () => {
+    const name = newServiceName.trim();
+    if (!name) return;
+    const nextOrder = serviceTypes.length > 0 ? Math.max(...serviceTypes.map(s => s.sort_order)) + 1 : 1;
+    const { data, error } = await supabase.from("service_types" as any).insert({ name, sort_order: nextOrder }).select().single();
+    if (!error && data) {
+      setServiceTypes(prev => [...prev, { ...(data as any), challenges: [] }]);
+      setNewServiceName("");
+    } else {
+      toast.error("Failed to add service type");
+    }
+  };
+
+  const saveServiceTypeName = async (id: string, name: string) => {
+    const { error } = await supabase.from("service_types" as any).update({ name }).eq("id", id);
+    if (error) toast.error("Failed to rename");
+  };
+
+  const updateServiceTypeName = (id: string, name: string) => {
+    setServiceTypes(prev => prev.map(s => s.id === id ? { ...s, name } : s));
+  };
+
+  const deleteServiceType = async (id: string) => {
+    if (!confirm("Delete this service type and all its template challenges?")) return;
+    const { error } = await supabase.from("service_types" as any).delete().eq("id", id);
+    if (!error) {
+      setServiceTypes(prev => prev.filter(s => s.id !== id));
+    } else {
+      toast.error("Failed to delete");
+    }
+  };
+
+  const addChallenge = (serviceTypeId: string) => {
+    const nextOrder = serviceTypes.find(s => s.id === serviceTypeId)?.challenges.length || 0;
+    setServiceTypes(prev => prev.map(s => s.id === serviceTypeId
+      ? { ...s, challenges: [...s.challenges, { id: null, service_type_id: serviceTypeId, title: '', description: '', sort_order: nextOrder }] }
+      : s));
+  };
+
+  const updateChallengeField = (serviceTypeId: string, idx: number, field: 'title' | 'description', value: string) => {
+    setServiceTypes(prev => prev.map(s => {
+      if (s.id !== serviceTypeId) return s;
+      const updated = [...s.challenges];
+      updated[idx] = { ...updated[idx], [field]: value };
+      return { ...s, challenges: updated };
+    }));
+  };
+
+  const saveChallenge = async (serviceTypeId: string, idx: number) => {
+    const st = serviceTypes.find(s => s.id === serviceTypeId);
+    if (!st) return;
+    const c = st.challenges[idx];
+    if (c.id === null) {
+      const { data, error } = await supabase.from("service_type_challenges" as any)
+        .insert({ service_type_id: c.service_type_id, title: c.title, description: c.description, sort_order: c.sort_order })
+        .select().single();
+      if (!error && data) {
+        setServiceTypes(prev => prev.map(s => {
+          if (s.id !== serviceTypeId) return s;
+          const updated = [...s.challenges];
+          updated[idx] = { ...updated[idx], id: (data as any).id };
+          return { ...s, challenges: updated };
+        }));
+      }
+    } else {
+      await supabase.from("service_type_challenges" as any).update({ title: c.title, description: c.description }).eq("id", c.id);
+    }
+  };
+
+  const deleteChallenge = async (serviceTypeId: string, idx: number) => {
+    const st = serviceTypes.find(s => s.id === serviceTypeId);
+    if (!st) return;
+    const c = st.challenges[idx];
+    if (c.id) {
+      await supabase.from("service_type_challenges" as any).delete().eq("id", c.id);
+    }
+    setServiceTypes(prev => prev.map(s => s.id === serviceTypeId
+      ? { ...s, challenges: s.challenges.filter((_, i) => i !== idx) }
+      : s));
+  };
 
   const fetchProposals = async () => {
     const { data, error } = await supabase
@@ -70,6 +184,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchProposals();
     fetchProfiles();
+    fetchServiceTypes();
   }, []);
 
   const duplicateProposal = async (p: Proposal) => {
@@ -211,6 +326,16 @@ export default function AdminDashboard() {
           >
             <Users className="w-3.5 h-3.5" /> Users
           </button>
+          <button
+            onClick={() => setActiveTab("services")}
+            className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+              activeTab === "services"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" /> Services
+          </button>
         </div>
       </div>
 
@@ -273,6 +398,118 @@ export default function AdminDashboard() {
                       <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" title="Delete" onClick={() => deleteProposal(p.id)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Services Tab */}
+        {activeTab === "services" && (
+          <>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Services</h1>
+                <p className="text-sm text-muted-foreground">Manage proposal types and their template challenges.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={newServiceName}
+                  onChange={e => setNewServiceName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addServiceType()}
+                  placeholder="New service type name…"
+                  className="h-8 text-sm w-52"
+                />
+                <Button
+                  onClick={addServiceType}
+                  disabled={!newServiceName.trim()}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold uppercase tracking-wide h-8"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add
+                </Button>
+              </div>
+            </div>
+
+            {servicesLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : serviceTypes.length === 0 ? (
+              <div className="bg-card border border-border p-12 text-center">
+                <p className="text-muted-foreground">No service types yet. Add one above.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {serviceTypes.map(st => (
+                  <div key={st.id} className="bg-card border border-border">
+                    {/* Service type header */}
+                    <div className="px-6 py-4 border-b border-border flex items-center gap-3">
+                      <Input
+                        value={st.name}
+                        onChange={e => updateServiceTypeName(st.id, e.target.value)}
+                        onBlur={e => saveServiceTypeName(st.id, e.target.value)}
+                        className="h-8 text-sm font-bold flex-1 max-w-xs"
+                      />
+                      <span className="text-xs text-muted-foreground">{st.challenges.length} template challenge{st.challenges.length !== 1 ? 's' : ''}</span>
+                      <div className="ml-auto flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1 text-primary text-xs h-7"
+                          onClick={() => addChallenge(st.id)}
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add Challenge
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
+                          onClick={() => deleteServiceType(st.id)}
+                          title="Delete service type"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Template challenges */}
+                    <div className="px-6 py-4">
+                      {st.challenges.length === 0 ? (
+                        <p className="text-xs text-muted-foreground italic">No template challenges yet. Click "Add Challenge" to create one.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {st.challenges.map((c, idx) => (
+                            <div key={idx} className="flex gap-3 items-start bg-muted p-3 border border-border">
+                              <div className="flex-1 grid grid-cols-2 gap-3">
+                                <Input
+                                  placeholder="Challenge title"
+                                  value={c.title}
+                                  onChange={e => updateChallengeField(st.id, idx, 'title', e.target.value)}
+                                  onBlur={() => saveChallenge(st.id, idx)}
+                                  className="text-sm font-semibold h-8"
+                                />
+                                <Input
+                                  placeholder="Description"
+                                  value={c.description}
+                                  onChange={e => updateChallengeField(st.id, idx, 'description', e.target.value)}
+                                  onBlur={() => saveChallenge(st.id, idx)}
+                                  className="text-sm h-8"
+                                />
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
+                                onClick={() => deleteChallenge(st.id, idx)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

@@ -19,6 +19,12 @@ interface UserProfile {
   phone_number: string;
 }
 
+interface ServiceType {
+  id: string;
+  name: string;
+  sort_order: number;
+}
+
 interface FormData {
   client_name: string;
   programme_title: string;
@@ -64,6 +70,8 @@ export default function ProposalEditor() {
   const [contractFileUrl, setContractFileUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
+  const [showImportOptions, setShowImportOptions] = useState(false);
 
   const [form, setForm] = useState<FormData>({
     client_name: '',
@@ -95,6 +103,9 @@ export default function ProposalEditor() {
   useEffect(() => {
     supabase.from("profiles").select("id, full_name, email, job_title, phone_number").order("full_name").then(({ data }) => {
       if (data) setUsers(data as UserProfile[]);
+    });
+    supabase.from("service_types" as any).select("id, name, sort_order").order("sort_order").then(({ data }) => {
+      if (data) setServiceTypes(data as ServiceType[]);
     });
   }, []);
 
@@ -277,17 +288,29 @@ export default function ProposalEditor() {
             </div>
             <Field label="Proposal Date" value={form.proposal_date} onChange={v => updateField('proposal_date', v)} type="date" />
             <Field label="Valid Until" value={form.valid_until} onChange={v => updateField('valid_until', v)} type="date" />
+            <div>
+              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Type</Label>
+              <select
+                value={form.sector}
+                onChange={e => { updateField('sector', e.target.value); setShowImportOptions(false); }}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+              >
+                <option value="">Select a type…</option>
+                {serviceTypes.map(st => (
+                  <option key={st.id} value={st.name}>{st.name}</option>
+                ))}
+              </select>
+            </div>
           </Grid>
         </Section>
 
         {/* Client Details */}
         <Section title="Client Details">
-          <Grid>
+          <div className="grid grid-cols-3 gap-4">
             <Field label="Organisation" value={form.organisation} onChange={v => updateField('organisation', v)} />
-            <Field label="Sector" value={form.sector} onChange={v => updateField('sector', v)} />
             <Field label="Staff" value={form.staff} onChange={v => updateField('staff', v)} />
             <Field label="Tech Stack" value={form.tech_stack} onChange={v => updateField('tech_stack', v)} />
-          </Grid>
+          </div>
           <div className="mt-4">
             <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Challenge Introduction</Label>
             <Textarea value={form.challenge_intro} onChange={e => updateField('challenge_intro', e.target.value)} rows={3} className="text-sm" />
@@ -296,9 +319,37 @@ export default function ProposalEditor() {
 
         {/* Challenges */}
         <Section title="Challenges" action={
-          <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('challenges', [...form.challenges, { title: '', description: '' }])}>
-            <Plus className="w-4 h-4" /> Add
-          </Button>
+          <div className="flex items-center gap-2">
+            {form.sector && serviceTypes.some(st => st.name === form.sector) && (
+              showImportOptions ? (
+                <>
+                  <span className="text-xs text-muted-foreground">Import:</span>
+                  <Button variant="outline" size="sm" className="text-xs h-7 px-2" onClick={async () => {
+                    const st = serviceTypes.find(s => s.name === form.sector);
+                    if (!st) return;
+                    const { data } = await supabase.from("service_type_challenges" as any).select("title, description").eq("service_type_id", st.id).order("sort_order");
+                    if (data) updateField('challenges', data as Challenge[]);
+                    setShowImportOptions(false);
+                  }}>Replace existing</Button>
+                  <Button variant="outline" size="sm" className="text-xs h-7 px-2" onClick={async () => {
+                    const st = serviceTypes.find(s => s.name === form.sector);
+                    if (!st) return;
+                    const { data } = await supabase.from("service_type_challenges" as any).select("title, description").eq("service_type_id", st.id).order("sort_order");
+                    if (data) updateField('challenges', [...form.challenges, ...(data as Challenge[])]);
+                    setShowImportOptions(false);
+                  }}>Add to existing</Button>
+                  <Button variant="ghost" size="sm" className="text-xs h-7 px-2 text-muted-foreground" onClick={() => setShowImportOptions(false)}>Cancel</Button>
+                </>
+              ) : (
+                <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground text-xs" onClick={() => setShowImportOptions(true)}>
+                  Import templates
+                </Button>
+              )
+            )}
+            <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('challenges', [...form.challenges, { title: '', description: '' }])}>
+              <Plus className="w-4 h-4" /> Add
+            </Button>
+          </div>
         }>
           <div className="space-y-3">
             {form.challenges.map((c, i) => (
