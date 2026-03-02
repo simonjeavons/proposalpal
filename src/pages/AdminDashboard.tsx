@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { Proposal } from "@/types/proposal";
-import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Layers } from "lucide-react";
+import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Layers, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ export default function AdminDashboard() {
   // Proposals state
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [proposalsLoading, setProposalsLoading] = useState(true);
+  const [signedContracts, setSignedContracts] = useState<Record<string, string>>({}); // proposal_id -> signed_contract_url
 
   // Users state
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -166,6 +167,19 @@ export default function AdminDashboard() {
     if (!error && data) {
       setProposals(data as unknown as Proposal[]);
     }
+
+    // Load signed contract URLs from acceptances
+    const { data: acceptances } = await supabase
+      .from("proposal_acceptances" as any)
+      .select("proposal_id, signed_contract_url")
+      .not("signed_contract_url", "is", null);
+
+    if (acceptances) {
+      const map: Record<string, string> = {};
+      (acceptances as any[]).forEach(a => { map[a.proposal_id] = a.signed_contract_url; });
+      setSignedContracts(map);
+    }
+
     setProposalsLoading(false);
   };
 
@@ -398,6 +412,18 @@ export default function AdminDashboard() {
                       <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" title="Delete" onClick={() => deleteProposal(p.id)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
+                      {signedContracts[p.id] && (
+                        <a
+                          href={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/contracts/${signedContracts[p.id]}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Download signed contract"
+                        >
+                          <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </a>
+                      )}
                     </div>
                   </div>
                 ))}
