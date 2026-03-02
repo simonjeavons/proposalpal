@@ -450,7 +450,7 @@ export default function ProposalEditor() {
 
         {/* Ongoing */}
         <Section title="Ongoing" action={
-          <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('retainer_options', [...form.retainer_options, { type: '', name: '', hours: '', price: 0, features: [], option_type: 'standard', default_selected: false }])}>
+          <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('retainer_options', [...form.retainer_options, { type: '', name: '', hours: '', quantity: 1, price: 0, features: [], option_type: 'standard', default_selected: false }])}>
             <Plus className="w-4 h-4" /> Add Option
           </Button>
         }>
@@ -509,7 +509,23 @@ export default function ProposalEditor() {
                   </div>
                   <Field label="Name / Tier" value={r.name} onChange={v => updateRetainer(i, 'name', v)} />
                   <Field label="Hours" value={r.hours} onChange={v => updateRetainer(i, 'hours', v)} />
+                  <div>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Quantity</Label>
+                    <input
+                      type="number"
+                      min={1}
+                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                      value={r.quantity ?? 1}
+                      onChange={e => updateRetainer(i, 'quantity', Math.max(1, Number(e.target.value) || 1))}
+                    />
+                  </div>
                   <CurrencyField label="Price (£/month)" value={r.price} onChange={v => updateRetainer(i, 'price', v)} />
+                  <div>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Total (£/month)</Label>
+                    <div className="h-9 flex items-center px-3 bg-muted border border-border text-sm font-semibold text-foreground">
+                      £{((r.quantity ?? 1) * r.price).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  </div>
                 </Grid>
                 <div>
                   <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Features (one per line)</Label>

@@ -15,6 +15,7 @@ export interface RetainerOption {
   type: string;
   name: string;
   hours: string;
+  quantity: number;
   price: number;
   features: string[];
   option_type: 'standard' | 'optional_extra';

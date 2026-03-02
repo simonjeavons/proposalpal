@@ -80,8 +80,9 @@ export default function ProposalView() {
   const standardOptions = proposal.retainer_options.filter(r => r.option_type === 'standard');
   const optionalExtras = proposal.retainer_options.filter(r => r.option_type === 'optional_extra');
   const selectedStandardOption = standardOptions[selectedStandard] || null;
-  const extrasTotal = [...checkedExtras].reduce((sum, i) => sum + (optionalExtras[i]?.price || 0), 0);
-  const monthlyTotal = (selectedStandardOption?.price || 0) + extrasTotal;
+  const optionTotal = (r: { price: number; quantity?: number }) => (r.quantity ?? 1) * r.price;
+  const extrasTotal = [...checkedExtras].reduce((sum, i) => sum + optionTotal(optionalExtras[i] ?? { price: 0 }), 0);
+  const monthlyTotal = (selectedStandardOption ? optionTotal(selectedStandardOption) : 0) + extrasTotal;
   const firstYearTotal = Number(proposal.upfront_total) + (monthlyTotal * 12);
 
   return (
@@ -350,7 +351,7 @@ export default function ProposalView() {
                         <div style={{ fontSize: 15, fontWeight: 800, color: '#043D5D', marginBottom: 2 }}>{r.name}</div>
                         {r.hours && <div style={{ fontSize: 12, color: '#AAAAAA', marginBottom: 12 }}>{r.hours}</div>}
                         <div style={{ fontSize: 24, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>
-                          £{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>/ month</span>
+                          £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>/ month</span>
                         </div>
                         {r.features.length > 0 && (
                           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12, paddingTop: 12, borderTop: '1px solid #DDE8EE', padding: 0 }}>
@@ -405,7 +406,7 @@ export default function ProposalView() {
                             )}
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                             <div style={{ fontSize: 11, color: '#AAAAAA' }}>/ month</div>
                           </div>
                         </div>
