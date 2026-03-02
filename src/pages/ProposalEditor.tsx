@@ -471,10 +471,8 @@ export default function ProposalEditor() {
                         type="checkbox"
                         checked={!!r.recommended}
                         onChange={() => {
-                          const updated = form.retainer_options.map((opt, j) => ({
-                            ...opt,
-                            recommended: j === i ? !opt.recommended : (r.option_type === 'standard' ? false : opt.recommended),
-                          }));
+                          const updated = [...form.retainer_options];
+                          updated[i] = { ...updated[i], recommended: !updated[i].recommended };
                           updateField('retainer_options', updated);
                         }}
                         className="w-3.5 h-3.5 accent-amber-500"
