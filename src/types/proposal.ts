@@ -59,6 +59,7 @@ export interface Proposal {
   contact_mobile: string;
   launch_phase: LaunchPhase;
   payment_terms?: string;
+  upfront_notes?: string;
   created_at: string;
   updated_at: string;
 }

@@ -46,6 +46,7 @@ interface FormData {
   challenges: Challenge[];
   phases: Phase[];
   upfront_total: number;
+  upfront_notes: string;
   retainer_options: RetainerOption[];
   launch_phase: LaunchPhase;
   contact_name: string;
@@ -94,6 +95,7 @@ export default function ProposalEditor() {
     challenges: [...DEFAULT_CHALLENGES],
     phases: [...DEFAULT_PHASES],
     upfront_total: 0,
+    upfront_notes: '',
     retainer_options: [...DEFAULT_RETAINER_OPTIONS],
     launch_phase: { ...DEFAULT_LAUNCH_PHASE },
     contact_name: 'Josh Welch',
@@ -135,6 +137,7 @@ export default function ProposalEditor() {
             challenges: (data.challenges || []) as unknown as Challenge[],
             phases: ((data.phases as any[]) || []).map(p => ({ ...p, price: String(p.price || '').replace(/^£/, '').replace(/,/g, '') })) as Phase[],
             upfront_total: Number(data.upfront_total),
+            upfront_notes: (data as any).upfront_notes || '',
             retainer_options: (data.retainer_options || []) as unknown as RetainerOption[],
             launch_phase: ((data as any).launch_phase || { ...DEFAULT_LAUNCH_PHASE }) as LaunchPhase,
             contact_name: data.contact_name,
@@ -445,6 +448,16 @@ export default function ProposalEditor() {
         <Section title="Pricing">
           <div className="max-w-xs">
             <Field label="Upfront Total (£)" value={String(form.upfront_total)} onChange={v => updateField('upfront_total', Number(v) || 0)} type="number" />
+          </div>
+          <div className="mt-4">
+            <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Project Notes / Pricing Footnote</label>
+            <textarea
+              className="w-full border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+              rows={3}
+              placeholder="e.g. All prices exclude VAT. Travel and expenses charged at cost."
+              value={form.upfront_notes}
+              onChange={e => updateField('upfront_notes', e.target.value)}
+            />
           </div>
         </Section>
 
