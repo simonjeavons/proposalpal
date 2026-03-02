@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { Proposal } from "@/types/proposal";
-import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Layers, Download, GitBranch } from "lucide-react";
+import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Layers, Download, GitBranch, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ interface Profile {
   created_at: string;
 }
 
-type Tab = "proposals" | "users" | "services" | "phases";
+type Tab = "proposals" | "users" | "services" | "phases" | "products";
 
 interface ServiceTypeChallenge {
   id: string | null;
@@ -36,6 +36,13 @@ interface ServiceTypeWithChallenges {
   name: string;
   sort_order: number;
   challenges: ServiceTypeChallenge[];
+}
+
+interface Product {
+  id: string | null;
+  name: string;
+  default_price: number;
+  sort_order: number;
 }
 
 interface TemplatePhase {
@@ -75,6 +82,11 @@ export default function AdminDashboard() {
   const [serviceTypes, setServiceTypes] = useState<ServiceTypeWithChallenges[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
   const [newServiceName, setNewServiceName] = useState("");
+
+  // Products state
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [newProductName, setNewProductName] = useState("");
 
   // Journey Phases state
   const [selectedServiceForPhases, setSelectedServiceForPhases] = useState<string>("");
@@ -175,6 +187,44 @@ export default function AdminDashboard() {
       : s));
   };
 
+  const fetchProducts = async () => {
+    setProductsLoading(true);
+    const { data } = await supabase.from("products" as any).select("id, name, default_price, sort_order").order("sort_order");
+    setProducts((data as any[] || []) as Product[]);
+    setProductsLoading(false);
+  };
+
+  const addProduct = async () => {
+    const name = newProductName.trim();
+    if (!name) return;
+    const nextOrder = products.length > 0 ? Math.max(...products.map(p => p.sort_order)) + 1 : 1;
+    const { data, error } = await supabase.from("products" as any).insert({ name, default_price: 0, sort_order: nextOrder }).select().single();
+    if (!error && data) {
+      setProducts(prev => [...prev, data as Product]);
+      setNewProductName("");
+    } else {
+      toast.error("Failed to add product");
+    }
+  };
+
+  const updateProductField = (idx: number, field: keyof Product, value: string | number) => {
+    setProducts(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
+  };
+
+  const saveProduct = async (idx: number) => {
+    const p = products[idx];
+    if (!p?.id) return;
+    const { error } = await supabase.from("products" as any).update({ name: p.name, default_price: p.default_price }).eq("id", p.id);
+    if (error) toast.error("Failed to save product");
+  };
+
+  const deleteProduct = async (idx: number) => {
+    const p = products[idx];
+    if (!p) return;
+    if (p.id) await supabase.from("products" as any).delete().eq("id", p.id);
+    setProducts(prev => prev.filter((_, i) => i !== idx));
+  };
+
   const fetchTemplatePhases = async (serviceTypeId: string) => {
     setPhasesLoading(true);
     const { data } = await supabase.from("template_phases" as any)
@@ -272,6 +322,7 @@ export default function AdminDashboard() {
     fetchProposals();
     fetchProfiles();
     fetchServiceTypes();
+    fetchProducts();
   }, []);
 
   const duplicateProposal = async (p: Proposal) => {
@@ -432,6 +483,16 @@ export default function AdminDashboard() {
             }`}
           >
             <GitBranch className="w-3.5 h-3.5" /> Journey Phases
+          </button>
+          <button
+            onClick={() => setActiveTab("products")}
+            className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+              activeTab === "products"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ShoppingBag className="w-3.5 h-3.5" /> Products
           </button>
         </div>
       </div>
@@ -748,6 +809,79 @@ export default function AdminDashboard() {
                 >
                   <Plus className="w-4 h-4" /> Add Phase
                 </Button>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Products Tab */}
+        {activeTab === "products" && (
+          <>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Products</h1>
+                <p className="text-sm text-muted-foreground">Manage products and services available for ongoing options in proposals.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={newProductName}
+                  onChange={e => setNewProductName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addProduct()}
+                  placeholder="New product name…"
+                  className="h-8 text-sm w-52"
+                />
+                <Button
+                  onClick={addProduct}
+                  disabled={!newProductName.trim()}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold uppercase tracking-wide h-8"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add
+                </Button>
+              </div>
+            </div>
+
+            {productsLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : products.length === 0 ? (
+              <div className="bg-card border border-border p-12 text-center">
+                <p className="text-muted-foreground">No products yet. Add one above.</p>
+              </div>
+            ) : (
+              <div className="bg-card border border-border divide-y divide-border">
+                {products.map((p, idx) => (
+                  <div key={idx} className="px-6 py-3 flex items-center gap-4">
+                    <Input
+                      value={p.name}
+                      onChange={e => updateProductField(idx, 'name', e.target.value)}
+                      onBlur={() => saveProduct(idx)}
+                      className="h-8 text-sm font-semibold flex-1"
+                      placeholder="Product name"
+                    />
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className="text-sm text-muted-foreground">£</span>
+                      <Input
+                        type="number"
+                        value={p.default_price}
+                        onChange={e => updateProductField(idx, 'default_price', Number(e.target.value) || 0)}
+                        onBlur={() => saveProduct(idx)}
+                        className="h-8 text-sm w-28"
+                        placeholder="0.00"
+                      />
+                      <span className="text-xs text-muted-foreground">/mo default</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
+                      onClick={() => deleteProduct(idx)}
+                      title="Delete product"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             )}
           </>

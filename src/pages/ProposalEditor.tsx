@@ -25,6 +25,12 @@ interface ServiceType {
   sort_order: number;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  default_price: number;
+}
+
 interface FormData {
   client_name: string;
   programme_title: string;
@@ -40,10 +46,7 @@ interface FormData {
   challenges: Challenge[];
   phases: Phase[];
   upfront_total: number;
-  payment_terms: string;
-  timeline: string;
   retainer_options: RetainerOption[];
-  default_retainer_index: number;
   launch_phase: LaunchPhase;
   contact_name: string;
   contact_email: string;
@@ -71,6 +74,7 @@ export default function ProposalEditor() {
   const [uploading, setUploading] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [showImportOptions, setShowImportOptions] = useState(false);
   const [showImportPhaseOptions, setShowImportPhaseOptions] = useState(false);
 
@@ -88,11 +92,8 @@ export default function ProposalEditor() {
     challenge_intro: '',
     challenges: [...DEFAULT_CHALLENGES],
     phases: [...DEFAULT_PHASES],
-    upfront_total: 24500,
-    payment_terms: '50% on commencement / 50% on delivery',
-    timeline: '10–12 wks',
+    upfront_total: 0,
     retainer_options: [...DEFAULT_RETAINER_OPTIONS],
-    default_retainer_index: 1,
     launch_phase: { ...DEFAULT_LAUNCH_PHASE },
     contact_name: 'Josh Welch',
     contact_email: 'josh.welch@shoothill.com',
@@ -107,6 +108,9 @@ export default function ProposalEditor() {
     });
     supabase.from("service_types" as any).select("id, name, sort_order").order("sort_order").then(({ data }) => {
       if (data) setServiceTypes(data as ServiceType[]);
+    });
+    supabase.from("products" as any).select("id, name, default_price").order("sort_order").then(({ data }) => {
+      if (data) setProducts(data as Product[]);
     });
   }, []);
 
@@ -129,10 +133,7 @@ export default function ProposalEditor() {
             challenges: (data.challenges || []) as unknown as Challenge[],
             phases: ((data.phases as any[]) || []).map(p => ({ ...p, price: String(p.price || '').replace(/^£/, '').replace(/,/g, '') })) as Phase[],
             upfront_total: Number(data.upfront_total),
-            payment_terms: data.payment_terms,
-            timeline: data.timeline,
             retainer_options: (data.retainer_options || []) as unknown as RetainerOption[],
-            default_retainer_index: data.default_retainer_index,
             launch_phase: ((data as any).launch_phase || { ...DEFAULT_LAUNCH_PHASE }) as LaunchPhase,
             contact_name: data.contact_name,
             contact_email: data.contact_email,
@@ -439,16 +440,14 @@ export default function ProposalEditor() {
 
         {/* Pricing */}
         <Section title="Pricing">
-          <Grid>
+          <div className="max-w-xs">
             <Field label="Upfront Total (£)" value={String(form.upfront_total)} onChange={v => updateField('upfront_total', Number(v) || 0)} type="number" />
-            <Field label="Timeline" value={form.timeline} onChange={v => updateField('timeline', v)} />
-            <Field label="Payment Terms" value={form.payment_terms} onChange={v => updateField('payment_terms', v)} />
-          </Grid>
+          </div>
         </Section>
 
-        {/* Retainer Options */}
-        <Section title="Retainer Options" action={
-          <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('retainer_options', [...form.retainer_options, { badge: '', name: '', hours: '', price: 0, features: [] }])}>
+        {/* Ongoing */}
+        <Section title="Ongoing" action={
+          <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('retainer_options', [...form.retainer_options, { type: '', name: '', hours: '', price: 0, features: [], option_type: 'standard', default_selected: false }])}>
             <Plus className="w-4 h-4" /> Add Option
           </Button>
         }>
@@ -457,19 +456,55 @@ export default function ProposalEditor() {
               <div key={i} className="bg-muted p-4 border border-border space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-foreground">{r.name || 'Untitled'}</span>
-                    {form.default_retainer_index === i && <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5">DEFAULT</span>}
+                    <span className="text-sm font-bold text-foreground">{r.name || r.type || 'Untitled'}</span>
+                    {r.default_selected && <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5">{r.option_type === 'standard' ? 'DEFAULT' : 'PRE-CHECKED'}</span>}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 ${r.option_type === 'optional_extra' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {r.option_type === 'optional_extra' ? 'Optional Extra' : 'Standard'}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => updateField('default_retainer_index', i)}>Set Default</Button>
-                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={() => updateField('retainer_options', form.retainer_options.filter((_, j) => j !== i))}>
+                    <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7 px-2"
+                      onClick={() => {
+                        const updated = [...form.retainer_options];
+                        updated[i] = { ...updated[i], option_type: r.option_type === 'standard' ? 'optional_extra' : 'standard' };
+                        updateField('retainer_options', updated);
+                      }}>
+                      Toggle type
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7 px-2"
+                      onClick={() => {
+                        const updated = form.retainer_options.map((opt, j) => ({
+                          ...opt,
+                          default_selected: j === i ? !opt.default_selected : (r.option_type === 'standard' ? false : opt.default_selected),
+                        }));
+                        updateField('retainer_options', updated);
+                      }}>
+                      {r.default_selected ? 'Unset default' : (r.option_type === 'standard' ? 'Set default' : 'Pre-check')}
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
+                      onClick={() => updateField('retainer_options', form.retainer_options.filter((_, j) => j !== i))}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
                 <Grid>
-                  <Field label="Badge" value={r.badge} onChange={v => updateRetainer(i, 'badge', v)} />
-                  <Field label="Name" value={r.name} onChange={v => updateRetainer(i, 'name', v)} />
+                  <div>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Type</Label>
+                    <select
+                      value={r.type}
+                      onChange={e => {
+                        const product = products.find(p => p.name === e.target.value);
+                        const updated = [...form.retainer_options];
+                        updated[i] = { ...updated[i], type: e.target.value, price: product ? product.default_price : updated[i].price };
+                        updateField('retainer_options', updated);
+                      }}
+                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    >
+                      <option value="">Select product…</option>
+                      {products.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                    </select>
+                  </div>
+                  <Field label="Name / Tier" value={r.name} onChange={v => updateRetainer(i, 'name', v)} />
                   <Field label="Hours" value={r.hours} onChange={v => updateRetainer(i, 'hours', v)} />
                   <CurrencyField label="Price (£/month)" value={r.price} onChange={v => updateRetainer(i, 'price', v)} />
                 </Grid>

@@ -205,7 +205,9 @@ async function appendSignaturePage(
 export default function ProposalAccept() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
-  const retainerIndex = Number(searchParams.get('retainer') ?? 1);
+  const standardIndex = Number(searchParams.get('standard') ?? 0);
+  const extrasParam = searchParams.get('extras') ?? '';
+  const checkedExtrasIndices: number[] = extrasParam ? extrasParam.split(',').map(Number).filter(n => !isNaN(n)) : [];
 
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
@@ -252,11 +254,16 @@ export default function ProposalAccept() {
     </div>
   );
 
-  const retainer = proposal.retainer_options[retainerIndex] || proposal.retainer_options[0];
+  const standardOptions = proposal.retainer_options.filter(r => r.option_type === 'standard');
+  const optionalExtras = proposal.retainer_options.filter(r => r.option_type === 'optional_extra');
+  const selectedStandard = standardOptions[standardIndex] || null;
+  const selectedExtras = checkedExtrasIndices.map(i => optionalExtras[i]).filter(Boolean);
   const upfront = Number(proposal.upfront_total);
-  const retainerPrice = retainer?.price || 0;
-  const retainerAnnual = retainerPrice * 12;
-  const firstYearTotal = upfront + retainerAnnual;
+  const standardPrice = selectedStandard?.price || 0;
+  const extrasPrice = selectedExtras.reduce((sum, r) => sum + (r?.price || 0), 0);
+  const monthlyTotal = standardPrice + extrasPrice;
+  const monthlyAnnual = monthlyTotal * 12;
+  const firstYearTotal = upfront + monthlyAnnual;
 
   const contractFileUrl = (proposal as any).contract_file_url as string | null;
   const contractUrl = contractFileUrl
@@ -301,9 +308,10 @@ export default function ProposalAccept() {
       proposal_id: proposal.id,
       signer_name: signerName,
       signer_title: signerTitle,
-      selected_retainer_index: retainerIndex,
+      selected_retainer_index: standardIndex,
+      selected_extras: checkedExtrasIndices,
       upfront_total: upfront,
-      retainer_price: retainerPrice,
+      retainer_price: monthlyTotal,
       first_year_total: firstYearTotal,
       signature_data: signatureData,
       signed_contract_url: signedContractUrl,
@@ -357,17 +365,25 @@ export default function ProposalAccept() {
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Pricing Summary</h2>
           </div>
           <div style={{ padding: '24px 28px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: monthlyTotal > 0 ? '1fr 1fr' : '1fr', gap: 16, marginBottom: 20 }}>
               <div style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 6 }}>One-Time Project</div>
                 <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(upfront)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT</span></div>
-                <div style={{ fontSize: 12, color: '#3A6278', marginTop: 4 }}>{proposal.payment_terms}</div>
               </div>
-              <div style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 6 }}>Monthly Retainer — {retainer?.name || 'Selected'}</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(retainerPrice)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT / mo</span></div>
-                <div style={{ fontSize: 12, color: '#3A6278', marginTop: 4 }}>{retainer?.hours || ''} · 12-month retainer: {formatCurrency(retainerAnnual)}</div>
-              </div>
+              {monthlyTotal > 0 && (
+                <div style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 6 }}>
+                    Monthly Ongoing{selectedStandard ? ` — ${selectedStandard.name || selectedStandard.type}` : ''}
+                  </div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(monthlyTotal)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT / mo</span></div>
+                  {selectedExtras.length > 0 && (
+                    <div style={{ fontSize: 12, color: '#3A6278', marginTop: 4 }}>
+                      Includes: {selectedExtras.map(r => r?.name || r?.type).filter(Boolean).join(', ')}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 12, color: '#AAAAAA', marginTop: 2 }}>Annual: {formatCurrency(monthlyAnnual)}</div>
+                </div>
+              )}
             </div>
             <div style={{ background: '#043D5D', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>First Year Total</span>
