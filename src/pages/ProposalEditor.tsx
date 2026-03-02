@@ -421,6 +421,7 @@ export default function ProposalEditor() {
                   <Field label="Label" value={p.label} onChange={v => updatePhase(i, 'label', v)} />
                   <Field label="Title" value={p.title} onChange={v => updatePhase(i, 'title', v)} />
                   <Field label="Duration" value={p.duration} onChange={v => updatePhase(i, 'duration', v)} />
+                  <Field label="Price (£, optional)" value={p.price} onChange={v => updatePhase(i, 'price', v)} />
                 </Grid>
                 <div>
                   <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Tasks (one per line)</Label>
