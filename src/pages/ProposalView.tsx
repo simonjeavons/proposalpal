@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Proposal, Challenge, Phase, RetainerOption } from "@/types/proposal";
+import { DEFAULT_LAUNCH_PHASE } from "@/types/proposal";
 
 const ShootHillMark = () => (
   <svg className="absolute -right-[120px] -bottom-[120px] w-[560px] h-[560px] opacity-10 pointer-events-none z-0" viewBox="0 0 199 198" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -46,6 +47,7 @@ export default function ProposalView() {
           challenges: (data.challenges || []) as unknown as Challenge[],
           phases: (data.phases || []) as unknown as Phase[],
           retainer_options: (data.retainer_options || []) as unknown as RetainerOption[],
+          launch_phase: ((data as any).launch_phase || { ...DEFAULT_LAUNCH_PHASE }),
         } as Proposal);
         setSelectedRetainer(data.default_retainer_index || 1);
       }
@@ -295,9 +297,9 @@ export default function ProposalView() {
                   {/* Launch included card */}
                   <div style={{ background: '#E4F4FD', padding: '22px 18px', display: 'flex', flexDirection: 'column', gap: 0, border: '2px solid rgba(0,159,227,.2)' }}>
                     <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#009FE3', color: 'white', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>{String(proposal.phases.length + 1).padStart(2, '0')}</div>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', marginBottom: 4, lineHeight: 1.3 }}>Launch & Handover</div>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 10 }}>5 days</div>
-                    <div style={{ fontSize: 12, color: '#3A6278', lineHeight: 1.6, flex: 1, paddingBottom: 14, borderBottom: '1px solid #DDE8EE', marginBottom: 12 }}>Full rollout, partner and compliance sign-off, complete documentation and runbooks delivered.</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', marginBottom: 4, lineHeight: 1.3 }}>{proposal.launch_phase.title}</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 10 }}>{proposal.launch_phase.duration}</div>
+                    <div style={{ fontSize: 12, color: '#3A6278', lineHeight: 1.6, flex: 1, paddingBottom: 14, borderBottom: '1px solid #DDE8EE', marginBottom: 12 }}>{proposal.launch_phase.description}</div>
                     <div style={{ fontSize: 16, fontWeight: 800, color: '#009FE3' }}>Included</div>
                   </div>
                 </div>

@@ -19,6 +19,18 @@ export interface RetainerOption {
   features: string[];
 }
 
+export interface LaunchPhase {
+  title: string;
+  duration: string;
+  description: string;
+}
+
+export const DEFAULT_LAUNCH_PHASE: LaunchPhase = {
+  title: "Launch & Handover",
+  duration: "5 days",
+  description: "Full rollout, partner and compliance sign-off, complete documentation and runbooks delivered.",
+};
+
 export interface Proposal {
   id: string;
   slug: string;
@@ -45,6 +57,7 @@ export interface Proposal {
   contact_email: string;
   contact_phone: string;
   contact_mobile: string;
+  launch_phase: LaunchPhase;
   created_at: string;
   updated_at: string;
 }

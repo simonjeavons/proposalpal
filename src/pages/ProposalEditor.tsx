@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import type { Challenge, Phase, RetainerOption } from "@/types/proposal";
-import { DEFAULT_CHALLENGES, DEFAULT_PHASES, DEFAULT_RETAINER_OPTIONS } from "@/types/proposal";
+import type { Challenge, Phase, RetainerOption, LaunchPhase } from "@/types/proposal";
+import { DEFAULT_CHALLENGES, DEFAULT_PHASES, DEFAULT_RETAINER_OPTIONS, DEFAULT_LAUNCH_PHASE } from "@/types/proposal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,6 +38,7 @@ interface FormData {
   timeline: string;
   retainer_options: RetainerOption[];
   default_retainer_index: number;
+  launch_phase: LaunchPhase;
   contact_name: string;
   contact_email: string;
   contact_phone: string;
@@ -83,6 +84,7 @@ export default function ProposalEditor() {
     timeline: '10–12 wks',
     retainer_options: [...DEFAULT_RETAINER_OPTIONS],
     default_retainer_index: 1,
+    launch_phase: { ...DEFAULT_LAUNCH_PHASE },
     contact_name: 'Josh Welch',
     contact_email: 'josh.welch@shoothill.com',
     contact_phone: '01743 636 300',
@@ -119,6 +121,7 @@ export default function ProposalEditor() {
             timeline: data.timeline,
             retainer_options: (data.retainer_options || []) as unknown as RetainerOption[],
             default_retainer_index: data.default_retainer_index,
+            launch_phase: ((data as any).launch_phase || { ...DEFAULT_LAUNCH_PHASE }) as LaunchPhase,
             contact_name: data.contact_name,
             contact_email: data.contact_email,
             contact_phone: data.contact_phone,
@@ -340,6 +343,19 @@ export default function ProposalEditor() {
                 </div>
               </div>
             ))}
+          </div>
+        </Section>
+
+        {/* Launch Phase */}
+        <Section title="Launch & Handover Phase">
+          <p className="text-xs text-muted-foreground mb-4">This always appears as the final "Included" card in the pricing section.</p>
+          <Grid>
+            <Field label="Title" value={form.launch_phase.title} onChange={v => updateField('launch_phase', { ...form.launch_phase, title: v })} />
+            <Field label="Duration" value={form.launch_phase.duration} onChange={v => updateField('launch_phase', { ...form.launch_phase, duration: v })} />
+          </Grid>
+          <div className="mt-4">
+            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Description</Label>
+            <Textarea value={form.launch_phase.description} onChange={e => updateField('launch_phase', { ...form.launch_phase, description: e.target.value })} rows={3} className="text-sm" />
           </div>
         </Section>
 
