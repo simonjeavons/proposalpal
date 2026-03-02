@@ -35,6 +35,8 @@ interface ServiceTypeWithChallenges {
   id: string;
   name: string;
   sort_order: number;
+  is_upfront: boolean;
+  is_ongoing: boolean;
   challenges: ServiceTypeChallenge[];
 }
 
@@ -42,6 +44,9 @@ interface Product {
   id: string | null;
   name: string;
   default_price: number;
+  description: string;
+  is_upfront: boolean;
+  is_ongoing: boolean;
   sort_order: number;
 }
 
@@ -94,7 +99,7 @@ export default function AdminDashboard() {
   const [phasesLoading, setPhasesLoading] = useState(false);
 
   const fetchServiceTypes = async () => {
-    const { data: types } = await supabase.from("service_types" as any).select("id, name, sort_order").order("sort_order");
+    const { data: types } = await supabase.from("service_types" as any).select("id, name, sort_order, is_upfront, is_ongoing").order("sort_order");
     if (!types) { setServicesLoading(false); return; }
     const { data: challenges } = await supabase.from("service_type_challenges" as any).select("id, service_type_id, title, description, sort_order").order("sort_order");
     const challengeMap: Record<string, ServiceTypeChallenge[]> = {};
@@ -189,7 +194,7 @@ export default function AdminDashboard() {
 
   const fetchProducts = async () => {
     setProductsLoading(true);
-    const { data } = await supabase.from("products" as any).select("id, name, default_price, sort_order").order("sort_order");
+    const { data } = await supabase.from("products" as any).select("id, name, default_price, description, is_upfront, is_ongoing, sort_order").order("sort_order");
     setProducts((data as any[] || []) as Product[]);
     setProductsLoading(false);
   };
@@ -214,8 +219,16 @@ export default function AdminDashboard() {
   const saveProduct = async (idx: number) => {
     const p = products[idx];
     if (!p?.id) return;
-    const { error } = await supabase.from("products" as any).update({ name: p.name, default_price: p.default_price }).eq("id", p.id);
+    const { error } = await supabase.from("products" as any).update({
+      name: p.name, default_price: p.default_price, description: p.description,
+      is_upfront: p.is_upfront, is_ongoing: p.is_ongoing,
+    }).eq("id", p.id);
     if (error) toast.error("Failed to save product");
+  };
+
+  const saveServiceTypeFlags = async (id: string, is_upfront: boolean, is_ongoing: boolean) => {
+    const { error } = await supabase.from("service_types" as any).update({ is_upfront, is_ongoing }).eq("id", id);
+    if (error) toast.error("Failed to save service flags");
   };
 
   const deleteProduct = async (idx: number) => {
@@ -623,6 +636,26 @@ export default function AdminDashboard() {
                         className="h-8 text-sm font-bold flex-1 max-w-xs"
                       />
                       <span className="text-xs text-muted-foreground">{st.challenges.length} template challenge{st.challenges.length !== 1 ? 's' : ''}</span>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                          <input type="checkbox" checked={st.is_upfront ?? true} className="w-3.5 h-3.5"
+                            onChange={e => {
+                              const val = e.target.checked;
+                              setServiceTypes(prev => prev.map(s => s.id === st.id ? { ...s, is_upfront: val } : s));
+                              saveServiceTypeFlags(st.id, val, st.is_ongoing ?? true);
+                            }} />
+                          <span className="text-xs text-muted-foreground">Upfront</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                          <input type="checkbox" checked={st.is_ongoing ?? true} className="w-3.5 h-3.5"
+                            onChange={e => {
+                              const val = e.target.checked;
+                              setServiceTypes(prev => prev.map(s => s.id === st.id ? { ...s, is_ongoing: val } : s));
+                              saveServiceTypeFlags(st.id, st.is_upfront ?? true, val);
+                            }} />
+                          <span className="text-xs text-muted-foreground">Ongoing</span>
+                        </label>
+                      </div>
                       <div className="ml-auto flex items-center gap-2">
                         <Button
                           variant="ghost"
@@ -851,35 +884,54 @@ export default function AdminDashboard() {
             ) : (
               <div className="bg-card border border-border divide-y divide-border">
                 {products.map((p, idx) => (
-                  <div key={idx} className="px-6 py-3 flex items-center gap-4">
-                    <Input
-                      value={p.name}
-                      onChange={e => updateProductField(idx, 'name', e.target.value)}
-                      onBlur={() => saveProduct(idx)}
-                      className="h-8 text-sm font-semibold flex-1"
-                      placeholder="Product name"
-                    />
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <span className="text-sm text-muted-foreground">£</span>
+                  <div key={idx} className="px-6 py-4 space-y-3">
+                    <div className="flex items-center gap-4">
                       <Input
-                        type="number"
-                        value={p.default_price}
-                        onChange={e => updateProductField(idx, 'default_price', Number(e.target.value) || 0)}
+                        value={p.name}
+                        onChange={e => updateProductField(idx, 'name', e.target.value)}
                         onBlur={() => saveProduct(idx)}
-                        className="h-8 text-sm w-28"
-                        placeholder="0.00"
+                        className="h-8 text-sm font-semibold flex-1"
+                        placeholder="Product / service name"
                       />
-                      <span className="text-xs text-muted-foreground">/mo default</span>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-sm text-muted-foreground">£</span>
+                        <Input
+                          type="number"
+                          value={p.default_price}
+                          onChange={e => updateProductField(idx, 'default_price', Number(e.target.value) || 0)}
+                          onBlur={() => saveProduct(idx)}
+                          className="h-8 text-sm w-28"
+                          placeholder="0.00"
+                        />
+                        <span className="text-xs text-muted-foreground">default</span>
+                      </div>
+                      <div className="flex items-center gap-4 flex-shrink-0">
+                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                          <input type="checkbox" checked={p.is_upfront} className="w-3.5 h-3.5"
+                            onChange={e => { updateProductField(idx, 'is_upfront', e.target.checked); saveProduct(idx); }} />
+                          <span className="text-xs text-muted-foreground">Upfront</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                          <input type="checkbox" checked={p.is_ongoing} className="w-3.5 h-3.5"
+                            onChange={e => { updateProductField(idx, 'is_ongoing', e.target.checked); saveProduct(idx); }} />
+                          <span className="text-xs text-muted-foreground">Ongoing</span>
+                        </label>
+                      </div>
+                      <Button
+                        variant="ghost" size="sm"
+                        className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
+                        onClick={() => deleteProduct(idx)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
-                      onClick={() => deleteProduct(idx)}
-                      title="Delete product"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                    <Input
+                      value={p.description || ''}
+                      onChange={e => updateProductField(idx, 'description', e.target.value)}
+                      onBlur={() => saveProduct(idx)}
+                      className="h-8 text-sm text-muted-foreground"
+                      placeholder="Description (auto-fills proposal item when selected)"
+                    />
                   </div>
                 ))}
               </div>
