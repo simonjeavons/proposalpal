@@ -217,6 +217,14 @@ export default function ProposalAccept() {
   const [agreed, setAgreed] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
 
+  const notifyEdgeFunction = (type: 'viewed' | 'signed', proposalId: string) => {
+    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-proposal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '' },
+      body: JSON.stringify({ type, proposalId }),
+    }).catch(() => {/* fire-and-forget */});
+  };
+
   useEffect(() => {
     supabase.from("proposals").select("*").eq("slug", slug).single().then(({ data }) => {
       if (data) {
@@ -226,6 +234,7 @@ export default function ProposalAccept() {
           phases: (data.phases || []) as unknown as Phase[],
           retainer_options: (data.retainer_options || []) as unknown as RetainerOption[],
         } as Proposal);
+        notifyEdgeFunction('viewed', data.id);
       }
       setLoading(false);
     });
@@ -302,6 +311,7 @@ export default function ProposalAccept() {
 
     if (!error) {
       await supabase.from("proposals").update({ status: 'accepted' } as any).eq("id", proposal.id);
+      notifyEdgeFunction('signed', proposal.id);
       setSubmitted(true);
     }
     setSubmitState('idle');
