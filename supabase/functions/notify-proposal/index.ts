@@ -4,7 +4,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const CC_EMAIL = "sj@shoothill.com";
 const CC_NAME = "Simon Jeavons";
 const FROM_EMAIL = "proposals@shoothill.com";
-const FROM_NAME = "ProposalPal";
+const FROM_NAME = "Shoothill Proposal Manager";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -111,7 +111,7 @@ Deno.serve(async (req: Request) => {
       "",
       "You'll receive another notification when they sign it.",
       "",
-      "— ProposalPal",
+      "— Shoothill Proposal Manager",
     ].join("\n");
 
   // ── SIGNED ──────────────────────────────────────────────────────────────────
@@ -150,9 +150,9 @@ Deno.serve(async (req: Request) => {
       `  Monthly:      ${fmt(retainerPrice)}/month`,
       `  Year 1 total: ${fmt(firstYearTotal)}`,
       "",
-      "Log in to ProposalPal to download the signed contract.",
+      "Log in to Shoothill Proposal Manager to download the signed contract.",
       "",
-      "— ProposalPal",
+      "— Shoothill Proposal Manager",
     ].join("\n");
 
   } else {

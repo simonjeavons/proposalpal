@@ -137,7 +137,7 @@ async function appendSignaturePage(
     x: 36, y: height - 42,
     size: 18, font: helveticaBold, color: rgb(1, 1, 1),
   });
-  page.drawText('ProposalPal · Shoothill', {
+  page.drawText('Shoothill Proposal Manager', {
     x: 36, y: height - 60,
     size: 9, font: helvetica, color: rgb(0.6, 0.7, 0.75),
   });
@@ -195,7 +195,7 @@ async function appendSignaturePage(
 
   // Footer
   page.drawLine({ start: { x: 36, y: 56 }, end: { x: width - 36, y: 56 }, thickness: 0.5, color: rgb(0.87, 0.91, 0.93) });
-  page.drawText('This document was accepted electronically via ProposalPal.', {
+  page.drawText('This document was accepted electronically via Shoothill Proposal Manager.', {
     x: 36, y: 40, size: 8, font: helvetica, color: light,
   });
 
