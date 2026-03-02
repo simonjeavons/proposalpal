@@ -3,10 +3,13 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/components/AuthProvider";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProposalEditor from "./pages/ProposalEditor";
 import ProposalView from "./pages/ProposalView";
 import ProposalAccept from "./pages/ProposalAccept";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -17,15 +20,18 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<AdminDashboard />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/proposals/new" element={<ProposalEditor />} />
-          <Route path="/admin/proposals/:id" element={<ProposalEditor />} />
-          <Route path="/p/:slug" element={<ProposalView />} />
-          <Route path="/p/:slug/accept" element={<ProposalAccept />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/proposals/new" element={<ProtectedRoute><ProposalEditor /></ProtectedRoute>} />
+            <Route path="/admin/proposals/:id" element={<ProtectedRoute><ProposalEditor /></ProtectedRoute>} />
+            <Route path="/p/:slug" element={<ProposalView />} />
+            <Route path="/p/:slug/accept" element={<ProposalAccept />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

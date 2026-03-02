@@ -1,15 +1,41 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import type { Proposal } from "@/types/proposal";
-import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink } from "lucide-react";
+import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
+interface Profile {
+  id: string;
+  email: string;
+  full_name: string;
+  role: "admin" | "user";
+  created_at: string;
+}
+
+type Tab = "proposals" | "users";
+
 export default function AdminDashboard() {
+  const { user, signOut } = useAuth();
+  const [activeTab, setActiveTab] = useState<Tab>("proposals");
+
+  // Proposals state
   const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [proposalsLoading, setProposalsLoading] = useState(true);
+
+  // Users state
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteFullName, setInviteFullName] = useState("");
+  const [invitePassword, setInvitePassword] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "user">("user");
+  const [inviting, setInviting] = useState(false);
 
   const fetchProposals = async () => {
     const { data, error } = await supabase
@@ -20,11 +46,24 @@ export default function AdminDashboard() {
     if (!error && data) {
       setProposals(data as unknown as Proposal[]);
     }
-    setLoading(false);
+    setProposalsLoading(false);
+  };
+
+  const fetchProfiles = async () => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      setProfiles(data as Profile[]);
+    }
+    setUsersLoading(false);
   };
 
   useEffect(() => {
     fetchProposals();
+    fetchProfiles();
   }, []);
 
   const duplicateProposal = async (p: Proposal) => {
@@ -47,6 +86,39 @@ export default function AdminDashboard() {
     }
   };
 
+  const createUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInviting(true);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await supabase.functions.invoke("create-user", {
+      body: { email: inviteEmail, password: invitePassword, full_name: inviteFullName, role: inviteRole },
+      headers: { Authorization: `Bearer ${session?.access_token}` },
+    });
+
+    if (res.error || res.data?.error) {
+      toast.error(res.data?.error ?? res.error?.message ?? "Failed to create user");
+      setInviting(false);
+      return;
+    }
+
+    toast.success(`User ${inviteEmail} created`);
+    setInviteEmail("");
+    setInviteFullName("");
+    setInvitePassword("");
+    setInviteRole("user");
+    setInviting(false);
+    fetchProfiles();
+  };
+
+  const updateRole = async (id: string, role: "admin" | "user") => {
+    const { error } = await supabase.from("profiles").update({ role }).eq("id", id);
+    if (!error) {
+      toast.success("Role updated");
+      fetchProfiles();
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'draft': return 'bg-muted text-muted-foreground';
@@ -65,74 +137,228 @@ export default function AdminDashboard() {
             <img src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg" alt="Shoothill" className="h-6 brightness-0 invert" />
             <span className="text-xs font-semibold tracking-widest uppercase opacity-50">Proposal Manager</span>
           </div>
-          <Link to="/admin/proposals/new">
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold tracking-wide uppercase">
-              <Plus className="w-4 h-4" /> New Proposal
+          <div className="flex items-center gap-3">
+            {activeTab === "proposals" && (
+              <Link to="/admin/proposals/new">
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold tracking-wide uppercase">
+                  <Plus className="w-4 h-4" /> New Proposal
+                </Button>
+              </Link>
+            )}
+            <span className="text-xs opacity-60 hidden sm:block">{user?.email}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-secondary-foreground/60 hover:text-secondary-foreground gap-1.5 text-xs"
+              onClick={signOut}
+            >
+              <LogOut className="w-3.5 h-3.5" /> Sign out
             </Button>
-          </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-border bg-card">
+        <div className="max-w-6xl mx-auto px-6 flex gap-0">
+          <button
+            onClick={() => setActiveTab("proposals")}
+            className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+              activeTab === "proposals"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" /> Proposals
+          </button>
+          <button
+            onClick={() => setActiveTab("users")}
+            className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+              activeTab === "users"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" /> Users
+          </button>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-8">
-        <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Proposals</h1>
-        <p className="text-sm text-muted-foreground mb-6">Create, manage and share client proposals.</p>
+        {/* Proposals Tab */}
+        {activeTab === "proposals" && (
+          <>
+            <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Proposals</h1>
+            <p className="text-sm text-muted-foreground mb-6">Create, manage and share client proposals.</p>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : proposals.length === 0 ? (
-          <div className="bg-card border border-border p-12 text-center">
-            <p className="text-muted-foreground mb-4">No proposals yet. Create your first one.</p>
-            <Link to="/admin/proposals/new">
-              <Button className="bg-primary text-primary-foreground gap-2">
-                <Plus className="w-4 h-4" /> Create Proposal
-              </Button>
-            </Link>
-          </div>
-        ) : (
-          <div className="bg-card border border-border divide-y divide-border">
-            {proposals.map(p => (
-              <div key={p.id} className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-muted/50 transition-colors">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-1">
-                    <h3 className="text-sm font-bold text-foreground truncate">{p.client_name || 'Untitled'}</h3>
-                    <Badge className={`${getStatusColor(p.status)} text-[10px] font-bold uppercase tracking-wider`}>{p.status}</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{p.programme_title} · {new Date(p.created_at).toLocaleDateString('en-GB')}</p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Link to={`/p/${p.slug}`} target="_blank">
-                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Preview">
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="ghost" size="sm"
-                    className="text-muted-foreground hover:text-primary"
-                    title="Copy link"
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/p/${p.slug}`);
-                      toast.success("Link copied!");
-                    }}
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                  <Link to={`/admin/proposals/${p.id}`}>
-                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Edit">
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                  </Link>
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Duplicate" onClick={() => duplicateProposal(p)}>
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" title="Delete" onClick={() => deleteProposal(p.id)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+            {proposalsLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
-            ))}
-          </div>
+            ) : proposals.length === 0 ? (
+              <div className="bg-card border border-border p-12 text-center">
+                <p className="text-muted-foreground mb-4">No proposals yet. Create your first one.</p>
+                <Link to="/admin/proposals/new">
+                  <Button className="bg-primary text-primary-foreground gap-2">
+                    <Plus className="w-4 h-4" /> Create Proposal
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="bg-card border border-border divide-y divide-border">
+                {proposals.map(p => (
+                  <div key={p.id} className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-muted/50 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="text-sm font-bold text-foreground truncate">{p.client_name || 'Untitled'}</h3>
+                        <Badge className={`${getStatusColor(p.status)} text-[10px] font-bold uppercase tracking-wider`}>{p.status}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{p.programme_title} · {new Date(p.created_at).toLocaleDateString('en-GB')}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Link to={`/p/${p.slug}`} target="_blank">
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Preview">
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="ghost" size="sm"
+                        className="text-muted-foreground hover:text-primary"
+                        title="Copy link"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/p/${p.slug}`);
+                          toast.success("Link copied!");
+                        }}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Button>
+                      <Link to={`/admin/proposals/${p.id}`}>
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Edit">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Duplicate" onClick={() => duplicateProposal(p)}>
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" title="Delete" onClick={() => deleteProposal(p.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Users Tab */}
+        {activeTab === "users" && (
+          <>
+            <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Users</h1>
+            <p className="text-sm text-muted-foreground mb-6">Manage who can access the Proposal Manager.</p>
+
+            {/* Create User Form */}
+            <div className="bg-card border border-border p-6 mb-6">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-foreground mb-4">Add User</h2>
+              <form onSubmit={createUser} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Full Name</Label>
+                  <Input
+                    value={inviteFullName}
+                    onChange={(e) => setInviteFullName(e.target.value)}
+                    placeholder="Jane Smith"
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email</Label>
+                  <Input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="jane@shoothill.com"
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Password</Label>
+                  <Input
+                    type="password"
+                    value={invitePassword}
+                    onChange={(e) => setInvitePassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Role</Label>
+                  <div className="flex gap-2 items-end">
+                    <select
+                      value={inviteRole}
+                      onChange={(e) => setInviteRole(e.target.value as "admin" | "user")}
+                      className="flex-1 h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    >
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                    <Button
+                      type="submit"
+                      disabled={inviting}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold uppercase tracking-wide whitespace-nowrap"
+                    >
+                      {inviting ? "Adding…" : "Add User"}
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            {/* Users Table */}
+            {usersLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : profiles.length === 0 ? (
+              <div className="bg-card border border-border p-12 text-center">
+                <p className="text-muted-foreground">No users yet.</p>
+              </div>
+            ) : (
+              <div className="bg-card border border-border">
+                <div className="grid grid-cols-4 px-6 py-2 border-b border-border bg-muted/50">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Name</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Email</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Role</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Joined</span>
+                </div>
+                {profiles.map((profile) => (
+                  <div key={profile.id} className="grid grid-cols-4 px-6 py-3 items-center border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                    <span className="text-sm font-medium text-foreground truncate pr-4">
+                      {profile.full_name || "—"}
+                      {profile.id === user?.id && (
+                        <span className="ml-2 text-[10px] text-muted-foreground">(you)</span>
+                      )}
+                    </span>
+                    <span className="text-sm text-muted-foreground truncate pr-4">{profile.email}</span>
+                    <div>
+                      <select
+                        value={profile.role}
+                        onChange={(e) => updateRole(profile.id, e.target.value as "admin" | "user")}
+                        className="h-7 rounded border border-input bg-background px-2 py-0 text-xs"
+                        disabled={profile.id === user?.id}
+                      >
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(profile.created_at).toLocaleDateString("en-GB")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
