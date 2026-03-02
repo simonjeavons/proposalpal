@@ -440,10 +440,10 @@ export default function ProposalView() {
           <div style={{ padding: '28px 32px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               {[
-                { n: 1, title: 'Confirm your scope & retainer', desc: 'Review the pricing above and let us know your preferred retainer level. We\'ll prepare a tailored statement of work.' },
-                { n: 2, title: 'Sign the statement of work', desc: 'No work begins and no payment is due until you\'ve reviewed and signed the SOW. Usually a same-week turnaround.' },
-                { n: 3, title: 'Kick-off meeting', desc: `90-minute session with ${proposal.contact_name} to align on timelines, access requirements and communications with your team.` },
-                { n: 4, title: 'Discovery begins', desc: 'Within five working days of kick-off, on-site at your office for the initial discovery phase.' },
+                { n: 1, title: 'Choose your package', desc: 'Review the pricing above and click to choose your preferred package.' },
+                { n: 2, title: 'Sign your service agreement', desc: 'Sign to accept your Shoothill service agreement. No work begins and no payment is due until you\'ve signed.' },
+                { n: 3, title: 'Kick-off meeting', desc: `A 30-minute call with ${proposal.contact_name} to align on timelines, access requirements and next steps.` },
+                { n: 4, title: 'Handover to project manager', desc: 'Once signed, you\'ll be introduced to your dedicated Shoothill project manager who will guide you through onboarding, set up your project workspace, and ensure a smooth transition into delivery.' },
               ].map(step => (
                 <div key={step.n} style={{ display: 'flex', gap: 14, padding: '18px 20px', border: '1px solid #DDE8EE', alignItems: 'flex-start' }}>
                   <div style={{ width: 30, height: 30, background: '#009FE3', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>{step.n}</div>
@@ -457,13 +457,13 @@ export default function ProposalView() {
             <div style={{ background: '#043D5D', padding: '26px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginTop: 28 }}>
               <div>
                 <h3 style={{ fontSize: 16, fontWeight: 700, color: 'white', marginBottom: 3 }}>Ready to move forward?</h3>
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', margin: 0 }}>Contact {proposal.contact_name} to request your statement of work.</p>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', margin: 0 }}>Contact {proposal.contact_name} on {proposal.contact_phone} if you have any questions.</p>
               </div>
               <button
                 onClick={() => navigate(`/p/${slug}/accept?retainer=${selectedRetainer}`)}
                 style={{ background: '#009FE3', color: 'white', fontSize: 13, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' as const, padding: '13px 28px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
               >
-                Accept &amp; Request SOW →
+                Accept your Shoothill service agreement →
               </button>
             </div>
           </div>
