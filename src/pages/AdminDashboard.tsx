@@ -97,7 +97,13 @@ export default function AdminDashboard() {
     });
 
     if (res.error || res.data?.error) {
-      toast.error(res.data?.error ?? res.error?.message ?? "Failed to create user");
+      // Extract the actual error body from the edge function response
+      let errorMsg = res.data?.error ?? res.error?.message ?? "Failed to create user";
+      try {
+        const body = await (res.error as any)?.context?.json?.();
+        if (body?.error) errorMsg = body.error;
+      } catch { /* ignore */ }
+      toast.error(errorMsg);
       setInviting(false);
       return;
     }
