@@ -471,7 +471,7 @@ export default function ProposalEditor() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">{contractFileUrl.split('/').pop()}</p>
                 <a
-                  href={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/contracts/${contractFileUrl}`}
+                  href={`/contracts/${contractFileUrl}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-primary hover:underline"

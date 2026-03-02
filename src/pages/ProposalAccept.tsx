@@ -251,7 +251,7 @@ export default function ProposalAccept() {
 
   const contractFileUrl = (proposal as any).contract_file_url as string | null;
   const contractUrl = contractFileUrl
-    ? `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/contracts/${contractFileUrl}`
+    ? `/contracts/${contractFileUrl}`
     : null;
 
   const submitting = submitState !== 'idle';

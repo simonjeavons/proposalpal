@@ -414,7 +414,7 @@ export default function AdminDashboard() {
                       </Button>
                       {signedContracts[p.id] && (
                         <a
-                          href={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/contracts/${signedContracts[p.id]}`}
+                          href={`/contracts/${signedContracts[p.id]}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           title="Download signed contract"
