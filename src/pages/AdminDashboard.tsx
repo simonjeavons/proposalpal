@@ -3,11 +3,12 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { Proposal } from "@/types/proposal";
-import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Layers, Download } from "lucide-react";
+import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Layers, Download, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 interface Profile {
@@ -20,7 +21,7 @@ interface Profile {
   created_at: string;
 }
 
-type Tab = "proposals" | "users" | "services";
+type Tab = "proposals" | "users" | "services" | "phases";
 
 interface ServiceTypeChallenge {
   id: string | null;
@@ -35,6 +36,17 @@ interface ServiceTypeWithChallenges {
   name: string;
   sort_order: number;
   challenges: ServiceTypeChallenge[];
+}
+
+interface TemplatePhase {
+  id: string | null;
+  service_type_id: string;
+  label: string;
+  title: string;
+  duration: string;
+  tasks: string[];
+  price: string;
+  sort_order: number;
 }
 
 export default function AdminDashboard() {
@@ -63,6 +75,11 @@ export default function AdminDashboard() {
   const [serviceTypes, setServiceTypes] = useState<ServiceTypeWithChallenges[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
   const [newServiceName, setNewServiceName] = useState("");
+
+  // Journey Phases state
+  const [selectedServiceForPhases, setSelectedServiceForPhases] = useState<string>("");
+  const [templatePhases, setTemplatePhases] = useState<TemplatePhase[]>([]);
+  const [phasesLoading, setPhasesLoading] = useState(false);
 
   const fetchServiceTypes = async () => {
     const { data: types } = await supabase.from("service_types" as any).select("id, name, sort_order").order("sort_order");
@@ -156,6 +173,62 @@ export default function AdminDashboard() {
     setServiceTypes(prev => prev.map(s => s.id === serviceTypeId
       ? { ...s, challenges: s.challenges.filter((_, i) => i !== idx) }
       : s));
+  };
+
+  const fetchTemplatePhases = async (serviceTypeId: string) => {
+    setPhasesLoading(true);
+    const { data } = await supabase.from("template_phases" as any)
+      .select("id, service_type_id, label, title, duration, tasks, price, sort_order")
+      .eq("service_type_id", serviceTypeId)
+      .order("sort_order");
+    setTemplatePhases((data as any[] || []).map((p: any) => ({
+      ...p,
+      tasks: Array.isArray(p.tasks) ? p.tasks : [],
+    })));
+    setPhasesLoading(false);
+  };
+
+  const addTemplatePhase = async () => {
+    if (!selectedServiceForPhases) return;
+    const nextOrder = templatePhases.length;
+    const nextLabel = `Phase ${templatePhases.length + 1}`;
+    const { data, error } = await supabase.from("template_phases" as any)
+      .insert({ service_type_id: selectedServiceForPhases, label: nextLabel, title: '', duration: '', tasks: [], price: '', sort_order: nextOrder })
+      .select().single();
+    if (!error && data) {
+      setTemplatePhases(prev => [...prev, { ...(data as any), tasks: [] }]);
+    } else {
+      toast.error("Failed to add phase");
+    }
+  };
+
+  const updateTemplatePhaseField = (idx: number, field: keyof TemplatePhase, value: string | string[]) => {
+    setTemplatePhases(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
+  };
+
+  const saveTemplatePhase = async (idx: number) => {
+    const p = templatePhases[idx];
+    if (!p) return;
+    const payload = { label: p.label, title: p.title, duration: p.duration, tasks: p.tasks, price: p.price };
+    if (p.id === null) {
+      const { data, error } = await supabase.from("template_phases" as any)
+        .insert({ ...payload, service_type_id: p.service_type_id, sort_order: p.sort_order })
+        .select().single();
+      if (!error && data) {
+        setTemplatePhases(prev => prev.map((ph, i) => i === idx ? { ...ph, id: (data as any).id } : ph));
+      }
+    } else {
+      await supabase.from("template_phases" as any).update(payload).eq("id", p.id);
+    }
+  };
+
+  const deleteTemplatePhase = async (idx: number) => {
+    const p = templatePhases[idx];
+    if (!p) return;
+    if (p.id) {
+      await supabase.from("template_phases" as any).delete().eq("id", p.id);
+    }
+    setTemplatePhases(prev => prev.filter((_, i) => i !== idx));
   };
 
   const fetchProposals = async () => {
@@ -350,6 +423,16 @@ export default function AdminDashboard() {
           >
             <Layers className="w-3.5 h-3.5" /> Services
           </button>
+          <button
+            onClick={() => setActiveTab("phases")}
+            className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+              activeTab === "phases"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <GitBranch className="w-3.5 h-3.5" /> Journey Phases
+          </button>
         </div>
       </div>
 
@@ -539,6 +622,132 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Journey Phases Tab */}
+        {activeTab === "phases" && (
+          <>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Journey Phases</h1>
+                <p className="text-sm text-muted-foreground">Define template phases per service type to import into proposals.</p>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 block">Service Type</Label>
+              <select
+                value={selectedServiceForPhases}
+                onChange={e => {
+                  setSelectedServiceForPhases(e.target.value);
+                  if (e.target.value) fetchTemplatePhases(e.target.value);
+                  else setTemplatePhases([]);
+                }}
+                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm w-72"
+              >
+                <option value="">Select a service type…</option>
+                {serviceTypes.map(st => (
+                  <option key={st.id} value={st.id}>{st.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {!selectedServiceForPhases ? (
+              <div className="bg-card border border-border p-12 text-center">
+                <p className="text-muted-foreground">Select a service type above to manage its template phases.</p>
+              </div>
+            ) : phasesLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {templatePhases.length === 0 && (
+                  <div className="bg-card border border-border p-8 text-center">
+                    <p className="text-muted-foreground text-sm">No template phases yet. Add one below.</p>
+                  </div>
+                )}
+                {templatePhases.map((p, idx) => (
+                  <div key={idx} className="bg-card border border-border p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-primary uppercase tracking-wider">{p.label || `Phase ${idx + 1}`}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
+                        onClick={() => deleteTemplatePhase(idx)}
+                        title="Delete phase"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Label</Label>
+                        <Input
+                          placeholder="Phase 1"
+                          value={p.label}
+                          onChange={e => updateTemplatePhaseField(idx, 'label', e.target.value)}
+                          onBlur={() => saveTemplatePhase(idx)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Title</Label>
+                        <Input
+                          placeholder="Discovery & Audit"
+                          value={p.title}
+                          onChange={e => updateTemplatePhaseField(idx, 'title', e.target.value)}
+                          onBlur={() => saveTemplatePhase(idx)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Duration</Label>
+                        <Input
+                          placeholder="2 wks"
+                          value={p.duration}
+                          onChange={e => updateTemplatePhaseField(idx, 'duration', e.target.value)}
+                          onBlur={() => saveTemplatePhase(idx)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-[1fr_auto] gap-3 items-start">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tasks (one per line)</Label>
+                        <Textarea
+                          placeholder={"Task one\nTask two\nTask three"}
+                          value={p.tasks.join('\n')}
+                          onChange={e => updateTemplatePhaseField(idx, 'tasks', e.target.value.split('\n'))}
+                          onBlur={() => saveTemplatePhase(idx)}
+                          rows={3}
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Price (£)</Label>
+                        <Input
+                          placeholder="4500"
+                          value={p.price}
+                          onChange={e => updateTemplatePhaseField(idx, 'price', e.target.value)}
+                          onBlur={() => saveTemplatePhase(idx)}
+                          className="h-8 text-sm w-28"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 text-xs font-bold uppercase tracking-wide"
+                  onClick={addTemplatePhase}
+                >
+                  <Plus className="w-4 h-4" /> Add Phase
+                </Button>
               </div>
             )}
           </>

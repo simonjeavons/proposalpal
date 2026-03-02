@@ -72,6 +72,7 @@ export default function ProposalEditor() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [showImportOptions, setShowImportOptions] = useState(false);
+  const [showImportPhaseOptions, setShowImportPhaseOptions] = useState(false);
 
   const [form, setForm] = useState<FormData>({
     client_name: '',
@@ -368,9 +369,37 @@ export default function ProposalEditor() {
 
         {/* Phases */}
         <Section title="Journey Phases" action={
-          <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('phases', [...form.phases, { label: `Phase ${form.phases.length + 1}`, title: '', duration: '', tasks: [], price: '' }])}>
-            <Plus className="w-4 h-4" /> Add Phase
-          </Button>
+          <div className="flex items-center gap-2">
+            {form.sector && serviceTypes.some(st => st.name === form.sector) && (
+              showImportPhaseOptions ? (
+                <>
+                  <span className="text-xs text-muted-foreground">Import:</span>
+                  <Button variant="outline" size="sm" className="text-xs h-7 px-2" onClick={async () => {
+                    const st = serviceTypes.find(s => s.name === form.sector);
+                    if (!st) return;
+                    const { data } = await supabase.from("template_phases" as any).select("label, title, duration, tasks, price").eq("service_type_id", st.id).order("sort_order");
+                    if (data) updateField('phases', (data as any[]).map(p => ({ ...p, tasks: Array.isArray(p.tasks) ? p.tasks : [] })));
+                    setShowImportPhaseOptions(false);
+                  }}>Replace existing</Button>
+                  <Button variant="outline" size="sm" className="text-xs h-7 px-2" onClick={async () => {
+                    const st = serviceTypes.find(s => s.name === form.sector);
+                    if (!st) return;
+                    const { data } = await supabase.from("template_phases" as any).select("label, title, duration, tasks, price").eq("service_type_id", st.id).order("sort_order");
+                    if (data) updateField('phases', [...form.phases, ...(data as any[]).map(p => ({ ...p, tasks: Array.isArray(p.tasks) ? p.tasks : [] }))]);
+                    setShowImportPhaseOptions(false);
+                  }}>Add to existing</Button>
+                  <Button variant="ghost" size="sm" className="text-xs h-7 px-2 text-muted-foreground" onClick={() => setShowImportPhaseOptions(false)}>Cancel</Button>
+                </>
+              ) : (
+                <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground text-xs" onClick={() => setShowImportPhaseOptions(true)}>
+                  Import templates
+                </Button>
+              )
+            )}
+            <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('phases', [...form.phases, { label: `Phase ${form.phases.length + 1}`, title: '', duration: '', tasks: [], price: '' }])}>
+              <Plus className="w-4 h-4" /> Add Phase
+            </Button>
+          </div>
         }>
           <div className="space-y-4">
             {form.phases.map((p, i) => (
