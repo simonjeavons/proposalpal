@@ -31,7 +31,8 @@ export default function ProposalView() {
   const navigate = useNavigate();
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedRetainer, setSelectedRetainer] = useState(1);
+  const [selectedStandard, setSelectedStandard] = useState(0);
+  const [checkedExtras, setCheckedExtras] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const fetchProposal = async () => {
@@ -49,9 +50,12 @@ export default function ProposalView() {
           retainer_options: (data.retainer_options || []) as unknown as RetainerOption[],
           launch_phase: ((data as any).launch_phase || { ...DEFAULT_LAUNCH_PHASE }),
         } as Proposal);
-        const opts = (data.retainer_options || []) as RetainerOption[];
-        const defaultIdx = data.default_retainer_index ?? 1;
-        setSelectedRetainer(opts.length <= 1 ? 0 : Math.min(defaultIdx, opts.length - 1));
+        const opts = ((data.retainer_options || []) as RetainerOption[]);
+        const standards = opts.filter(r => r.option_type === 'standard');
+        const defaultStdIdx = standards.findIndex(r => r.default_selected);
+        setSelectedStandard(defaultStdIdx >= 0 ? defaultStdIdx : 0);
+        const extras = opts.filter(r => r.option_type === 'optional_extra');
+        setCheckedExtras(new Set(extras.reduce<number[]>((acc, r, i) => r.default_selected ? [...acc, i] : acc, [])));
       }
       setLoading(false);
     };
@@ -73,9 +77,12 @@ export default function ProposalView() {
     </div>
   );
 
-  const retainers = proposal.retainer_options;
-  const currentRetainer = retainers[selectedRetainer] || { price: 0 };
-  const firstYearTotal = Number(proposal.upfront_total) + (currentRetainer.price * 12);
+  const standardOptions = proposal.retainer_options.filter(r => r.option_type === 'standard');
+  const optionalExtras = proposal.retainer_options.filter(r => r.option_type === 'optional_extra');
+  const selectedStandardOption = standardOptions[selectedStandard] || null;
+  const extrasTotal = [...checkedExtras].reduce((sum, i) => sum + (optionalExtras[i]?.price || 0), 0);
+  const monthlyTotal = (selectedStandardOption?.price || 0) + extrasTotal;
+  const firstYearTotal = Number(proposal.upfront_total) + (monthlyTotal * 12);
 
   return (
     <div style={{ background: '#F4F7FA', color: '#1A2E3B', fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.7 }}>
@@ -312,47 +319,96 @@ export default function ProposalView() {
                 <p style={{ fontSize: 12, color: '#AAAAAA', fontStyle: 'italic', marginTop: 8 }}>Payment: {proposal.payment_terms}. Statement of work issued before any work begins.</p>
               </div>
 
-              {/* Retainer */}
-              {retainers.length > 0 && (
+              {/* Standard ongoing options */}
+              {standardOptions.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 2 }}>Part 2 — Monthly support retainer (choose your level)</div>
-                  <p style={{ color: '#3A6278', fontSize: 13, marginBottom: 18, marginTop: 16 }}>After go-live, choose the level of ongoing Shoothill support that suits your team. All tiers include a dedicated contact, platform updates, and monthly review calls. Select below:</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${retainers.length}, 1fr)`, gap: 2, background: '#DDE8EE' }}>
-                    {retainers.map((r, i) => (
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 2 }}>Part 2 — Ongoing support (choose your level)</div>
+                  <p style={{ color: '#3A6278', fontSize: 13, marginBottom: 18, marginTop: 16 }}>Choose the level of ongoing Shoothill support that suits your team. Select below:</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${standardOptions.length}, 1fr)`, gap: 2, background: '#DDE8EE' }}>
+                    {standardOptions.map((r, i) => (
                       <div
                         key={i}
-                        onClick={() => setSelectedRetainer(i)}
+                        onClick={() => setSelectedStandard(i)}
                         style={{
-                          background: selectedRetainer === i ? '#F0FAFF' : 'white',
+                          background: selectedStandard === i ? '#F0FAFF' : 'white',
                           padding: '22px 18px',
                           cursor: 'pointer',
                           transition: 'background .2s',
-                          border: selectedRetainer === i ? '2px solid #009FE3' : '2px solid transparent',
-                          position: 'relative',
+                          border: selectedStandard === i ? '2px solid #009FE3' : '2px solid transparent',
                         }}
                       >
                         <div style={{
-                          width: 20, height: 20, border: selectedRetainer === i ? 'none' : '2px solid #DDE8EE', borderRadius: '50%',
+                          width: 20, height: 20, border: selectedStandard === i ? 'none' : '2px solid #DDE8EE', borderRadius: '50%',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10,
-                          background: selectedRetainer === i ? '#009FE3' : 'transparent',
-                          color: selectedRetainer === i ? 'white' : 'transparent',
+                          background: selectedStandard === i ? '#009FE3' : 'transparent',
+                          color: selectedStandard === i ? 'white' : 'transparent',
                           marginBottom: 10, transition: 'all .2s',
                         }}>✓</div>
-                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 6 }}>{r.badge}</div>
+                        {r.type && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 6 }}>{r.type}</div>}
                         <div style={{ fontSize: 15, fontWeight: 800, color: '#043D5D', marginBottom: 2 }}>{r.name}</div>
-                        <div style={{ fontSize: 12, color: '#AAAAAA', marginBottom: 12 }}>{r.hours}</div>
+                        {r.hours && <div style={{ fontSize: 12, color: '#AAAAAA', marginBottom: 12 }}>{r.hours}</div>}
                         <div style={{ fontSize: 24, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>
                           £{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>/ month</span>
                         </div>
-                        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12, paddingTop: 12, borderTop: '1px solid #DDE8EE', padding: 0 }}>
-                          {r.features.map((f, j) => (
-                            <li key={j} style={{ fontSize: 12, color: '#3A6278', display: 'flex', gap: 7, alignItems: 'flex-start' }}>
-                              <span style={{ color: '#009FE3', fontWeight: 700, flexShrink: 0 }}>✓</span>{f}
-                            </li>
-                          ))}
-                        </ul>
+                        {r.features.length > 0 && (
+                          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12, paddingTop: 12, borderTop: '1px solid #DDE8EE', padding: 0 }}>
+                            {r.features.map((f, j) => (
+                              <li key={j} style={{ fontSize: 12, color: '#3A6278', display: 'flex', gap: 7, alignItems: 'flex-start' }}>
+                                <span style={{ color: '#009FE3', fontWeight: 700, flexShrink: 0 }}>✓</span>{f}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Optional extras */}
+              {optionalExtras.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 2 }}>{standardOptions.length > 0 ? 'Part 3' : 'Part 2'} — Optional add-ons</div>
+                  <p style={{ color: '#3A6278', fontSize: 13, marginBottom: 18, marginTop: 16 }}>Add any of the following to your package:</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {optionalExtras.map((r, i) => {
+                      const checked = checkedExtras.has(i);
+                      return (
+                        <div
+                          key={i}
+                          onClick={() => setCheckedExtras(prev => { const s = new Set(prev); s.has(i) ? s.delete(i) : s.add(i); return s; })}
+                          style={{
+                            background: checked ? '#F0FAFF' : 'white',
+                            border: checked ? '2px solid #009FE3' : '2px solid #DDE8EE',
+                            padding: '16px 20px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 16,
+                            transition: 'all .2s',
+                          }}
+                        >
+                          <div style={{
+                            width: 20, height: 20, border: checked ? 'none' : '2px solid #DDE8EE', borderRadius: 4,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12,
+                            background: checked ? '#009FE3' : 'transparent',
+                            color: 'white', flexShrink: 0, transition: 'all .2s',
+                          }}>{checked ? '✓' : ''}</div>
+                          <div style={{ flex: 1 }}>
+                            {r.type && <div style={{ fontSize: 10, fontWeight: 700, color: '#009FE3', letterSpacing: '.1em', textTransform: 'uppercase' as const, marginBottom: 2 }}>{r.type}</div>}
+                            <div style={{ fontSize: 14, fontWeight: 700, color: '#043D5D' }}>{r.name || r.type}</div>
+                            {r.hours && <div style={{ fontSize: 12, color: '#AAAAAA' }}>{r.hours}</div>}
+                            {r.features.length > 0 && (
+                              <div style={{ fontSize: 12, color: '#3A6278', marginTop: 4 }}>{r.features.join(' · ')}</div>
+                            )}
+                          </div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            <div style={{ fontSize: 11, color: '#AAAAAA' }}>/ month</div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -362,8 +418,8 @@ export default function ProposalView() {
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.45)', marginBottom: 6 }}>Investment summary</div>
                   <div style={{ fontSize: 13, color: 'rgba(255,255,255,.5)' }}>
-                    One-time project: <span style={{ color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>£{Number(proposal.upfront_total).toLocaleString('en-GB')}</span> + VAT &nbsp;·&nbsp;
-                    Monthly retainer: <span style={{ color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>£{currentRetainer.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> + VAT / month
+                    One-time project: <span style={{ color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>£{Number(proposal.upfront_total).toLocaleString('en-GB')}</span> + VAT
+                    {monthlyTotal > 0 && <> &nbsp;·&nbsp; Monthly ongoing: <span style={{ color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>£{monthlyTotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> + VAT / month</>}
                   </div>
                 </div>
                 <div>
@@ -379,22 +435,19 @@ export default function ProposalView() {
 
       {/* SUMMARY BAND */}
       <div style={{ background: 'white', borderTop: '1px solid #DDE8EE', borderBottom: '1px solid #DDE8EE' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 48px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 48px', display: 'grid', gridTemplateColumns: monthlyTotal > 0 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)' }}>
           <div style={{ padding: '0 24px', borderRight: '1px solid #DDE8EE' }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>One-time project</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 2 }}>£{Number(proposal.upfront_total).toLocaleString('en-GB')}</div>
             <div style={{ fontSize: 12, color: '#AAAAAA' }}>Excl. VAT</div>
           </div>
-          <div style={{ padding: '0 24px', borderRight: '1px solid #DDE8EE' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>Monthly retainer</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 2 }}>£{currentRetainer.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            <div style={{ fontSize: 12, color: '#AAAAAA' }}>Excl. VAT / month</div>
-          </div>
-          <div style={{ padding: '0 24px', borderRight: '1px solid #DDE8EE' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>Programme timeline</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D', marginBottom: 2 }}>{proposal.timeline}</div>
-            <div style={{ fontSize: 12, color: '#AAAAAA' }}>Signed SOW to go-live</div>
-          </div>
+          {monthlyTotal > 0 && (
+            <div style={{ padding: '0 24px', borderRight: '1px solid #DDE8EE' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>Monthly ongoing</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 2 }}>£{monthlyTotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <div style={{ fontSize: 12, color: '#AAAAAA' }}>Excl. VAT / month</div>
+            </div>
+          )}
           <div style={{ padding: '0 24px' }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>Proposal valid until</div>
             <div style={{ fontSize: 16, fontWeight: 800, color: '#043D5D', marginTop: 6 }}>{formatDate(proposal.valid_until)}</div>
@@ -462,7 +515,7 @@ export default function ProposalView() {
                 <p style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', margin: 0 }}>Contact {proposal.contact_name} on {proposal.contact_phone} if you have any questions.</p>
               </div>
               <button
-                onClick={() => navigate(`/p/${slug}/accept?retainer=${selectedRetainer}`)}
+                onClick={() => navigate(`/p/${slug}/accept?standard=${selectedStandard}&extras=${[...checkedExtras].join(',')}`)}
                 style={{ background: '#009FE3', color: 'white', fontSize: 13, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' as const, padding: '13px 28px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
               >
                 Accept your Shoothill service agreement →

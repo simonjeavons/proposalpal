@@ -12,11 +12,13 @@ export interface Phase {
 }
 
 export interface RetainerOption {
-  badge: string;
+  type: string;
   name: string;
   hours: string;
   price: number;
   features: string[];
+  option_type: 'standard' | 'optional_extra';
+  default_selected: boolean;
 }
 
 export interface LaunchPhase {
@@ -49,10 +51,7 @@ export interface Proposal {
   challenges: Challenge[];
   phases: Phase[];
   upfront_total: number;
-  payment_terms: string;
-  timeline: string;
   retainer_options: RetainerOption[];
-  default_retainer_index: number;
   contact_name: string;
   contact_email: string;
   contact_phone: string;
@@ -71,14 +70,10 @@ export const DEFAULT_CHALLENGES: Challenge[] = [
 ];
 
 export const DEFAULT_PHASES: Phase[] = [
-  { label: "Phase 1", title: "Discovery & AI Audit", duration: "2 wks", tasks: ["On-site process mapping", "Shadow AI usage audit", "Data-flow analysis", "Compliance gap review"], price: "4500" },
-  { label: "Phase 2", title: "Strategy & Architecture", duration: "2 wks", tasks: ["AI policy framework", "Platform selection", "Integration architecture", "Security & GDPR design"], price: "5000" },
-  { label: "Phase 3", title: "Build & Integrate", duration: "4 wks", tasks: ["Central knowledge hub", "AI assistant deployment", "Workflow automation", "Audit trail system"], price: "11000" },
-  { label: "Phase 4", title: "Training & Adoption", duration: "2 wks", tasks: ["Staff training programme", "Champion network setup", "Adoption metrics dashboard", "Change management support"], price: "4000" },
+  { label: "Phase 1", title: "Discovery & AI Audit", duration: "2 wks", tasks: ["On-site process mapping", "Shadow AI usage audit", "Data-flow analysis", "Compliance gap review"], price: "" },
+  { label: "Phase 2", title: "Strategy & Architecture", duration: "2 wks", tasks: ["AI policy framework", "Platform selection", "Integration architecture", "Security & GDPR design"], price: "" },
+  { label: "Phase 3", title: "Build & Integrate", duration: "4 wks", tasks: ["Central knowledge hub", "AI assistant deployment", "Workflow automation", "Audit trail system"], price: "" },
+  { label: "Phase 4", title: "Training & Adoption", duration: "2 wks", tasks: ["Staff training programme", "Champion network setup", "Adoption metrics dashboard", "Change management support"], price: "" },
 ];
 
-export const DEFAULT_RETAINER_OPTIONS: RetainerOption[] = [
-  { badge: "No retainer", name: "Self-managed", hours: "0 hrs / month", price: 0, features: ["Full handover documentation", "Access to support portal", "Ad-hoc work available on request"] },
-  { badge: "Most popular", name: "Standard", hours: "~5 hrs / month", price: 1200, features: ["Dedicated account contact", "Platform monitoring & updates", "Monthly check-in call", "Priority bug resolution", "Minor configuration changes"] },
-  { badge: "Full service", name: "Growth", hours: "~10 hrs / month", price: 2200, features: ["Everything in Standard", "Proactive AI usage analysis", "Quarterly strategic review", "Workflow expansion work", "Staff training refreshers", "New AI feature roll-outs"] },
-];
+export const DEFAULT_RETAINER_OPTIONS: RetainerOption[] = [];
