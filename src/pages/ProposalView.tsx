@@ -127,8 +127,8 @@ export default function ProposalView() {
               <span style={{ width: 24, height: 2, background: '#009FE3', display: 'block' }} />About Shoothill
             </div>
             <h2 style={{ fontSize: 'clamp(20px, 2.6vw, 30px)', fontWeight: 800, color: '#043D5D', letterSpacing: '-.025em', lineHeight: 1.2, marginBottom: 14 }}>Shoothill build smart digital solutions that help businesses grow, adapt &amp; stay ahead.</h2>
-            <p style={{ fontSize: 14, color: '#3A6278', lineHeight: 1.75, marginBottom: 10 }}>Working across industries, combining technical expertise with creative thinking to solve real-world problems — whether delivering custom software, managing IT systems, running digital campaigns, or helping businesses become truly AI-native.</p>
-            <p style={{ fontSize: 14, color: '#3A6278', lineHeight: 1.75, marginBottom: 10 }}>Our team brings together developers, designers, consultants and specialists who all share one goal: to make things work better for our clients. Flexible, collaborative, easy to work with — always focused on getting results.</p>
+            <p style={{ fontSize: 14, color: '#3A6278', lineHeight: 1.75, marginBottom: 10 }}>Working across industries, combining technical expertise with creative thinking to solve real-world problems, whether delivering custom software, managing IT systems, running digital campaigns, or helping businesses become truly AI-native.</p>
+            <p style={{ fontSize: 14, color: '#3A6278', lineHeight: 1.75, marginBottom: 10 }}>Our team brings together developers, designers, consultants and specialists who all share one goal: to make things work better for our clients. Flexible, collaborative, easy to work with and always focused on getting results.</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 20 }}>
               {['Straight talking', 'Customer first', 'Trusted experts', 'Flexible'].map(v => (
                 <div key={v} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 700, color: '#043D5D' }}>
@@ -139,9 +139,9 @@ export default function ProposalView() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, background: '#DDE8EE' }}>
             {[
-              { num: '2006', text: 'Founded — two-person startup to 25+ experts' },
+              { num: '2006', text: 'Founded, growing from a two-person startup to 25+ experts' },
               { num: '500+', text: 'Projects delivered with honesty & expertise' },
-              { num: '4', text: 'UK offices — Shrewsbury, Telford, Chester & London' },
+              { num: '4', text: 'UK offices: Shrewsbury, Telford, Chester and London' },
               { num: '100+', text: 'Years combined technical experience' },
             ].map(s => (
               <div key={s.num} style={{ background: '#043D5D', padding: '28px 22px' }}>
@@ -218,7 +218,7 @@ export default function ProposalView() {
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
           <div style={{ marginBottom: 48 }}>
             <h2 style={{ fontSize: 'clamp(20px, 2.5vw, 32px)', fontWeight: 800, color: 'white', letterSpacing: '-.025em', marginBottom: 8 }}>Your Transformation Journey</h2>
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,.5)', maxWidth: 540 }}>A structured, transparent programme — each phase builds on the last, with clear deliverables and sign-off before the next begins.</p>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,.5)', maxWidth: 540 }}>A structured, transparent programme. Each phase builds on the last, with clear deliverables and sign-off before the next begins.</p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(proposal.phases.length, 4)}, 1fr)`, gap: 0, position: 'relative' }}>
             {/* Rail */}
@@ -291,7 +291,7 @@ export default function ProposalView() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
               {/* Upfront */}
               <div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 16 }}>Part 1 — One-time project delivery</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 16 }}>Part 1: One-time project delivery</div>
                 {/* Upfront items table */}
                 {(proposal.upfront_items || []).length > 0 && (
                   <div style={{ border: '1px solid #DDE8EE', overflow: 'hidden' }}>
@@ -323,7 +323,7 @@ export default function ProposalView() {
               {/* Standard ongoing options */}
               {standardOptions.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 2 }}>Part 2 — Ongoing support (choose your level)</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 2 }}>Part 2: Ongoing support (choose your level)</div>
                   <p style={{ color: '#3A6278', fontSize: 13, marginBottom: 18, marginTop: 16 }}>Choose the level of ongoing Shoothill support that suits your team. Select below:</p>
                   <div style={{ display: 'grid', gridTemplateColumns: `repeat(${standardOptions.length}, 1fr)`, gap: 2, background: '#DDE8EE' }}>
                     {standardOptions.map((r, i) => (
@@ -376,7 +376,7 @@ export default function ProposalView() {
               {/* Optional extras */}
               {optionalExtras.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 2 }}>{standardOptions.length > 0 ? 'Part 3' : 'Part 2'} — Optional add-ons</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 2 }}>{standardOptions.length > 0 ? 'Part 3' : 'Part 2'}: Optional add-ons</div>
                   <p style={{ color: '#3A6278', fontSize: 13, marginBottom: 18, marginTop: 16 }}>Add any of the following to your package:</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {optionalExtras.map((r, i) => {
@@ -485,13 +485,13 @@ export default function ProposalView() {
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Who You'll Work With</h2>
           </div>
           <div style={{ padding: '28px 32px' }}>
-            <p style={{ color: '#3A6278', marginBottom: 22 }}>The same senior people who scope the work deliver it. No handoffs to junior staff after the sale.</p>
+            <p style={{ color: '#3A6278', marginBottom: 22 }}>Our senior leadership team is personally involved in every engagement. Once your project begins, you'll be introduced to a dedicated Shoothill project manager who guides you through onboarding and delivery.</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2, background: '#DDE8EE' }}>
               {[
-                { name: 'Josh Welch', role: 'Head of Commercial Operations', bio: 'From apprentice in 2016 to Head of Commercial Operations. Drives revenue growth and keeps projects running smoothly. Your primary point of contact throughout.', photo: 'https://shoothill.com/wp-content/uploads/2024/09/josh-bg.jpg' },
-                { name: 'Simon Jeavons', role: 'Group Managing Director', bio: 'Fellow of the Institute of Consulting. Over 25 years in commercial operations, IT and software. Ensures effective oversight and drives innovation across the group.', photo: 'https://shoothill.com/wp-content/uploads/2024/10/simon-bg.jpg' },
-                { name: 'Mike Davis', role: 'Head of IT Services', bio: 'Over 20 years in IT services, procurement and project management. Aligns our services with your business goals. Ensures a smooth transition and high standard of delivery.', photo: 'https://shoothill.com/wp-content/uploads/2024/09/mike-bg2.jpg' },
-                { name: 'Claire Critchell', role: 'Head of Marketing Services', bio: 'Over 20 years in marketing, communications and project management. From brand strategy to digital campaigns — delivers creative, practical solutions that make a real difference.', photo: 'https://shoothill.com/wp-content/uploads/2024/09/claire-bg.jpg' },
+                { name: 'Simon Jeavons', role: 'Group Managing Director', bio: 'A Fellow of the Institute of Consulting with over 20 years of commercial operations expertise. Simon joined Shoothill in 2015 and was promoted to Group Managing Director in 2024, overseeing all aspects of the company and its subsidiary operations.', photo: 'https://shoothill.com/wp-content/uploads/2024/10/simon-bg.jpg' },
+                { name: 'Josh Welch', role: 'Head of Commercial Operations', bio: 'Josh joined Shoothill as an apprentice in 2016 and has grown to lead the Commercial team. Working closely alongside Simon, he focuses on business development, project management and cross-functional coordination. Your primary point of contact from proposal through to delivery.', photo: 'https://shoothill.com/wp-content/uploads/2024/09/josh-bg.jpg' },
+                { name: 'Mike Davis', role: 'Head of IT Services', bio: 'With over 20 years of IT services, procurement and project management experience across multiple industries, Mike has the breadth to integrate services effectively into any business environment and ensure smooth transitions with continued high-quality support.', photo: 'https://shoothill.com/wp-content/uploads/2024/09/mike-bg2.jpg' },
+                { name: 'Claire Critchell', role: 'Head of Marketing Services', bio: 'Claire brings over 20 years of experience in marketing, communications and project management. From brand strategy and campaign planning to content and digital, she works closely with clients to deliver creative, practical solutions aligned with their business objectives.', photo: 'https://shoothill.com/wp-content/uploads/2024/09/claire-bg.jpg' },
               ].map(member => (
                 <div key={member.name} style={{ background: 'white', overflow: 'hidden' }}>
                   <div style={{ width: '100%', aspectRatio: '1', overflow: 'hidden', background: '#043D5D' }}>
@@ -609,7 +609,7 @@ export default function ProposalView() {
             <span style={{ width: 24, height: 2, background: 'rgba(0,159,227,.8)', display: 'block' }} />Our Locations
           </div>
           <h2 style={{ fontSize: 'clamp(20px, 2.5vw, 30px)', fontWeight: 800, color: 'white', letterSpacing: '-.025em', marginBottom: 8 }}>Delivering great results across the UK</h2>
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,.5)', marginBottom: 32, maxWidth: 560 }}>Our expanding presence reflects our commitment to being close to our clients — so we can respond quickly and in person.</p>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,.5)', marginBottom: 32, maxWidth: 560 }}>Our expanding presence reflects our commitment to being close to our clients, so we can respond quickly and in person.</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2, background: 'rgba(255,255,255,.08)' }}>
             {[
               { badge: 'HQ', name: 'Shrewsbury', addr: 'Willow House East\nShrewsbury Business Park\nSY2 6LG', tel: '01743 636 300' },
@@ -642,7 +642,7 @@ export default function ProposalView() {
             </div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,.25)', marginTop: 40 }}>
               <strong style={{ display: 'block', color: 'rgba(255,255,255,.35)', marginBottom: 3 }}>{formatDate(proposal.proposal_date)} &nbsp;·&nbsp; Classification: Customer</strong>
-              Shoothill Ltd · Registered in England &amp; Wales · Confidential — prepared for {proposal.organisation}
+              Shoothill Ltd · Registered in England &amp; Wales · Confidential, prepared for {proposal.organisation}
             </div>
           </div>
           <ShootHillMark />

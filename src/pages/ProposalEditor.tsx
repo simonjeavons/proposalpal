@@ -87,7 +87,7 @@ export default function ProposalEditor() {
 
   const [form, setForm] = useState<FormData>({
     client_name: '',
-    programme_title: 'AI Transformation Programme',
+    programme_title: '',
     prepared_by: '',
     prepared_by_user_id: '',
     proposal_date: today(),
@@ -97,8 +97,8 @@ export default function ProposalEditor() {
     staff: '',
     tech_stack: '',
     challenge_intro: '',
-    challenges: [...DEFAULT_CHALLENGES],
-    phases: [...DEFAULT_PHASES],
+    challenges: [],
+    phases: [],
     upfront_items: [],
     upfront_notes: '',
     retainer_options: [...DEFAULT_RETAINER_OPTIONS],
