@@ -100,6 +100,108 @@ function SignatureCanvas({ onSave }: { onSave: (dataUrl: string | null) => void 
   );
 }
 
+async function appendSignaturePage(
+  contractUrl: string,
+  signatureDataUrl: string,
+  signerName: string,
+  signerTitle: string,
+  clientName: string,
+  signedAt: Date,
+): Promise<Uint8Array> {
+  const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
+
+  const pdfBytes = await fetch(contractUrl).then(r => r.arrayBuffer());
+  const pdfDoc = await PDFDocument.load(pdfBytes);
+
+  // Embed signature image
+  const sigBase64 = signatureDataUrl.split(',')[1];
+  const sigBytes = Uint8Array.from(atob(sigBase64), c => c.charCodeAt(0));
+  const sigImage = await pdfDoc.embedPng(sigBytes);
+
+  const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  // A4 page
+  const page = pdfDoc.addPage([595, 842]);
+  const { width, height } = page.getSize();
+
+  const navy = rgb(4 / 255, 61 / 255, 93 / 255);    // #043D5D
+  const blue = rgb(0 / 255, 159 / 255, 227 / 255);  // #009FE3
+  const mid = rgb(58 / 255, 98 / 255, 120 / 255);   // #3A6278
+  const light = rgb(170 / 255, 170 / 255, 170 / 255); // #AAAAAA
+  const bg = rgb(244 / 255, 247 / 255, 250 / 255);  // #F4F7FA
+
+  // Header bar
+  page.drawRectangle({ x: 0, y: height - 70, width, height: 70, color: navy });
+  page.drawText('Accepted & Signed', {
+    x: 36, y: height - 42,
+    size: 18, font: helveticaBold, color: rgb(1, 1, 1),
+  });
+  page.drawText('ProposalPal · Shoothill', {
+    x: 36, y: height - 60,
+    size: 9, font: helvetica, color: rgb(0.6, 0.7, 0.75),
+  });
+
+  // Blue accent line
+  page.drawRectangle({ x: 0, y: height - 73, width, height: 3, color: blue });
+
+  let y = height - 110;
+
+  // "Signed for" label
+  page.drawText('SIGNED FOR', { x: 36, y, size: 8, font: helveticaBold, color: light });
+  y -= 18;
+  page.drawText(clientName, { x: 36, y, size: 14, font: helveticaBold, color: navy });
+  y -= 14;
+
+  // Date/time
+  const dateStr = signedAt.toLocaleString('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
+  });
+  page.drawText(dateStr, { x: 36, y, size: 10, font: helvetica, color: mid });
+  y -= 36;
+
+  // Divider
+  page.drawLine({ start: { x: 36, y }, end: { x: width - 36, y }, thickness: 0.5, color: rgb(0.87, 0.91, 0.93) });
+  y -= 36;
+
+  // Signature box background
+  const sigBoxHeight = 140;
+  const sigBoxWidth = width - 72;
+  page.drawRectangle({ x: 36, y: y - sigBoxHeight, width: sigBoxWidth, height: sigBoxHeight, color: bg });
+  page.drawRectangle({ x: 36, y: y - sigBoxHeight, width: sigBoxWidth, height: sigBoxHeight, borderColor: rgb(0.87, 0.91, 0.93), borderWidth: 1 });
+
+  // Fit signature image inside the box with padding
+  const pad = 12;
+  const maxSigW = sigBoxWidth - pad * 2;
+  const maxSigH = sigBoxHeight - pad * 2;
+  const sigDims = sigImage.scaleToFit(maxSigW, maxSigH);
+  page.drawImage(sigImage, {
+    x: 36 + pad,
+    y: y - sigBoxHeight + (sigBoxHeight - sigDims.height) / 2,
+    width: sigDims.width,
+    height: sigDims.height,
+  });
+
+  y -= sigBoxHeight + 20;
+
+  // Name and title
+  page.drawText(signerName, { x: 36, y, size: 14, font: helveticaBold, color: navy });
+  y -= 18;
+  if (signerTitle) {
+    page.drawText(signerTitle, { x: 36, y, size: 10, font: helvetica, color: mid });
+    y -= 14;
+  }
+
+  // Footer
+  page.drawLine({ start: { x: 36, y: 56 }, end: { x: width - 36, y: 56 }, thickness: 0.5, color: rgb(0.87, 0.91, 0.93) });
+  page.drawText('This document was accepted electronically via ProposalPal.', {
+    x: 36, y: 40, size: 8, font: helvetica, color: light,
+  });
+
+  return pdfDoc.save();
+}
+
 export default function ProposalAccept() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
@@ -107,7 +209,7 @@ export default function ProposalAccept() {
 
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [submitState, setSubmitState] = useState<'idle' | 'signing' | 'saving'>('idle');
   const [submitted, setSubmitted] = useState(false);
 
   const [signerName, setSignerName] = useState('');
@@ -147,16 +249,45 @@ export default function ProposalAccept() {
   const retainerAnnual = retainerPrice * 12;
   const firstYearTotal = upfront + retainerAnnual;
 
-  const contractUrl = (proposal as any).contract_file_url
-    ? `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/contracts/${(proposal as any).contract_file_url}`
+  const contractFileUrl = (proposal as any).contract_file_url as string | null;
+  const contractUrl = contractFileUrl
+    ? `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/contracts/${contractFileUrl}`
     : null;
 
+  const submitting = submitState !== 'idle';
   const canSubmit = signerName && agreed && !!signatureData && !submitting;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
-    setSubmitting(true);
 
+    let signedContractUrl: string | null = null;
+
+    // Step 1: if there's a contract PDF, append signature page
+    if (contractUrl && contractFileUrl) {
+      setSubmitState('signing');
+      try {
+        const signedBytes = await appendSignaturePage(
+          contractUrl,
+          signatureData!,
+          signerName,
+          signerTitle,
+          proposal.organisation || proposal.client_name,
+          new Date(),
+        );
+        const baseName = contractFileUrl.replace(/\.[^.]+$/, '');
+        const signedPath = `${baseName}-signed-${Date.now()}.pdf`;
+        const { error: uploadError } = await supabase.storage
+          .from('contracts')
+          .upload(signedPath, new Blob([signedBytes], { type: 'application/pdf' }));
+        if (!uploadError) signedContractUrl = signedPath;
+      } catch (err) {
+        console.error('PDF signing failed:', err);
+        // Continue without signed PDF rather than blocking acceptance
+      }
+    }
+
+    // Step 2: save acceptance record
+    setSubmitState('saving');
     const { error } = await supabase.from("proposal_acceptances" as any).insert({
       proposal_id: proposal.id,
       signer_name: signerName,
@@ -166,13 +297,14 @@ export default function ProposalAccept() {
       retainer_price: retainerPrice,
       first_year_total: firstYearTotal,
       signature_data: signatureData,
+      signed_contract_url: signedContractUrl,
     });
 
     if (!error) {
       await supabase.from("proposals").update({ status: 'accepted' } as any).eq("id", proposal.id);
       setSubmitted(true);
     }
-    setSubmitting(false);
+    setSubmitState('idle');
   };
 
   if (submitted) return (
@@ -192,6 +324,12 @@ export default function ProposalAccept() {
       </div>
     </div>
   );
+
+  const buttonLabel = submitState === 'signing'
+    ? 'Preparing signed document…'
+    : submitState === 'saving'
+    ? 'Saving…'
+    : 'Sign & Accept Proposal →';
 
   return (
     <div style={{ minHeight: '100vh', background: '#F4F7FA', fontFamily: "'Inter', sans-serif", color: '#1A2E3B', fontSize: 14, lineHeight: 1.7 }}>
@@ -313,7 +451,7 @@ export default function ProposalAccept() {
                 transition: 'background .2s',
               }}
             >
-              {submitting ? 'Submitting…' : 'Sign & Accept Proposal →'}
+              {buttonLabel}
             </button>
           </div>
         </div>
