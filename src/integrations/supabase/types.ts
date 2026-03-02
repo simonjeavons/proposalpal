@@ -19,6 +19,8 @@ export type Database = {
           id: string
           email: string
           full_name: string
+          job_title: string
+          phone_number: string
           role: "admin" | "user"
           created_at: string
           updated_at: string
@@ -27,6 +29,8 @@ export type Database = {
           id: string
           email: string
           full_name?: string
+          job_title?: string
+          phone_number?: string
           role?: "admin" | "user"
           created_at?: string
           updated_at?: string
@@ -35,6 +39,8 @@ export type Database = {
           id?: string
           email?: string
           full_name?: string
+          job_title?: string
+          phone_number?: string
           role?: "admin" | "user"
           created_at?: string
           updated_at?: string
@@ -105,6 +111,7 @@ export type Database = {
           payment_terms: string
           phases: Json
           prepared_by: string
+          prepared_by_user_id: string | null
           programme_title: string
           proposal_date: string
           retainer_options: Json
@@ -134,6 +141,7 @@ export type Database = {
           payment_terms?: string
           phases?: Json
           prepared_by?: string
+          prepared_by_user_id?: string | null
           programme_title?: string
           proposal_date?: string
           retainer_options?: Json
@@ -163,6 +171,7 @@ export type Database = {
           payment_terms?: string
           phases?: Json
           prepared_by?: string
+          prepared_by_user_id?: string | null
           programme_title?: string
           proposal_date?: string
           retainer_options?: Json

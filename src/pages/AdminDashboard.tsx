@@ -14,6 +14,8 @@ interface Profile {
   id: string;
   email: string;
   full_name: string;
+  job_title: string;
+  phone_number: string;
   role: "admin" | "user";
   created_at: string;
 }
@@ -33,6 +35,8 @@ export default function AdminDashboard() {
   const [usersLoading, setUsersLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteFullName, setInviteFullName] = useState("");
+  const [inviteJobTitle, setInviteJobTitle] = useState("");
+  const [invitePhoneNumber, setInvitePhoneNumber] = useState("");
   const [invitePassword, setInvitePassword] = useState("");
   const [inviteRole, setInviteRole] = useState<"admin" | "user">("user");
   const [inviting, setInviting] = useState(false);
@@ -92,7 +96,7 @@ export default function AdminDashboard() {
 
     const { data: { session } } = await supabase.auth.getSession();
     const res = await supabase.functions.invoke("create-user", {
-      body: { email: inviteEmail, password: invitePassword, full_name: inviteFullName, role: inviteRole },
+      body: { email: inviteEmail, password: invitePassword, full_name: inviteFullName, job_title: inviteJobTitle, phone_number: invitePhoneNumber, role: inviteRole },
       headers: { Authorization: `Bearer ${session?.access_token}` },
     });
 
@@ -111,6 +115,8 @@ export default function AdminDashboard() {
     toast.success(`User ${inviteEmail} created`);
     setInviteEmail("");
     setInviteFullName("");
+    setInviteJobTitle("");
+    setInvitePhoneNumber("");
     setInvitePassword("");
     setInviteRole("user");
     setInviting(false);
@@ -219,7 +225,7 @@ export default function AdminDashboard() {
                         <h3 className="text-sm font-bold text-foreground truncate">{p.client_name || 'Untitled'}</h3>
                         <Badge className={`${getStatusColor(p.status)} text-[10px] font-bold uppercase tracking-wider`}>{p.status}</Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground">{p.programme_title} · {new Date(p.created_at).toLocaleDateString('en-GB')}</p>
+                      <p className="text-xs text-muted-foreground">{p.programme_title || 'Untitled project'} · {new Date(p.created_at).toLocaleDateString('en-GB')}</p>
                     </div>
                     <div className="flex items-center gap-1">
                       <Link to={`/p/${p.slug}`} target="_blank">
@@ -266,7 +272,7 @@ export default function AdminDashboard() {
             {/* Create User Form */}
             <div className="bg-card border border-border p-6 mb-6">
               <h2 className="text-sm font-bold uppercase tracking-wider text-foreground mb-4">Add User</h2>
-              <form onSubmit={createUser} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <form onSubmit={createUser} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Full Name</Label>
                   <Input
@@ -274,6 +280,23 @@ export default function AdminDashboard() {
                     onChange={(e) => setInviteFullName(e.target.value)}
                     placeholder="Jane Smith"
                     required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Job Title</Label>
+                  <Input
+                    value={inviteJobTitle}
+                    onChange={(e) => setInviteJobTitle(e.target.value)}
+                    placeholder="Head of Sales"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Phone Number</Label>
+                  <Input
+                    type="tel"
+                    value={invitePhoneNumber}
+                    onChange={(e) => setInvitePhoneNumber(e.target.value)}
+                    placeholder="01743 636 300"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -331,20 +354,24 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <div className="bg-card border border-border">
-                <div className="grid grid-cols-4 px-6 py-2 border-b border-border bg-muted/50">
+                <div className="grid grid-cols-6 px-6 py-2 border-b border-border bg-muted/50">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Name</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Job Title</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Phone</span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Email</span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Role</span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Joined</span>
                 </div>
                 {profiles.map((profile) => (
-                  <div key={profile.id} className="grid grid-cols-4 px-6 py-3 items-center border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                  <div key={profile.id} className="grid grid-cols-6 px-6 py-3 items-center border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
                     <span className="text-sm font-medium text-foreground truncate pr-4">
                       {profile.full_name || "—"}
                       {profile.id === user?.id && (
                         <span className="ml-2 text-[10px] text-muted-foreground">(you)</span>
                       )}
                     </span>
+                    <span className="text-xs text-muted-foreground truncate pr-4">{profile.job_title || "—"}</span>
+                    <span className="text-xs text-muted-foreground truncate pr-4">{profile.phone_number || "—"}</span>
                     <span className="text-sm text-muted-foreground truncate pr-4">{profile.email}</span>
                     <div>
                       <select

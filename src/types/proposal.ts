@@ -26,6 +26,7 @@ export interface Proposal {
   client_name: string;
   programme_title: string;
   prepared_by: string;
+  prepared_by_user_id?: string;
   proposal_date: string;
   valid_until: string;
   organisation: string;

@@ -167,19 +167,24 @@ export default function ProposalView() {
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Understanding {proposal.client_name}</h2>
           </div>
           <div style={{ padding: '28px 32px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 22 }}>
-              {[
+            {(() => {
+              const clientFields = [
                 { label: 'Organisation', value: proposal.organisation },
                 { label: 'Sector', value: proposal.sector },
                 { label: 'Staff', value: proposal.staff },
                 { label: 'Current tech stack', value: proposal.tech_stack },
-              ].map(s => (
-                <div key={s.label} style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '16px 20px' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 3 }}>{s.label}</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#043D5D' }}>{s.value}</div>
+              ].filter(s => s.value && s.value.trim() !== '');
+              return clientFields.length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 22 }}>
+                  {clientFields.map(s => (
+                    <div key={s.label} style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '16px 20px' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 3 }}>{s.label}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#043D5D' }}>{s.value}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              ) : null;
+            })()}
             {proposal.challenge_intro && <p style={{ color: '#3A6278', marginBottom: 18 }}>{proposal.challenge_intro}</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {proposal.challenges.map((c, i) => (

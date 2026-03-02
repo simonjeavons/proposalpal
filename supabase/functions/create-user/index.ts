@@ -43,7 +43,7 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: "Forbidden: admin access required" }), { status: 403, headers: corsHeaders });
   }
 
-  const { email, password, full_name, role } = await req.json();
+  const { email, password, full_name, role, job_title, phone_number } = await req.json();
 
   if (!email || !password) {
     return new Response(JSON.stringify({ error: "email and password are required" }), { status: 400, headers: corsHeaders });
@@ -63,7 +63,7 @@ Deno.serve(async (req: Request) => {
   if (data.user) {
     await supabaseAdmin
       .from("profiles")
-      .update({ role: role === "admin" ? "admin" : "user", full_name: full_name || "" })
+      .update({ role: role === "admin" ? "admin" : "user", full_name: full_name || "", job_title: job_title || "", phone_number: phone_number || "" })
       .eq("id", data.user.id);
   }
 

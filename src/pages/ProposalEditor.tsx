@@ -11,10 +11,19 @@ import { ArrowLeft, Save, Plus, Trash2, Eye, Upload, FileText, X } from "lucide-
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
+interface UserProfile {
+  id: string;
+  full_name: string;
+  email: string;
+  job_title: string;
+  phone_number: string;
+}
+
 interface FormData {
   client_name: string;
   programme_title: string;
   prepared_by: string;
+  prepared_by_user_id: string;
   proposal_date: string;
   valid_until: string;
   organisation: string;
@@ -53,11 +62,13 @@ export default function ProposalEditor() {
 
   const [contractFileUrl, setContractFileUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [users, setUsers] = useState<UserProfile[]>([]);
 
   const [form, setForm] = useState<FormData>({
     client_name: '',
     programme_title: 'AI Transformation Programme',
-    prepared_by: 'Josh Welch, Head of Commercial Operations',
+    prepared_by: '',
+    prepared_by_user_id: '',
     proposal_date: today(),
     valid_until: in30Days(),
     organisation: '',
@@ -80,6 +91,12 @@ export default function ProposalEditor() {
   });
 
   useEffect(() => {
+    supabase.from("profiles").select("id, full_name, email, job_title, phone_number").order("full_name").then(({ data }) => {
+      if (data) setUsers(data as UserProfile[]);
+    });
+  }, []);
+
+  useEffect(() => {
     if (!isNew) {
       supabase.from("proposals").select("*").eq("id", id).single().then(({ data }) => {
         if (data) {
@@ -87,6 +104,7 @@ export default function ProposalEditor() {
             client_name: data.client_name,
             programme_title: data.programme_title,
             prepared_by: data.prepared_by,
+            prepared_by_user_id: (data as any).prepared_by_user_id || '',
             proposal_date: data.proposal_date,
             valid_until: data.valid_until,
             organisation: data.organisation,
@@ -117,7 +135,11 @@ export default function ProposalEditor() {
 
   const save = async () => {
     setSaving(true);
-    const payload = { ...form, contract_file_url: contractFileUrl } as any;
+    const payload = {
+      ...form,
+      contract_file_url: contractFileUrl,
+      prepared_by_user_id: form.prepared_by_user_id || null,
+    } as any;
     if (isNew) {
       const { data, error } = await supabase.from("proposals").insert(payload).select().single();
       if (error) { toast.error("Failed to save"); setSaving(false); return; }
@@ -149,6 +171,23 @@ export default function ProposalEditor() {
   };
 
   const updateField = (field: keyof FormData, value: any) => setForm(prev => ({ ...prev, [field]: value }));
+
+  const selectPreparedByUser = (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) {
+      setForm(prev => ({ ...prev, prepared_by_user_id: '', prepared_by: '' }));
+      return;
+    }
+    setForm(prev => ({
+      ...prev,
+      prepared_by_user_id: user.id,
+      prepared_by: user.job_title ? `${user.full_name}, ${user.job_title}` : user.full_name,
+      contact_name: user.full_name,
+      contact_email: user.email,
+      contact_phone: user.phone_number,
+      contact_mobile: '',
+    }));
+  };
 
   const updateChallenge = (i: number, field: keyof Challenge, value: string) => {
     const updated = [...form.challenges];
@@ -218,8 +257,22 @@ export default function ProposalEditor() {
         <Section title="Cover Details">
           <Grid>
             <Field label="Client Name" value={form.client_name} onChange={v => updateField('client_name', v)} />
-            <Field label="Programme Title" value={form.programme_title} onChange={v => updateField('programme_title', v)} />
-            <Field label="Prepared By" value={form.prepared_by} onChange={v => updateField('prepared_by', v)} />
+            <Field label="Project Title" value={form.programme_title} onChange={v => updateField('programme_title', v)} />
+            <div>
+              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Prepared By</Label>
+              <select
+                value={form.prepared_by_user_id}
+                onChange={e => selectPreparedByUser(e.target.value)}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+              >
+                <option value="">Select a user…</option>
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.full_name}{u.job_title ? `, ${u.job_title}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
             <Field label="Proposal Date" value={form.proposal_date} onChange={v => updateField('proposal_date', v)} type="date" />
             <Field label="Valid Until" value={form.valid_until} onChange={v => updateField('valid_until', v)} type="date" />
           </Grid>
@@ -337,6 +390,7 @@ export default function ProposalEditor() {
 
         {/* Contact */}
         <Section title="Contact Details">
+          <p className="text-xs text-muted-foreground mb-4">Auto-populated from the selected user. You can override these values.</p>
           <Grid>
             <Field label="Contact Name" value={form.contact_name} onChange={v => updateField('contact_name', v)} />
             <Field label="Email" value={form.contact_email} onChange={v => updateField('contact_email', v)} />
