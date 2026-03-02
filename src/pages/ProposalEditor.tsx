@@ -52,6 +52,7 @@ interface FormData {
   contact_email: string;
   contact_phone: string;
   contact_mobile: string;
+  payment_terms: string;
   status: string;
 }
 
@@ -99,6 +100,7 @@ export default function ProposalEditor() {
     contact_email: 'josh.welch@shoothill.com',
     contact_phone: '01743 636 300',
     contact_mobile: '07904 810 378',
+    payment_terms: '',
     status: 'draft',
   });
 
@@ -139,6 +141,7 @@ export default function ProposalEditor() {
             contact_email: data.contact_email,
             contact_phone: data.contact_phone,
             contact_mobile: data.contact_mobile,
+            payment_terms: (data as any).payment_terms || '',
             status: data.status,
           });
           setSlug(data.slug);
@@ -527,8 +530,8 @@ export default function ProposalEditor() {
           </Grid>
         </Section>
 
-        {/* Contract Document */}
-        <Section title="Contract Document">
+        {/* Service Agreement Document */}
+        <Section title="Service Agreement Document">
           {contractFileUrl ? (
             <div className="flex items-center gap-3 bg-muted p-4 border border-border">
               <FileText className="w-5 h-5 text-primary flex-shrink-0" />
@@ -550,7 +553,7 @@ export default function ProposalEditor() {
           ) : (
             <label className="flex flex-col items-center justify-center gap-2 p-8 border-2 border-dashed border-border cursor-pointer hover:border-primary transition-colors">
               <Upload className="w-6 h-6 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">{uploading ? 'Uploading…' : 'Click to upload contract PDF'}</span>
+              <span className="text-sm text-muted-foreground">{uploading ? 'Uploading…' : 'Click to upload service agreement PDF'}</span>
               <input
                 type="file"
                 accept=".pdf,.doc,.docx"
@@ -563,6 +566,16 @@ export default function ProposalEditor() {
               />
             </label>
           )}
+          <div className="mt-4">
+            <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Payment Terms</label>
+            <textarea
+              className="w-full border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+              rows={3}
+              placeholder="e.g. 50% on project kick-off, 50% on completion"
+              value={form.payment_terms}
+              onChange={e => updateField('payment_terms', e.target.value)}
+            />
+          </div>
         </Section>
 
         <div className="pb-8">
