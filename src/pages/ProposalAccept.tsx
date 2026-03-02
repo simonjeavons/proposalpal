@@ -1,10 +1,104 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Proposal, Challenge, Phase, RetainerOption } from "@/types/proposal";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const formatCurrency = (n: number) => `£${n.toLocaleString('en-GB')}`;
+const formatCurrency = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+function SignatureCanvas({ onSave }: { onSave: (dataUrl: string | null) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const [hasSignature, setHasSignature] = useState(false);
+
+  const getPos = (e: MouseEvent | TouchEvent, canvas: HTMLCanvasElement) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    if ('touches' in e) {
+      return { x: (e.touches[0].clientX - rect.left) * scaleX, y: (e.touches[0].clientY - rect.top) * scaleY };
+    }
+    return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+  };
+
+  const startDraw = (e: React.MouseEvent | React.TouchEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    e.preventDefault();
+    drawing.current = true;
+    const ctx = canvas.getContext('2d')!;
+    const pos = getPos(e.nativeEvent as MouseEvent | TouchEvent, canvas);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  };
+
+  const draw = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!drawing.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    e.preventDefault();
+    const ctx = canvas.getContext('2d')!;
+    ctx.strokeStyle = '#1A2E3B';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const pos = getPos(e.nativeEvent as MouseEvent | TouchEvent, canvas);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    if (!hasSignature) {
+      setHasSignature(true);
+      onSave(canvas.toDataURL());
+    } else {
+      onSave(canvas.toDataURL());
+    }
+  };
+
+  const stopDraw = () => {
+    drawing.current = false;
+  };
+
+  const clear = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasSignature(false);
+    onSave(null);
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA' }}>Signature *</label>
+        {hasSignature && (
+          <button onClick={clear} style={{ fontSize: 11, color: '#009FE3', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Clear</button>
+        )}
+      </div>
+      <canvas
+        ref={canvasRef}
+        width={744}
+        height={160}
+        onMouseDown={startDraw}
+        onMouseMove={draw}
+        onMouseUp={stopDraw}
+        onMouseLeave={stopDraw}
+        onTouchStart={startDraw}
+        onTouchMove={draw}
+        onTouchEnd={stopDraw}
+        style={{
+          width: '100%',
+          height: 160,
+          border: '1px solid #DDE8EE',
+          background: '#F4F7FA',
+          cursor: 'crosshair',
+          touchAction: 'none',
+          display: 'block',
+        }}
+      />
+      <p style={{ fontSize: 11, color: '#AAAAAA', marginTop: 4 }}>Draw your signature in the box above</p>
+    </div>
+  );
+}
 
 export default function ProposalAccept() {
   const { slug } = useParams<{ slug: string }>();
@@ -19,6 +113,7 @@ export default function ProposalAccept() {
   const [signerName, setSignerName] = useState('');
   const [signerTitle, setSignerTitle] = useState('');
   const [agreed, setAgreed] = useState(false);
+  const [signatureData, setSignatureData] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.from("proposals").select("*").eq("slug", slug).single().then(({ data }) => {
@@ -56,8 +151,10 @@ export default function ProposalAccept() {
     ? `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/contracts/${(proposal as any).contract_file_url}`
     : null;
 
+  const canSubmit = signerName && agreed && !!signatureData && !submitting;
+
   const handleSubmit = async () => {
-    if (!signerName || !agreed) return;
+    if (!canSubmit) return;
     setSubmitting(true);
 
     const { error } = await supabase.from("proposal_acceptances" as any).insert({
@@ -68,6 +165,7 @@ export default function ProposalAccept() {
       upfront_total: upfront,
       retainer_price: retainerPrice,
       first_year_total: firstYearTotal,
+      signature_data: signatureData,
     });
 
     if (!error) {
@@ -173,7 +271,7 @@ export default function ProposalAccept() {
                 />
               </div>
             </div>
-            <div>
+            <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 6 }}>Date</label>
               <input
                 value={new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -182,7 +280,11 @@ export default function ProposalAccept() {
               />
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 24, marginBottom: 24 }}>
+            <div style={{ marginBottom: 24 }}>
+              <SignatureCanvas onSave={setSignatureData} />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 24 }}>
               <Checkbox
                 checked={agreed}
                 onCheckedChange={(v) => setAgreed(v === true)}
@@ -196,18 +298,18 @@ export default function ProposalAccept() {
 
             <button
               onClick={handleSubmit}
-              disabled={!signerName || !agreed || submitting}
+              disabled={!canSubmit}
               style={{
                 width: '100%',
                 padding: '16px',
-                background: (!signerName || !agreed) ? '#DDE8EE' : '#009FE3',
-                color: (!signerName || !agreed) ? '#AAAAAA' : 'white',
+                background: !canSubmit ? '#DDE8EE' : '#009FE3',
+                color: !canSubmit ? '#AAAAAA' : 'white',
                 fontSize: 14,
                 fontWeight: 700,
                 letterSpacing: '.06em',
                 textTransform: 'uppercase',
                 border: 'none',
-                cursor: (!signerName || !agreed) ? 'not-allowed' : 'pointer',
+                cursor: !canSubmit ? 'not-allowed' : 'pointer',
                 transition: 'background .2s',
               }}
             >
