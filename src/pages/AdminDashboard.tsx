@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { Proposal } from "@/types/proposal";
-import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut } from "lucide-react";
+import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,8 @@ export default function AdminDashboard() {
   const [invitePassword, setInvitePassword] = useState("");
   const [inviteRole, setInviteRole] = useState<"admin" | "user">("user");
   const [inviting, setInviting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ full_name: "", job_title: "", phone_number: "" });
 
   const fetchProposals = async () => {
     const { data, error } = await supabase
@@ -121,6 +123,22 @@ export default function AdminDashboard() {
     setInviteRole("user");
     setInviting(false);
     fetchProfiles();
+  };
+
+  const startEdit = (profile: Profile) => {
+    setEditingId(profile.id);
+    setEditForm({ full_name: profile.full_name || "", job_title: profile.job_title || "", phone_number: profile.phone_number || "" });
+  };
+
+  const saveEdit = async (id: string) => {
+    const { error } = await supabase.from("profiles").update(editForm).eq("id", id);
+    if (!error) {
+      toast.success("User updated");
+      setEditingId(null);
+      fetchProfiles();
+    } else {
+      toast.error("Failed to update user");
+    }
   };
 
   const updateRole = async (id: string, role: "admin" | "user") => {
@@ -354,41 +372,88 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <div className="bg-card border border-border">
-                <div className="grid grid-cols-6 px-6 py-2 border-b border-border bg-muted/50">
+                <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto_auto_auto] px-6 py-2 border-b border-border bg-muted/50 gap-4">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Name</span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Job Title</span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Phone</span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Email</span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Role</span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Joined</span>
+                  <span />
                 </div>
-                {profiles.map((profile) => (
-                  <div key={profile.id} className="grid grid-cols-6 px-6 py-3 items-center border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
-                    <span className="text-sm font-medium text-foreground truncate pr-4">
-                      {profile.full_name || "—"}
-                      {profile.id === user?.id && (
-                        <span className="ml-2 text-[10px] text-muted-foreground">(you)</span>
+                {profiles.map((profile) => {
+                  const isEditing = editingId === profile.id;
+                  return (
+                    <div key={profile.id} className="grid grid-cols-[1fr_1fr_1fr_1fr_auto_auto_auto] px-6 py-3 items-center border-b border-border last:border-0 hover:bg-muted/50 transition-colors gap-4">
+                      {isEditing ? (
+                        <Input
+                          value={editForm.full_name}
+                          onChange={(e) => setEditForm(f => ({ ...f, full_name: e.target.value }))}
+                          className="h-7 text-sm py-0"
+                          placeholder="Full name"
+                        />
+                      ) : (
+                        <span className="text-sm font-medium text-foreground truncate">
+                          {profile.full_name || <span className="text-muted-foreground/50">—</span>}
+                          {profile.id === user?.id && (
+                            <span className="ml-2 text-[10px] text-muted-foreground">(you)</span>
+                          )}
+                        </span>
                       )}
-                    </span>
-                    <span className="text-xs text-muted-foreground truncate pr-4">{profile.job_title || "—"}</span>
-                    <span className="text-xs text-muted-foreground truncate pr-4">{profile.phone_number || "—"}</span>
-                    <span className="text-sm text-muted-foreground truncate pr-4">{profile.email}</span>
-                    <div>
-                      <select
-                        value={profile.role}
-                        onChange={(e) => updateRole(profile.id, e.target.value as "admin" | "user")}
-                        className="h-7 rounded border border-input bg-background px-2 py-0 text-xs"
-                        disabled={profile.id === user?.id}
-                      >
-                        <option value="user">User</option>
-                        <option value="admin">Admin</option>
-                      </select>
+                      {isEditing ? (
+                        <Input
+                          value={editForm.job_title}
+                          onChange={(e) => setEditForm(f => ({ ...f, job_title: e.target.value }))}
+                          className="h-7 text-xs py-0"
+                          placeholder="Job title"
+                        />
+                      ) : (
+                        <span className="text-xs text-muted-foreground truncate">{profile.job_title || <span className="opacity-40">—</span>}</span>
+                      )}
+                      {isEditing ? (
+                        <Input
+                          value={editForm.phone_number}
+                          onChange={(e) => setEditForm(f => ({ ...f, phone_number: e.target.value }))}
+                          className="h-7 text-xs py-0"
+                          placeholder="Phone number"
+                        />
+                      ) : (
+                        <span className="text-xs text-muted-foreground truncate">{profile.phone_number || <span className="opacity-40">—</span>}</span>
+                      )}
+                      <span className="text-sm text-muted-foreground truncate">{profile.email}</span>
+                      <div>
+                        <select
+                          value={profile.role}
+                          onChange={(e) => updateRole(profile.id, e.target.value as "admin" | "user")}
+                          className="h-7 rounded border border-input bg-background px-2 py-0 text-xs"
+                          disabled={profile.id === user?.id}
+                        >
+                          <option value="user">User</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </div>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(profile.created_at).toLocaleDateString("en-GB")}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {isEditing ? (
+                          <>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-green-600 hover:text-green-700" onClick={() => saveEdit(profile.id)} title="Save">
+                              <Check className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" onClick={() => setEditingId(null)} title="Cancel">
+                              <X className="w-3.5 h-3.5" />
+                            </Button>
+                          </>
+                        ) : (
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary" onClick={() => startEdit(profile)} title="Edit">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(profile.created_at).toLocaleDateString("en-GB")}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>
