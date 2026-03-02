@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import type { Challenge, Phase, RetainerOption, LaunchPhase } from "@/types/proposal";
+import type { Challenge, Phase, RetainerOption, LaunchPhase, UpfrontItem } from "@/types/proposal";
 import { DEFAULT_CHALLENGES, DEFAULT_PHASES, DEFAULT_RETAINER_OPTIONS, DEFAULT_LAUNCH_PHASE } from "@/types/proposal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,12 +23,17 @@ interface ServiceType {
   id: string;
   name: string;
   sort_order: number;
+  is_upfront: boolean;
+  is_ongoing: boolean;
 }
 
 interface Product {
   id: string;
   name: string;
   default_price: number;
+  description: string;
+  is_upfront: boolean;
+  is_ongoing: boolean;
 }
 
 interface FormData {
@@ -45,7 +50,7 @@ interface FormData {
   challenge_intro: string;
   challenges: Challenge[];
   phases: Phase[];
-  upfront_total: number;
+  upfront_items: UpfrontItem[];
   upfront_notes: string;
   retainer_options: RetainerOption[];
   launch_phase: LaunchPhase;
@@ -94,7 +99,7 @@ export default function ProposalEditor() {
     challenge_intro: '',
     challenges: [...DEFAULT_CHALLENGES],
     phases: [...DEFAULT_PHASES],
-    upfront_total: 0,
+    upfront_items: [],
     upfront_notes: '',
     retainer_options: [...DEFAULT_RETAINER_OPTIONS],
     launch_phase: { ...DEFAULT_LAUNCH_PHASE },
@@ -110,10 +115,10 @@ export default function ProposalEditor() {
     supabase.from("profiles").select("id, full_name, email, job_title, phone_number").order("full_name").then(({ data }) => {
       if (data) setUsers(data as UserProfile[]);
     });
-    supabase.from("service_types" as any).select("id, name, sort_order").order("sort_order").then(({ data }) => {
+    supabase.from("service_types" as any).select("id, name, sort_order, is_upfront, is_ongoing").order("sort_order").then(({ data }) => {
       if (data) setServiceTypes(data as ServiceType[]);
     });
-    supabase.from("products" as any).select("id, name, default_price").order("sort_order").then(({ data }) => {
+    supabase.from("products" as any).select("id, name, default_price, description, is_upfront, is_ongoing").order("sort_order").then(({ data }) => {
       if (data) setProducts(data as Product[]);
     });
   }, []);
@@ -136,7 +141,7 @@ export default function ProposalEditor() {
             challenge_intro: data.challenge_intro,
             challenges: (data.challenges || []) as unknown as Challenge[],
             phases: ((data.phases as any[]) || []).map(p => ({ ...p, price: String(p.price || '').replace(/^£/, '').replace(/,/g, '') })) as Phase[],
-            upfront_total: Number(data.upfront_total),
+            upfront_items: ((data as any).upfront_items || []) as UpfrontItem[],
             upfront_notes: (data as any).upfront_notes || '',
             retainer_options: (data.retainer_options || []) as unknown as RetainerOption[],
             launch_phase: ((data as any).launch_phase || { ...DEFAULT_LAUNCH_PHASE }) as LaunchPhase,
@@ -159,6 +164,7 @@ export default function ProposalEditor() {
     setSaving(true);
     const payload = {
       ...form,
+      upfront_total: form.upfront_items.reduce((sum, item) => sum + item.price, 0),
       contract_file_url: contractFileUrl,
       prepared_by_user_id: form.prepared_by_user_id || null,
     } as any;
@@ -445,20 +451,93 @@ export default function ProposalEditor() {
           </div>
         </Section>
 
-        {/* Pricing */}
-        <Section title="Pricing">
-          <div className="max-w-xs">
-            <Field label="Upfront Total (£)" value={String(form.upfront_total)} onChange={v => updateField('upfront_total', Number(v) || 0)} type="number" />
-          </div>
-          <div className="mt-4">
-            <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Project Notes / Pricing Footnote</label>
-            <textarea
-              className="w-full border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-              rows={3}
-              placeholder="e.g. All prices exclude VAT. Travel and expenses charged at cost."
-              value={form.upfront_notes}
-              onChange={e => updateField('upfront_notes', e.target.value)}
-            />
+        {/* Upfront Items */}
+        <Section title="Upfront Items" action={
+          <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('upfront_items', [...form.upfront_items, { type: '', name: '', price: 0 }])}>
+            <Plus className="w-4 h-4" /> Add Item
+          </Button>
+        }>
+          <div className="space-y-3">
+            {form.upfront_items.length === 0 && (
+              <p className="text-sm text-muted-foreground italic">No upfront items yet. Add items to build the one-time investment breakdown.</p>
+            )}
+            {form.upfront_items.map((item, i) => (
+              <div key={i} className="bg-muted p-4 border border-border space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-foreground">{item.name || item.type || 'Untitled'}</span>
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
+                    onClick={() => updateField('upfront_items', form.upfront_items.filter((_, j) => j !== i))}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+                <Grid>
+                  <div>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Type</Label>
+                    <select
+                      value={item.type}
+                      onChange={e => {
+                        const product = products.find(p => p.name === e.target.value);
+                        const updated = [...form.upfront_items];
+                        updated[i] = {
+                          ...updated[i],
+                          type: e.target.value,
+                          name: product?.description ? updated[i].name || product.description : updated[i].name,
+                          price: product ? product.default_price : updated[i].price,
+                        };
+                        updateField('upfront_items', updated);
+                      }}
+                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    >
+                      <option value="">Select…</option>
+                      {products.filter(p => p.is_upfront).length > 0 && (
+                        <optgroup label="Products">
+                          {products.filter(p => p.is_upfront).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                        </optgroup>
+                      )}
+                      {serviceTypes.filter(s => s.is_upfront).length > 0 && (
+                        <optgroup label="Services">
+                          {serviceTypes.filter(s => s.is_upfront).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                        </optgroup>
+                      )}
+                    </select>
+                  </div>
+                  <CurrencyField label="Price (£)" value={item.price} onChange={v => {
+                    const updated = [...form.upfront_items];
+                    updated[i] = { ...updated[i], price: Number(v) || 0 };
+                    updateField('upfront_items', updated);
+                  }} />
+                </Grid>
+                <div>
+                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Description</Label>
+                  <input
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    placeholder="e.g. Onboarding of RMM and AV"
+                    value={item.name}
+                    onChange={e => {
+                      const updated = [...form.upfront_items];
+                      updated[i] = { ...updated[i], name: e.target.value };
+                      updateField('upfront_items', updated);
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+            {form.upfront_items.length > 0 && (
+              <div className="flex justify-between items-center px-1 pt-1 border-t border-border">
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total</span>
+                <span className="text-sm font-bold text-foreground">£{form.upfront_items.reduce((s, i) => s + i.price, 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            )}
+            <div className="pt-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Pricing Footnote (optional)</label>
+              <textarea
+                className="w-full border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                rows={2}
+                placeholder="e.g. All prices exclude VAT. Travel and expenses charged at cost."
+                value={form.upfront_notes}
+                onChange={e => updateField('upfront_notes', e.target.value)}
+              />
+            </div>
           </div>
         </Section>
 
@@ -521,14 +600,14 @@ export default function ProposalEditor() {
                       className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
                     >
                       <option value="">Select…</option>
-                      {products.length > 0 && (
+                      {products.filter(p => p.is_ongoing).length > 0 && (
                         <optgroup label="Products">
-                          {products.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                          {products.filter(p => p.is_ongoing).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                         </optgroup>
                       )}
-                      {serviceTypes.length > 0 && (
+                      {serviceTypes.filter(s => s.is_ongoing).length > 0 && (
                         <optgroup label="Services">
-                          {serviceTypes.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                          {serviceTypes.filter(s => s.is_ongoing).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                         </optgroup>
                       )}
                     </select>

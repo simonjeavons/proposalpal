@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import type { Proposal, Challenge, Phase, RetainerOption } from "@/types/proposal";
+import type { Proposal, Challenge, Phase, RetainerOption, UpfrontItem } from "@/types/proposal";
 import { DEFAULT_LAUNCH_PHASE } from "@/types/proposal";
 
 const ShootHillMark = () => (
@@ -292,42 +292,22 @@ export default function ProposalView() {
               {/* Upfront */}
               <div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 16 }}>Part 1 — One-time project delivery</div>
-                {/* Compact price breakdown table */}
-                {(() => {
-                  const hasAnyPrice = proposal.phases.some(p => !!p.price);
-                  const cols = hasAnyPrice ? '1fr 90px' : '1fr';
-                  return (
-                    <div style={{ border: '1px solid #DDE8EE', overflow: 'hidden' }}>
-                      {proposal.phases.map((phase, i) => (
-                        <div key={i} style={{ display: 'grid', gridTemplateColumns: cols, alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #DDE8EE', gap: 16, background: i % 2 === 0 ? 'white' : '#F9FAFB' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#043D5D', color: 'white', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{String(i + 1).padStart(2, '0')}</div>
-                            <div>
-                              <div style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>{phase.title}</div>
-                              {phase.duration && <div style={{ fontSize: 11, color: '#AAAAAA' }}>{phase.duration}</div>}
-                            </div>
-                          </div>
-                          {hasAnyPrice && (
-                            <div style={{ fontSize: 15, fontWeight: 800, color: '#043D5D', textAlign: 'right' as const }}>
-                              {phase.price ? (phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`) : ''}
-                            </div>
-                          )}
+                {/* Upfront items table */}
+                {(proposal.upfront_items || []).length > 0 && (
+                  <div style={{ border: '1px solid #DDE8EE', overflow: 'hidden' }}>
+                    {(proposal.upfront_items || []).map((item, i) => (
+                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 110px', alignItems: 'center', padding: '12px 20px', borderBottom: i < (proposal.upfront_items || []).length - 1 ? '1px solid #DDE8EE' : 'none', gap: 16, background: i % 2 === 0 ? 'white' : '#F9FAFB' }}>
+                        <div>
+                          {item.type && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 2 }}>{item.type}</div>}
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>{item.name}</div>
                         </div>
-                      ))}
-                      {/* Launch & Handover row */}
-                      <div style={{ display: 'grid', gridTemplateColumns: cols, alignItems: 'center', padding: '12px 20px', gap: 16, background: '#E4F4FD', borderTop: '1px solid rgba(0,159,227,.2)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#009FE3', color: 'white', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{String(proposal.phases.length + 1).padStart(2, '0')}</div>
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>{proposal.launch_phase.title}</div>
-                            {proposal.launch_phase.duration && <div style={{ fontSize: 11, color: '#AAAAAA' }}>{proposal.launch_phase.duration}</div>}
-                          </div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: '#043D5D', textAlign: 'right' as const }}>
+                          £{Number(item.price).toLocaleString('en-GB')}
                         </div>
-                        {hasAnyPrice && <div style={{ fontSize: 13, fontWeight: 800, color: '#009FE3', textAlign: 'right' as const }}>Included</div>}
                       </div>
-                    </div>
-                  );
-                })()}
+                    ))}
+                  </div>
+                )}
                 <div style={{ background: '#043D5D', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)' }}>Total one-time investment</span>
                   <strong style={{ fontSize: 20, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em' }}>£{Number(proposal.upfront_total).toLocaleString('en-GB')} + VAT</strong>

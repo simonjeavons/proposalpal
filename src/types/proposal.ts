@@ -1,3 +1,9 @@
+export interface UpfrontItem {
+  type: string;
+  name: string;
+  price: number;
+}
+
 export interface Challenge {
   title: string;
   description: string;
@@ -51,6 +57,7 @@ export interface Proposal {
   challenge_intro: string;
   challenges: Challenge[];
   phases: Phase[];
+  upfront_items: UpfrontItem[];
   upfront_total: number;
   retainer_options: RetainerOption[];
   contact_name: string;
