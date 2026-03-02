@@ -259,8 +259,9 @@ export default function ProposalAccept() {
   const selectedStandard = standardOptions[standardIndex] || null;
   const selectedExtras = checkedExtrasIndices.map(i => optionalExtras[i]).filter(Boolean);
   const upfront = Number(proposal.upfront_total);
-  const standardPrice = selectedStandard?.price || 0;
-  const extrasPrice = selectedExtras.reduce((sum, r) => sum + (r?.price || 0), 0);
+  const optionTotal = (r: { price: number; quantity?: number }) => (r.quantity ?? 1) * r.price;
+  const standardPrice = selectedStandard ? optionTotal(selectedStandard) : 0;
+  const extrasPrice = selectedExtras.reduce((sum, r) => sum + optionTotal(r), 0);
   const monthlyTotal = standardPrice + extrasPrice;
   const monthlyAnnual = monthlyTotal * 12;
   const firstYearTotal = upfront + monthlyAnnual;
