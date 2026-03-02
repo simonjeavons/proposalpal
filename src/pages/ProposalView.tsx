@@ -52,10 +52,10 @@ export default function ProposalView() {
         } as Proposal);
         const opts = ((data.retainer_options || []) as RetainerOption[]);
         const standards = opts.filter(r => r.option_type === 'standard');
-        const defaultStdIdx = standards.findIndex(r => r.default_selected);
+        const defaultStdIdx = standards.findIndex(r => r.recommended);
         setSelectedStandard(defaultStdIdx >= 0 ? defaultStdIdx : 0);
         const extras = opts.filter(r => r.option_type === 'optional_extra');
-        setCheckedExtras(new Set(extras.reduce<number[]>((acc, r, i) => r.default_selected ? [...acc, i] : acc, [])));
+        setCheckedExtras(new Set(extras.reduce<number[]>((acc, r, i) => r.recommended ? [...acc, i] : acc, [])));
       }
       setLoading(false);
     };
@@ -337,9 +337,16 @@ export default function ProposalView() {
                           padding: '22px 18px',
                           cursor: 'pointer',
                           transition: 'background .2s',
-                          border: selectedStandard === i ? '2px solid #009FE3' : '2px solid transparent',
+                          border: selectedStandard === i ? '2px solid #009FE3' : r.recommended ? '2px solid #F59E0B' : '2px solid transparent',
+                          position: 'relative' as const,
+                          overflow: 'hidden' as const,
                         }}
                       >
+                        {r.recommended && (
+                          <div style={{ position: 'absolute' as const, top: 0, right: 0, background: '#F59E0B', color: 'white', fontSize: 9, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase' as const, padding: '3px 10px' }}>
+                            ★ Recommended
+                          </div>
+                        )}
                         <div style={{
                           width: 20, height: 20, border: selectedStandard === i ? 'none' : '2px solid #DDE8EE', borderRadius: '50%',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10,
@@ -381,8 +388,8 @@ export default function ProposalView() {
                           key={i}
                           onClick={() => setCheckedExtras(prev => { const s = new Set(prev); s.has(i) ? s.delete(i) : s.add(i); return s; })}
                           style={{
-                            background: checked ? '#F0FAFF' : 'white',
-                            border: checked ? '2px solid #009FE3' : '2px solid #DDE8EE',
+                            background: checked ? '#F0FAFF' : r.recommended ? '#FFFBEB' : 'white',
+                            border: checked ? '2px solid #009FE3' : r.recommended ? '2px solid #F59E0B' : '2px solid #DDE8EE',
                             padding: '16px 20px',
                             cursor: 'pointer',
                             display: 'flex',
@@ -398,7 +405,10 @@ export default function ProposalView() {
                             color: 'white', flexShrink: 0, transition: 'all .2s',
                           }}>{checked ? '✓' : ''}</div>
                           <div style={{ flex: 1 }}>
-                            {r.type && <div style={{ fontSize: 10, fontWeight: 700, color: '#009FE3', letterSpacing: '.1em', textTransform: 'uppercase' as const, marginBottom: 2 }}>{r.type}</div>}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                              {r.type && <div style={{ fontSize: 10, fontWeight: 700, color: '#009FE3', letterSpacing: '.1em', textTransform: 'uppercase' as const }}>{r.type}</div>}
+                              {r.recommended && <div style={{ fontSize: 9, fontWeight: 800, color: '#92400E', background: '#FDE68A', padding: '1px 6px', letterSpacing: '.08em', textTransform: 'uppercase' as const }}>★ Recommended</div>}
+                            </div>
                             <div style={{ fontSize: 14, fontWeight: 700, color: '#043D5D' }}>{r.name || r.type}</div>
                             {r.hours && <div style={{ fontSize: 12, color: '#AAAAAA' }}>{r.hours}</div>}
                             {r.features.length > 0 && (
