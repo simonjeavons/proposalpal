@@ -550,15 +550,41 @@ export default function ProposalEditor() {
           <div className="space-y-4">
             {form.retainer_options.map((r, i) => (
               <div key={i} className="bg-muted p-4 border border-border space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-foreground">{r.name || r.type || 'Untitled'}</span>
-                    {r.recommended && <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5">★ RECOMMENDED</span>}
-                    <span className={`text-[10px] font-bold px-2 py-0.5 ${r.option_type === 'optional_extra' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-                      {r.option_type === 'optional_extra' ? 'Optional Extra' : 'Standard'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm font-bold text-foreground truncate">{r.name || r.type || 'Untitled'}</span>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    {/* Standard / Optional Extra toggle */}
+                    <div className="flex items-center bg-background border border-border rounded overflow-hidden">
+                      <button
+                        onClick={() => {
+                          const updated = [...form.retainer_options];
+                          updated[i] = { ...updated[i], option_type: 'standard' };
+                          updateField('retainer_options', updated);
+                        }}
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 transition-colors ${
+                          r.option_type !== 'optional_extra'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        Standard
+                      </button>
+                      <button
+                        onClick={() => {
+                          const updated = [...form.retainer_options];
+                          updated[i] = { ...updated[i], option_type: 'optional_extra' };
+                          updateField('retainer_options', updated);
+                        }}
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 transition-colors ${
+                          r.option_type === 'optional_extra'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        Optional Extra
+                      </button>
+                    </div>
+                    {/* Recommended */}
                     <label className="flex items-center gap-1.5 cursor-pointer select-none">
                       <input
                         type="checkbox"
@@ -570,16 +596,8 @@ export default function ProposalEditor() {
                         }}
                         className="w-3.5 h-3.5 accent-amber-500"
                       />
-                      <span className="text-xs text-muted-foreground">Recommended</span>
+                      <span className="text-xs text-muted-foreground">★ Recommended</span>
                     </label>
-                    <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7 px-2"
-                      onClick={() => {
-                        const updated = [...form.retainer_options];
-                        updated[i] = { ...updated[i], option_type: r.option_type === 'standard' ? 'optional_extra' : 'standard' };
-                        updateField('retainer_options', updated);
-                      }}>
-                      Toggle type
-                    </Button>
                     <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
                       onClick={() => updateField('retainer_options', form.retainer_options.filter((_, j) => j !== i))}>
                       <Trash2 className="w-4 h-4" />
