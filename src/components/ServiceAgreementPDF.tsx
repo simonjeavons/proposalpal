@@ -380,7 +380,7 @@ export function ServiceAgreementPDF({
           <View style={styles.execCol}>
             <Text style={styles.execLabel}>For Shoothill Limited</Text>
             {/* Signature image or electronic placeholder */}
-            <View style={{ backgroundColor: '#F4F7FA', borderWidth: 0.5, borderColor: '#DDE8EE', height: 52, marginBottom: 6, justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ backgroundColor: '#FFFFFF', borderWidth: 0.5, borderColor: '#DDE8EE', height: 52, marginBottom: 6, justifyContent: 'center', alignItems: 'center' }}>
               {SIMON_SIGNATURE_URI ? (
                 <Image src={SIMON_SIGNATURE_URI} style={{ height: 44, width: 160 }} />
               ) : (
@@ -391,6 +391,9 @@ export function ServiceAgreementPDF({
               <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: NAVY, marginBottom: 2 }}>Simon Jeavons</Text>
               <Text style={{ fontSize: 8, color: MID, marginBottom: 2 }}>Group Managing Director</Text>
               <Text style={{ fontSize: 7, color: LIGHT }}>Shoothill Limited</Text>
+              {signingDate ? (
+                <Text style={{ fontSize: 7, color: LIGHT, marginTop: 2 }}>{signingDate}</Text>
+              ) : null}
             </View>
           </View>
           {/* Client side — filled at signing time */}
