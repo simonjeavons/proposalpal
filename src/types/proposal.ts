@@ -2,6 +2,7 @@ export interface UpfrontItem {
   type: string;
   name: string;
   price: number;
+  description?: string;
 }
 
 export interface Challenge {

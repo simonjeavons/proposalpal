@@ -625,7 +625,7 @@ export default function ProposalEditor() {
 
         {/* Upfront Items */}
         <Section title="Upfront Items" action={
-          <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('upfront_items', [...form.upfront_items, { type: '', name: '', price: 0 }])}>
+          <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('upfront_items', [...form.upfront_items, { type: '', name: '', price: 0, description: '' }])}>
             <Plus className="w-4 h-4" /> Add Item
           </Button>
         }>
@@ -644,7 +644,7 @@ export default function ProposalEditor() {
                 </div>
                 <Grid>
                   <div>
-                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Type</Label>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Solution</Label>
                     <select
                       value={item.type}
                       onChange={e => {
@@ -653,24 +653,15 @@ export default function ProposalEditor() {
                         updated[i] = {
                           ...updated[i],
                           type: e.target.value,
-                          name: product?.description ? updated[i].name || product.description : updated[i].name,
                           price: product ? product.default_price : updated[i].price,
+                          description: product?.description ? product.description : (updated[i].description || ''),
                         };
                         updateField('upfront_items', updated);
                       }}
                       className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
                     >
                       <option value="">Select…</option>
-                      {products.filter(p => p.is_upfront).length > 0 && (
-                        <optgroup label="Products">
-                          {products.filter(p => p.is_upfront).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                        </optgroup>
-                      )}
-                      {serviceTypes.filter(s => s.is_upfront).length > 0 && (
-                        <optgroup label="Services">
-                          {serviceTypes.filter(s => s.is_upfront).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                        </optgroup>
-                      )}
+                      {products.filter(p => p.is_upfront).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                     </select>
                   </div>
                   <CurrencyField label="Price (£)" value={item.price} onChange={v => {
@@ -680,7 +671,7 @@ export default function ProposalEditor() {
                   }} />
                 </Grid>
                 <div>
-                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Description</Label>
+                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Name</Label>
                   <input
                     className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
                     placeholder="e.g. Onboarding of RMM and AV"
@@ -688,6 +679,19 @@ export default function ProposalEditor() {
                     onChange={e => {
                       const updated = [...form.upfront_items];
                       updated[i] = { ...updated[i], name: e.target.value };
+                      updateField('upfront_items', updated);
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Description</Label>
+                  <input
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm text-muted-foreground"
+                    placeholder="Brief description shown on proposal (auto-filled when solution selected)"
+                    value={item.description || ''}
+                    onChange={e => {
+                      const updated = [...form.upfront_items];
+                      updated[i] = { ...updated[i], description: e.target.value };
                       updateField('upfront_items', updated);
                     }}
                   />
@@ -790,16 +794,7 @@ export default function ProposalEditor() {
                       className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
                     >
                       <option value="">Select…</option>
-                      {products.filter(p => p.is_ongoing).length > 0 && (
-                        <optgroup label="Products">
-                          {products.filter(p => p.is_ongoing).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                        </optgroup>
-                      )}
-                      {serviceTypes.filter(s => s.is_ongoing).length > 0 && (
-                        <optgroup label="Services">
-                          {serviceTypes.filter(s => s.is_ongoing).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                        </optgroup>
-                      )}
+                      {products.filter(p => p.is_ongoing).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                     </select>
                   </div>
                   <Field label="Name / Tier" value={r.name} onChange={v => updateRetainer(i, 'name', v)} />

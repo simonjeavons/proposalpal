@@ -390,6 +390,7 @@ export default function ProposalView() {
                         <div>
                           {item.type && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 2 }}>{item.type}</div>}
                           <div style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>{item.name}</div>
+                          {(item as any).description && <div style={{ fontSize: 11, color: '#AAAAAA', marginTop: 2 }}>{(item as any).description}</div>}
                         </div>
                         <div style={{ fontSize: 15, fontWeight: 800, color: '#043D5D', textAlign: 'right' as const }}>
                           £{Number(item.price).toLocaleString('en-GB')}

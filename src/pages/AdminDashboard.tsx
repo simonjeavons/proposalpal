@@ -22,6 +22,7 @@ interface Profile {
 }
 
 type Tab = "proposals" | "users" | "team" | "items" | "phases" | "challenges" | "agreements";
+type ItemsSubTab = "service-types" | "solutions";
 
 interface TeamMember {
   id: string;
@@ -127,9 +128,9 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
 
-  // Items tab shared state (add-item controls)
+  // Items tab state
+  const [itemsSubTab, setItemsSubTab] = useState<ItemsSubTab>("service-types");
   const [newItemName, setNewItemName] = useState("");
-  const [newItemType, setNewItemType] = useState<'product' | 'service'>('product');
 
   // Challenges tab state
   const [selectedServiceForChallenges, setSelectedServiceForChallenges] = useState<string>("");
@@ -307,14 +308,14 @@ export default function AdminDashboard() {
   const addItem = async () => {
     const name = newItemName.trim();
     if (!name) return;
-    if (newItemType === 'product') {
+    if (itemsSubTab === 'solutions') {
       const nextOrder = products.length > 0 ? Math.max(...products.map(p => p.sort_order)) + 1 : 1;
       const { data, error } = await supabase.from("products" as any).insert({ name, default_price: 0, sort_order: nextOrder }).select().single();
       if (!error && data) {
         setProducts(prev => [...prev, data as Product]);
         setNewItemName("");
       } else {
-        toast.error("Failed to add item");
+        toast.error("Failed to add solution");
       }
     } else {
       const nextOrder = serviceTypes.length > 0 ? Math.max(...serviceTypes.map(s => s.sort_order)) + 1 : 1;
@@ -323,7 +324,7 @@ export default function AdminDashboard() {
         setServiceTypes(prev => [...prev, { ...(data as any), challenges: [] }]);
         setNewItemName("");
       } else {
-        toast.error("Failed to add item");
+        toast.error("Failed to add service type");
       }
     }
   };
@@ -765,144 +766,171 @@ export default function AdminDashboard() {
         {/* Items Tab */}
         {activeTab === "items" && (
           <>
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Items</h1>
-                <p className="text-sm text-muted-foreground">Manage service types and products available in proposals.</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <select
-                  value={newItemType}
-                  onChange={e => setNewItemType(e.target.value as 'product' | 'service')}
-                  className="h-8 rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="product">Product</option>
-                  <option value="service">Service Type</option>
-                </select>
-                <Input
-                  value={newItemName}
-                  onChange={e => setNewItemName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && addItem()}
-                  placeholder="Item name…"
-                  className="h-8 text-sm w-48"
-                />
-                <Button
-                  onClick={addItem}
-                  disabled={!newItemName.trim()}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold uppercase tracking-wide h-8"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add
-                </Button>
-              </div>
+            <div className="mb-6">
+              <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Items</h1>
+              <p className="text-sm text-muted-foreground">Manage proposal types and sellable solutions.</p>
             </div>
 
-            {(servicesLoading || productsLoading) ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : (serviceTypes.length === 0 && products.length === 0) ? (
-              <div className="bg-card border border-border p-12 text-center">
-                <p className="text-muted-foreground">No items yet. Add one above.</p>
-              </div>
-            ) : (
-              <div className="bg-card border border-border divide-y divide-border">
-                {/* Service Types */}
-                {serviceTypes.map(st => (
-                  <div key={st.id} className="px-6 py-4 flex items-center gap-4">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-2 py-1 rounded flex-shrink-0">Service</span>
+            {/* Sub-tabs */}
+            <div className="flex gap-0 border-b border-border mb-6">
+              <button
+                onClick={() => { setItemsSubTab("service-types"); setNewItemName(""); }}
+                className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${itemsSubTab === "service-types" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+              >
+                Service Types
+              </button>
+              <button
+                onClick={() => { setItemsSubTab("solutions"); setNewItemName(""); }}
+                className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${itemsSubTab === "solutions" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+              >
+                Solutions
+              </button>
+            </div>
+
+            {/* Service Types sub-tab */}
+            {itemsSubTab === "service-types" && (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm text-muted-foreground">These appear in the proposal <strong>Type</strong> dropdown. Selecting <strong>Marketing Services</strong> unlocks additional marketing-specific fields in the proposal editor.</p>
+                  <div className="flex items-center gap-2 ml-6 flex-shrink-0">
                     <Input
-                      value={st.name}
-                      onChange={e => updateServiceTypeName(st.id, e.target.value)}
-                      onBlur={e => saveServiceTypeName(st.id, e.target.value)}
-                      className="h-8 text-sm font-semibold flex-1"
-                      placeholder="Service type name"
+                      value={newItemName}
+                      onChange={e => setNewItemName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { addItem(); } }}
+                      placeholder="New service type…"
+                      className="h-8 text-sm w-48"
                     />
-                    <div className="flex items-center gap-4 flex-shrink-0">
-                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                        <input type="checkbox" checked={st.is_upfront ?? true} className="w-3.5 h-3.5"
-                          onChange={e => {
-                            const val = e.target.checked;
-                            setServiceTypes(prev => prev.map(s => s.id === st.id ? { ...s, is_upfront: val } : s));
-                            saveServiceTypeFlags(st.id, val, st.is_ongoing ?? true);
-                          }} />
-                        <span className="text-xs text-muted-foreground">Upfront</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                        <input type="checkbox" checked={st.is_ongoing ?? true} className="w-3.5 h-3.5"
-                          onChange={e => {
-                            const val = e.target.checked;
-                            setServiceTypes(prev => prev.map(s => s.id === st.id ? { ...s, is_ongoing: val } : s));
-                            saveServiceTypeFlags(st.id, st.is_upfront ?? true, val);
-                          }} />
-                        <span className="text-xs text-muted-foreground">Ongoing</span>
-                      </label>
-                    </div>
                     <Button
-                      variant="ghost" size="sm"
-                      className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
-                      onClick={() => deleteServiceType(st.id)}
-                      title="Delete service type"
+                      onClick={addItem}
+                      disabled={!newItemName.trim()}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold uppercase tracking-wide h-8"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Plus className="w-3.5 h-3.5" /> Add
                     </Button>
                   </div>
-                ))}
-                {/* Products */}
-                {products.map((p, idx) => (
-                  <div key={`product-${idx}`} className="px-6 py-4 space-y-2">
-                    <div className="flex items-center gap-4">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-primary/70 bg-primary/10 px-2 py-1 rounded flex-shrink-0">Product</span>
-                      <Input
-                        value={p.name}
-                        onChange={e => updateProductField(idx, 'name', e.target.value)}
-                        onBlur={() => saveProduct(idx)}
-                        className="h-8 text-sm font-semibold flex-1"
-                        placeholder="Product name"
-                      />
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <span className="text-sm text-muted-foreground">£</span>
-                        <Input
-                          type="number"
-                          value={p.default_price}
-                          onChange={e => updateProductField(idx, 'default_price', Number(e.target.value) || 0)}
-                          onBlur={() => saveProduct(idx)}
-                          className="h-8 text-sm w-28"
-                          placeholder="0.00"
-                        />
-                        <span className="text-xs text-muted-foreground">default</span>
-                      </div>
-                      <div className="flex items-center gap-4 flex-shrink-0">
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                          <input type="checkbox" checked={p.is_upfront} className="w-3.5 h-3.5"
-                            onChange={e => { updateProductField(idx, 'is_upfront', e.target.checked); saveProduct(idx); }} />
-                          <span className="text-xs text-muted-foreground">Upfront</span>
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                          <input type="checkbox" checked={p.is_ongoing} className="w-3.5 h-3.5"
-                            onChange={e => { updateProductField(idx, 'is_ongoing', e.target.checked); saveProduct(idx); }} />
-                          <span className="text-xs text-muted-foreground">Ongoing</span>
-                        </label>
-                      </div>
-                      <Button
-                        variant="ghost" size="sm"
-                        className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
-                        onClick={() => deleteProduct(idx)}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                    <div className="pl-16">
-                      <Input
-                        value={p.description || ''}
-                        onChange={e => updateProductField(idx, 'description', e.target.value)}
-                        onBlur={() => saveProduct(idx)}
-                        className="h-8 text-sm text-muted-foreground"
-                        placeholder="Description (auto-fills proposal item when selected)"
-                      />
-                    </div>
+                </div>
+                {servicesLoading ? (
+                  <div className="flex items-center justify-center py-20">
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                   </div>
-                ))}
-              </div>
+                ) : serviceTypes.length === 0 ? (
+                  <div className="bg-card border border-border p-12 text-center">
+                    <p className="text-muted-foreground">No service types yet. Add one above.</p>
+                  </div>
+                ) : (
+                  <div className="bg-card border border-border divide-y divide-border">
+                    {serviceTypes.map(st => (
+                      <div key={st.id} className="px-6 py-3 flex items-center gap-3">
+                        {st.name.toLowerCase().includes('marketing') && (
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded flex-shrink-0">+ Extra fields</span>
+                        )}
+                        <Input
+                          value={st.name}
+                          onChange={e => updateServiceTypeName(st.id, e.target.value)}
+                          onBlur={e => saveServiceTypeName(st.id, e.target.value)}
+                          className="h-8 text-sm font-semibold flex-1"
+                          placeholder="Service type name"
+                        />
+                        <Button
+                          variant="ghost" size="sm"
+                          className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
+                          onClick={() => deleteServiceType(st.id)}
+                          title="Delete service type"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Solutions sub-tab */}
+            {itemsSubTab === "solutions" && (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm text-muted-foreground">Products and services you sell. These appear as selectable items in the proposal editor. The description auto-fills in proposals when selected.</p>
+                  <div className="flex items-center gap-2 ml-6 flex-shrink-0">
+                    <Input
+                      value={newItemName}
+                      onChange={e => setNewItemName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { addItem(); } }}
+                      placeholder="New solution…"
+                      className="h-8 text-sm w-48"
+                    />
+                    <Button
+                      onClick={addItem}
+                      disabled={!newItemName.trim()}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold uppercase tracking-wide h-8"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add
+                    </Button>
+                  </div>
+                </div>
+                {productsLoading ? (
+                  <div className="flex items-center justify-center py-20">
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : products.length === 0 ? (
+                  <div className="bg-card border border-border p-12 text-center">
+                    <p className="text-muted-foreground">No solutions yet. Add one above.</p>
+                  </div>
+                ) : (
+                  <div className="bg-card border border-border divide-y divide-border">
+                    {products.map((p, idx) => (
+                      <div key={`product-${idx}`} className="px-6 py-4 space-y-2">
+                        <div className="flex items-center gap-3">
+                          <Input
+                            value={p.name}
+                            onChange={e => updateProductField(idx, 'name', e.target.value)}
+                            onBlur={() => saveProduct(idx)}
+                            className="h-8 text-sm font-semibold flex-1"
+                            placeholder="Solution name"
+                          />
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className="text-sm text-muted-foreground">£</span>
+                            <Input
+                              type="number"
+                              value={p.default_price}
+                              onChange={e => updateProductField(idx, 'default_price', Number(e.target.value) || 0)}
+                              onBlur={() => saveProduct(idx)}
+                              className="h-8 text-sm w-28"
+                              placeholder="0.00"
+                            />
+                          </div>
+                          <div className="flex items-center gap-4 flex-shrink-0">
+                            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                              <input type="checkbox" checked={p.is_upfront} className="w-3.5 h-3.5"
+                                onChange={e => { updateProductField(idx, 'is_upfront', e.target.checked); saveProduct(idx); }} />
+                              <span className="text-xs text-muted-foreground">Upfront</span>
+                            </label>
+                            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                              <input type="checkbox" checked={p.is_ongoing} className="w-3.5 h-3.5"
+                                onChange={e => { updateProductField(idx, 'is_ongoing', e.target.checked); saveProduct(idx); }} />
+                              <span className="text-xs text-muted-foreground">Ongoing</span>
+                            </label>
+                          </div>
+                          <Button
+                            variant="ghost" size="sm"
+                            className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
+                            onClick={() => deleteProduct(idx)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                        <Input
+                          value={p.description || ''}
+                          onChange={e => updateProductField(idx, 'description', e.target.value)}
+                          onBlur={() => saveProduct(idx)}
+                          className="h-7 text-xs text-muted-foreground"
+                          placeholder="Description — auto-fills in proposal when this solution is selected"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
