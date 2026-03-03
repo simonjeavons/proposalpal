@@ -573,6 +573,7 @@ export default function ProposalAccept() {
           .from('contracts')
           .upload(signedPath, new Blob([finalBytes], { type: 'application/pdf' }));
         if (!uploadError) signedContractUrl = signedPath;
+        else console.error('PDF upload error:', uploadError);
       }
     } catch (err) {
       console.error('PDF signing failed:', err);
