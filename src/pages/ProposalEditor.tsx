@@ -36,6 +36,12 @@ interface Product {
   is_ongoing: boolean;
 }
 
+interface AgreementTemplate {
+  id: string;
+  name: string;
+  sort_order: number;
+}
+
 interface FormData {
   client_name: string;
   programme_title: string;
@@ -59,6 +65,7 @@ interface FormData {
   contact_phone: string;
   contact_mobile: string;
   payment_terms: string;
+  service_agreement_template_id: string | null;
   status: string;
 }
 
@@ -84,6 +91,7 @@ export default function ProposalEditor() {
   const [products, setProducts] = useState<Product[]>([]);
   const [showImportOptions, setShowImportOptions] = useState(false);
   const [showImportPhaseOptions, setShowImportPhaseOptions] = useState(false);
+  const [agreementTemplates, setAgreementTemplates] = useState<AgreementTemplate[]>([]);
 
   const [form, setForm] = useState<FormData>({
     client_name: '',
@@ -108,6 +116,7 @@ export default function ProposalEditor() {
     contact_phone: '01743 636 300',
     contact_mobile: '07904 810 378',
     payment_terms: '',
+    service_agreement_template_id: null,
     status: 'draft',
   });
 
@@ -121,6 +130,9 @@ export default function ProposalEditor() {
     supabase.from("products" as any).select("id, name, default_price, description, is_upfront, is_ongoing").order("sort_order").then(({ data }) => {
       if (data) setProducts(data as Product[]);
     });
+    supabase.from("service_agreement_templates" as any)
+      .select("id, name, sort_order").order("sort_order")
+      .then(({ data }) => { if (data) setAgreementTemplates(data as any[]); });
   }, []);
 
   useEffect(() => {
@@ -150,6 +162,7 @@ export default function ProposalEditor() {
             contact_phone: data.contact_phone,
             contact_mobile: data.contact_mobile,
             payment_terms: (data as any).payment_terms || '',
+            service_agreement_template_id: (data as any).service_agreement_template_id || null,
             status: data.status,
           });
           setSlug(data.slug);
@@ -671,6 +684,20 @@ export default function ProposalEditor() {
 
         {/* Service Agreement Document */}
         <Section title="Service Agreement Document">
+          <div className="mb-4">
+            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Agreement Template</Label>
+            <select
+              value={form.service_agreement_template_id || ''}
+              onChange={e => updateField('service_agreement_template_id', e.target.value || null)}
+              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm w-full"
+            >
+              <option value="">— Select a template —</option>
+              {agreementTemplates.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground mt-1.5">A PDF will be auto-generated from the selected template at acceptance time. Upload a file below only to override the auto-generated agreement for this specific proposal.</p>
+          </div>
           {contractFileUrl ? (
             <div className="flex items-center gap-3 bg-muted p-4 border border-border">
               <FileText className="w-5 h-5 text-primary flex-shrink-0" />
@@ -692,7 +719,7 @@ export default function ProposalEditor() {
           ) : (
             <label className="flex flex-col items-center justify-center gap-2 p-8 border-2 border-dashed border-border cursor-pointer hover:border-primary transition-colors">
               <Upload className="w-6 h-6 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">{uploading ? 'Uploading…' : 'Click to upload service agreement PDF'}</span>
+              <span className="text-sm text-muted-foreground">{uploading ? 'Uploading…' : 'Override agreement (optional) — leave empty to auto-generate'}</span>
               <input
                 type="file"
                 accept=".pdf,.doc,.docx"

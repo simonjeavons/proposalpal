@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Proposal, Challenge, Phase, RetainerOption } from "@/types/proposal";
@@ -100,8 +100,9 @@ function SignatureCanvas({ onSave }: { onSave: (dataUrl: string | null) => void 
   );
 }
 
+// Accepts Uint8Array bytes directly instead of fetching from a URL.
 async function appendSignaturePage(
-  contractUrl: string,
+  sourcePdfBytes: Uint8Array,
   signatureDataUrl: string,
   signerName: string,
   signerTitle: string,
@@ -110,8 +111,7 @@ async function appendSignaturePage(
 ): Promise<Uint8Array> {
   const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
 
-  const pdfBytes = await fetch(contractUrl).then(r => r.arrayBuffer());
-  const pdfDoc = await PDFDocument.load(pdfBytes);
+  const pdfDoc = await PDFDocument.load(sourcePdfBytes);
 
   // Embed signature image
   const sigBase64 = signatureDataUrl.split(',')[1];
@@ -219,6 +219,12 @@ export default function ProposalAccept() {
   const [agreed, setAgreed] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
 
+  // Template sections and PDF generation state
+  const [templateSections, setTemplateSections] = useState<{ heading: string; body: string }[]>([]);
+  const [generatedPdfUrl, setGeneratedPdfUrl] = useState<string | null>(null);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const generatedPdfBytesRef = useRef<Uint8Array | null>(null);
+
   const notifyEdgeFunction = (type: 'viewed' | 'signed', proposalId: string) => {
     fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-proposal`, {
       method: 'POST',
@@ -227,8 +233,9 @@ export default function ProposalAccept() {
     }).catch(() => {/* fire-and-forget */});
   };
 
+  // Load proposal and template sections
   useEffect(() => {
-    supabase.from("proposals").select("*").eq("slug", slug).single().then(({ data }) => {
+    supabase.from("proposals").select("*").eq("slug", slug).single().then(async ({ data }) => {
       if (data) {
         setProposal({
           ...data,
@@ -237,10 +244,83 @@ export default function ProposalAccept() {
           retainer_options: (data.retainer_options || []) as unknown as RetainerOption[],
         } as Proposal);
         notifyEdgeFunction('viewed', data.id);
+
+        // Fetch template sections if a template is selected
+        const templateId = (data as any).service_agreement_template_id;
+        if (templateId) {
+          const { data: tmpl } = await supabase
+            .from("service_agreement_templates" as any)
+            .select("sections")
+            .eq("id", templateId)
+            .single();
+          if (tmpl) setTemplateSections((tmpl as any).sections || []);
+        }
       }
       setLoading(false);
     });
   }, [slug]);
+
+  // Auto-generate PDF preview when proposal loads (skipped if a manual override PDF exists)
+  useEffect(() => {
+    if (!proposal) return;
+    const fileUrl = (proposal as any).contract_file_url as string | null;
+    if (fileUrl) return; // manual override present — use it as-is
+
+    let cancelled = false;
+    setPdfGenerating(true);
+
+    (async () => {
+      try {
+        const stdOpts = proposal.retainer_options.filter(r => r.option_type === 'standard');
+        const optExtras = proposal.retainer_options.filter(r => r.option_type === 'optional_extra');
+        const selStandard = stdOpts[standardIndex] || null;
+        const selExtras = checkedExtrasIndices.map(i => optExtras[i]).filter(Boolean);
+        const upfrontAmt = Number(proposal.upfront_total);
+        const stdPrice = selStandard ? (selStandard.quantity ?? 1) * selStandard.price : 0;
+        const extrasPrice = selExtras.reduce((sum, r) => sum + (r.quantity ?? 1) * r.price, 0);
+        const monthlyAmt = stdPrice + extrasPrice;
+        const firstYrTotal = upfrontAmt + monthlyAmt * 12;
+
+        const [{ pdf }, { ServiceAgreementPDF }] = await Promise.all([
+          import('@react-pdf/renderer'),
+          import('../components/ServiceAgreementPDF'),
+        ]);
+
+        const props = {
+          clientName: proposal.client_name,
+          organisation: proposal.organisation || '',
+          programmeTitle: proposal.programme_title,
+          agreementDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+          phases: proposal.phases || [],
+          upfrontItems: (proposal as any).upfront_items || [],
+          selectedStandard: selStandard,
+          selectedExtras: selExtras,
+          upfrontTotal: upfrontAmt,
+          monthlyTotal: monthlyAmt,
+          firstYearTotal: firstYrTotal,
+          paymentTerms: (proposal as any).payment_terms || '',
+          contactName: proposal.contact_name || '',
+          contactEmail: proposal.contact_email || '',
+          templateSections,
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const blob = await pdf(React.createElement(ServiceAgreementPDF as any, props)).toBlob();
+        if (cancelled) return;
+
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        generatedPdfBytesRef.current = bytes;
+        const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+        setGeneratedPdfUrl(url);
+      } catch (err) {
+        console.error('PDF generation failed:', err);
+      } finally {
+        if (!cancelled) setPdfGenerating(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [proposal, templateSections]);
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#F4F7FA' }}>
@@ -267,43 +347,52 @@ export default function ProposalAccept() {
   const firstYearTotal = upfront + monthlyAnnual;
 
   const contractFileUrl = (proposal as any).contract_file_url as string | null;
-  const contractUrl = contractFileUrl
-    ? `/contracts/${contractFileUrl}`
-    : null;
 
   const submitting = submitState !== 'idle';
-  const canSubmit = signerName && agreed && !!signatureData && !submitting;
+  const canSubmit = signerName && agreed && !!signatureData && !submitting && !pdfGenerating;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
 
     let signedContractUrl: string | null = null;
 
-    // Step 1: if there's a contract PDF, append signature page
-    if (contractUrl && contractFileUrl) {
-      setSubmitState('signing');
-      try {
+    setSubmitState('signing');
+    try {
+      let pdfBytes: Uint8Array | null = null;
+
+      if (contractFileUrl) {
+        // Manual override PDF: fetch from storage proxy
+        const response = await fetch(`/contracts/${contractFileUrl}`);
+        pdfBytes = new Uint8Array(await response.arrayBuffer());
+      } else if (generatedPdfBytesRef.current) {
+        // Auto-generated PDF already in memory
+        pdfBytes = generatedPdfBytesRef.current;
+      }
+
+      if (pdfBytes) {
         const signedBytes = await appendSignaturePage(
-          contractUrl,
+          pdfBytes,
           signatureData!,
           signerName,
           signerTitle,
           proposal.organisation || proposal.client_name,
           new Date(),
         );
-        const baseName = contractFileUrl.replace(/\.[^.]+$/, '');
+        const baseName = contractFileUrl
+          ? contractFileUrl.replace(/\.[^.]+$/, '')
+          : `${proposal.slug}-agreement`;
         const signedPath = `${baseName}-signed-${Date.now()}.pdf`;
         const { error: uploadError } = await supabase.storage
           .from('contracts')
           .upload(signedPath, new Blob([signedBytes], { type: 'application/pdf' }));
         if (!uploadError) signedContractUrl = signedPath;
-      } catch (err) {
-        console.error('PDF signing failed:', err);
-        // Continue without signed PDF rather than blocking acceptance
       }
+    } catch (err) {
+      console.error('PDF signing failed:', err);
+      // Continue without signed PDF rather than blocking acceptance
     }
 
-    // Step 2: save acceptance record
+    // Save acceptance record
     setSubmitState('saving');
     const { error } = await supabase.from("proposal_acceptances" as any).insert({
       proposal_id: proposal.id,
@@ -350,6 +439,17 @@ export default function ProposalAccept() {
     ? 'Saving…'
     : 'Sign & Accept Proposal →';
 
+  // Determine PDF URL to display (manual override takes precedence over generated)
+  const displayPdfUrl = contractFileUrl
+    ? `/contracts/${contractFileUrl}#toolbar=1&navpanes=0`
+    : generatedPdfUrl
+    ? `${generatedPdfUrl}#toolbar=1&navpanes=0`
+    : null;
+
+  const downloadPdfUrl = contractFileUrl
+    ? `/contracts/${contractFileUrl}`
+    : generatedPdfUrl ?? null;
+
   return (
     <div style={{ minHeight: '100vh', background: '#F4F7FA', fontFamily: "'Inter', sans-serif", color: '#1A2E3B', fontSize: 14, lineHeight: 1.7 }}>
       {/* Header */}
@@ -359,7 +459,7 @@ export default function ProposalAccept() {
       </div>
 
       <div style={{ maxWidth: 800, margin: '0 auto', padding: '32px 24px' }}>
-        {/* Pricing Summary */}
+        {/* 01 — Pricing Summary */}
         <div style={{ background: 'white', border: '1px solid #DDE8EE', marginBottom: 24 }}>
           <div style={{ padding: '18px 28px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', textTransform: 'uppercase' }}>01</div>
@@ -393,26 +493,39 @@ export default function ProposalAccept() {
           </div>
         </div>
 
-        {/* Contract Document */}
-        {contractUrl && (
-          <div style={{ background: 'white', border: '1px solid #DDE8EE', marginBottom: 24 }}>
-            <div style={{ padding: '18px 28px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
-              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', textTransform: 'uppercase' }}>02</div>
-              <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Contract Document</h2>
-            </div>
-            <div style={{ padding: '24px 28px' }}>
-              <iframe src={contractUrl + '#toolbar=1&navpanes=0'} title="Contract Document" width="100%" style={{ height: 600, border: '1px solid #DDE8EE' }} />
-              <a href={contractUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 12, fontSize: 12, color: '#009FE3', fontWeight: 600 }}>
-                Open in new tab ↗
-              </a>
-            </div>
+        {/* 02 — Service Agreement (always shown) */}
+        <div style={{ background: 'white', border: '1px solid #DDE8EE', marginBottom: 24 }}>
+          <div style={{ padding: '18px 28px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', textTransform: 'uppercase' }}>02</div>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Service Agreement</h2>
           </div>
-        )}
+          <div style={{ padding: '24px 28px' }}>
+            {pdfGenerating ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '24px 0', color: '#3A6278' }}>
+                <div style={{ width: 24, height: 24, border: '3px solid #009FE3', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', flexShrink: 0 }} />
+                <span style={{ fontSize: 14 }}>Generating your service agreement…</span>
+              </div>
+            ) : displayPdfUrl ? (
+              <>
+                <iframe src={displayPdfUrl} title="Service Agreement" width="100%" style={{ height: 600, border: '1px solid #DDE8EE' }} />
+                {downloadPdfUrl && (
+                  <a href={downloadPdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 12, fontSize: 12, color: '#009FE3', fontWeight: 600 }}>
+                    Open in new tab ↗
+                  </a>
+                )}
+              </>
+            ) : (
+              <p style={{ fontSize: 13, color: '#AAAAAA', padding: '16px 0' }}>
+                No service agreement template selected. You can still accept the proposal.
+              </p>
+            )}
+          </div>
+        </div>
 
-        {/* Acceptance Form */}
+        {/* 03 — Sign & Accept */}
         <div style={{ background: 'white', border: '1px solid #DDE8EE', marginBottom: 40 }}>
           <div style={{ padding: '18px 28px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', textTransform: 'uppercase' }}>{contractUrl ? '03' : '02'}</div>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', textTransform: 'uppercase' }}>03</div>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Sign & Accept</h2>
           </div>
           <div style={{ padding: '24px 28px' }}>
@@ -457,7 +570,7 @@ export default function ProposalAccept() {
                 style={{ borderColor: '#DDE8EE' }}
               />
               <label style={{ fontSize: 13, color: '#3A6278', lineHeight: 1.6, cursor: 'pointer' }} onClick={() => setAgreed(!agreed)}>
-                I have read and agree to the terms outlined in this proposal{contractUrl ? ' and the attached contract document' : ''}. I confirm I am authorised to accept on behalf of <strong style={{ color: '#043D5D' }}>{proposal.organisation || proposal.client_name}</strong>.
+                I have read and agree to the terms outlined in this proposal and the service agreement. I confirm I am authorised to accept on behalf of <strong style={{ color: '#043D5D' }}>{proposal.organisation || proposal.client_name}</strong>.
               </label>
             </div>
 

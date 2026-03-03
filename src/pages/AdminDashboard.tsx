@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { Proposal } from "@/types/proposal";
-import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Target, Download, GitBranch, ShoppingBag } from "lucide-react";
+import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Target, Download, GitBranch, ShoppingBag, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ interface Profile {
   created_at: string;
 }
 
-type Tab = "proposals" | "users" | "items" | "phases" | "challenges";
+type Tab = "proposals" | "users" | "items" | "phases" | "challenges" | "agreements";
 
 interface ServiceTypeChallenge {
   id: string | null;
@@ -58,6 +58,19 @@ interface TemplatePhase {
   duration: string;
   tasks: string[];
   price: string;
+  sort_order: number;
+}
+
+interface AgreementSection {
+  heading: string;
+  body: string;
+}
+
+interface AgreementTemplate {
+  id: string;
+  name: string;
+  description: string;
+  sections: AgreementSection[];
   sort_order: number;
 }
 
@@ -103,6 +116,11 @@ export default function AdminDashboard() {
   const [templatePhases, setTemplatePhases] = useState<TemplatePhase[]>([]);
   const [phasesLoading, setPhasesLoading] = useState(false);
 
+  // Agreements tab state
+  const [agreementTemplates, setAgreementTemplates] = useState<AgreementTemplate[]>([]);
+  const [agreementsLoading, setAgreementsLoading] = useState(true);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+
   const fetchServiceTypes = async () => {
     const { data: types } = await supabase.from("service_types" as any).select("id, name, sort_order, is_upfront, is_ongoing").order("sort_order");
     if (!types) { setServicesLoading(false); return; }
@@ -114,19 +132,6 @@ export default function AdminDashboard() {
     });
     setServiceTypes((types as any[]).map(t => ({ ...t, challenges: challengeMap[t.id] || [] })));
     setServicesLoading(false);
-  };
-
-  const addServiceType = async () => {
-    const name = newServiceName.trim();
-    if (!name) return;
-    const nextOrder = serviceTypes.length > 0 ? Math.max(...serviceTypes.map(s => s.sort_order)) + 1 : 1;
-    const { data, error } = await supabase.from("service_types" as any).insert({ name, sort_order: nextOrder }).select().single();
-    if (!error && data) {
-      setServiceTypes(prev => [...prev, { ...(data as any), challenges: [] }]);
-      setNewServiceName("");
-    } else {
-      toast.error("Failed to add service type");
-    }
   };
 
   const saveServiceTypeName = async (id: string, name: string) => {
@@ -204,19 +209,6 @@ export default function AdminDashboard() {
     setProductsLoading(false);
   };
 
-  const addProduct = async () => {
-    const name = newProductName.trim();
-    if (!name) return;
-    const nextOrder = products.length > 0 ? Math.max(...products.map(p => p.sort_order)) + 1 : 1;
-    const { data, error } = await supabase.from("products" as any).insert({ name, default_price: 0, sort_order: nextOrder }).select().single();
-    if (!error && data) {
-      setProducts(prev => [...prev, data as Product]);
-      setNewProductName("");
-    } else {
-      toast.error("Failed to add product");
-    }
-  };
-
   const updateProductField = (idx: number, field: keyof Product, value: string | number) => {
     setProducts(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
   };
@@ -241,6 +233,52 @@ export default function AdminDashboard() {
     if (!p) return;
     if (p.id) await supabase.from("products" as any).delete().eq("id", p.id);
     setProducts(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const fetchAgreementTemplates = async () => {
+    setAgreementsLoading(true);
+    const { data } = await supabase.from("service_agreement_templates" as any)
+      .select("id, name, description, sections, sort_order")
+      .order("sort_order");
+    setAgreementTemplates((data as any[] || []) as AgreementTemplate[]);
+    setAgreementsLoading(false);
+  };
+
+  const updateAgreementSections = async (id: string, sections: AgreementSection[]) => {
+    const { error } = await supabase.from("service_agreement_templates" as any)
+      .update({ sections, updated_at: new Date().toISOString() }).eq("id", id);
+    if (error) toast.error("Failed to save sections");
+  };
+
+  const updateAgreementMeta = async (id: string, name: string, description: string) => {
+    const { error } = await supabase.from("service_agreement_templates" as any)
+      .update({ name, description, updated_at: new Date().toISOString() }).eq("id", id);
+    if (error) toast.error("Failed to save template");
+  };
+
+  const addSection = (templateId: string) => {
+    setAgreementTemplates(prev => prev.map(t =>
+      t.id === templateId
+        ? { ...t, sections: [...t.sections, { heading: '', body: '' }] }
+        : t
+    ));
+  };
+
+  const deleteSection = async (templateId: string, idx: number) => {
+    const tmpl = agreementTemplates.find(t => t.id === templateId);
+    if (!tmpl) return;
+    const updated = tmpl.sections.filter((_, i) => i !== idx);
+    setAgreementTemplates(prev => prev.map(t => t.id === templateId ? { ...t, sections: updated } : t));
+    await updateAgreementSections(templateId, updated);
+  };
+
+  const updateSectionField = (templateId: string, idx: number, field: keyof AgreementSection, value: string) => {
+    setAgreementTemplates(prev => prev.map(t => {
+      if (t.id !== templateId) return t;
+      const sections = [...t.sections];
+      sections[idx] = { ...sections[idx], [field]: value };
+      return { ...t, sections };
+    }));
   };
 
   const addItem = async () => {
@@ -365,6 +403,7 @@ export default function AdminDashboard() {
     fetchProfiles();
     fetchServiceTypes();
     fetchProducts();
+    fetchAgreementTemplates();
   }, []);
 
   const duplicateProposal = async (p: Proposal) => {
@@ -535,6 +574,16 @@ export default function AdminDashboard() {
             }`}
           >
             <Target className="w-3.5 h-3.5" /> Challenges
+          </button>
+          <button
+            onClick={() => setActiveTab("agreements")}
+            className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+              activeTab === "agreements"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Scale className="w-3.5 h-3.5" /> Agreements
           </button>
         </div>
       </div>
@@ -961,6 +1010,106 @@ export default function AdminDashboard() {
                     onClick={() => addChallenge(selectedST.id)}
                   >
                     <Plus className="w-4 h-4" /> Add Challenge
+                  </Button>
+                </div>
+              );
+            })()}
+          </>
+        )}
+
+        {/* Agreements Tab */}
+        {activeTab === "agreements" && (
+          <>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Agreements</h1>
+                <p className="text-sm text-muted-foreground">Manage service agreement templates. Select a template to edit its clauses and schedules.</p>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 block">Template</Label>
+              <select
+                value={selectedTemplateId}
+                onChange={e => setSelectedTemplateId(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm w-96"
+              >
+                <option value="">Select a template to edit…</option>
+                {agreementTemplates.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {agreementsLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : !selectedTemplateId ? (
+              <div className="bg-card border border-border p-12 text-center">
+                <p className="text-muted-foreground">Select a template above to edit its clauses and schedules.</p>
+              </div>
+            ) : (() => {
+              const tmpl = agreementTemplates.find(t => t.id === selectedTemplateId);
+              if (!tmpl) return null;
+              return (
+                <div className="space-y-4">
+                  <div className="bg-card border border-border p-4 space-y-3">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Template Name</Label>
+                      <Input
+                        value={tmpl.name}
+                        onChange={e => setAgreementTemplates(prev => prev.map(t => t.id === selectedTemplateId ? { ...t, name: e.target.value } : t))}
+                        onBlur={e => updateAgreementMeta(selectedTemplateId, e.target.value, tmpl.description)}
+                        className="h-8 text-sm font-semibold"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
+                      <Input
+                        value={tmpl.description || ''}
+                        onChange={e => setAgreementTemplates(prev => prev.map(t => t.id === selectedTemplateId ? { ...t, description: e.target.value } : t))}
+                        onBlur={e => updateAgreementMeta(selectedTemplateId, tmpl.name, e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {tmpl.sections.map((section, idx) => (
+                    <div key={idx} className="bg-card border border-border p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={section.heading}
+                          onChange={e => updateSectionField(selectedTemplateId, idx, 'heading', e.target.value)}
+                          onBlur={() => updateAgreementSections(selectedTemplateId, tmpl.sections)}
+                          className="h-8 text-sm font-semibold flex-1"
+                          placeholder="Section heading"
+                        />
+                        <Button
+                          variant="ghost" size="sm"
+                          className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
+                          onClick={() => deleteSection(selectedTemplateId, idx)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                      <Textarea
+                        value={section.body}
+                        onChange={e => updateSectionField(selectedTemplateId, idx, 'body', e.target.value)}
+                        onBlur={() => updateAgreementSections(selectedTemplateId, tmpl.sections)}
+                        rows={8}
+                        className="text-sm font-mono text-xs"
+                        placeholder="Section body text"
+                      />
+                    </div>
+                  ))}
+
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2 text-xs font-bold uppercase tracking-wide"
+                    onClick={() => addSection(selectedTemplateId)}
+                  >
+                    <Plus className="w-4 h-4" /> Add Section
                   </Button>
                 </div>
               );
