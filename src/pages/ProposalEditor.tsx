@@ -609,7 +609,7 @@ export default function ProposalEditor() {
 
         {/* Ongoing */}
         <Section title="Ongoing" action={
-          <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('retainer_options', [...form.retainer_options, { type: '', name: '', hours: '', quantity: 1, price: 0, features: [], option_type: 'standard', recommended: false }])}>
+          <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('retainer_options', [...form.retainer_options, { type: '', name: '', term_months: undefined, quantity: 1, price: 0, features: [], option_type: 'standard', recommended: false }])}>
             <Plus className="w-4 h-4" /> Add Option
           </Button>
         }>
@@ -697,7 +697,17 @@ export default function ProposalEditor() {
                     </select>
                   </div>
                   <Field label="Name / Tier" value={r.name} onChange={v => updateRetainer(i, 'name', v)} />
-                  <Field label="Hours" value={r.hours} onChange={v => updateRetainer(i, 'hours', v)} />
+                  <div>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Term (months)</Label>
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder="e.g. 12"
+                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                      value={r.term_months ?? ''}
+                      onChange={e => updateRetainer(i, 'term_months', e.target.value ? Number(e.target.value) : undefined)}
+                    />
+                  </div>
                   <div>
                     <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Quantity</Label>
                     <input

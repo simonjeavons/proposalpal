@@ -417,9 +417,8 @@ export default function ProposalView() {
                         }}>✓</div>
                         {r.type && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 6 }}>{r.type}</div>}
                         <div style={{ fontSize: 15, fontWeight: 800, color: '#043D5D', marginBottom: 2 }}>{r.name}</div>
-                        {r.hours && <div style={{ fontSize: 12, color: '#AAAAAA', marginBottom: 12 }}>{r.hours}</div>}
                         <div style={{ fontSize: 24, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>
-                          £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>/ month</span>
+                          £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>/ month{r.term_months ? ` for ${r.term_months} months` : ''}</span>
                         </div>
                         {r.features.length > 0 && (
                           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12, paddingTop: 12, borderTop: '1px solid #DDE8EE', padding: 0 }}>
@@ -471,14 +470,13 @@ export default function ProposalView() {
                               {r.recommended && <div style={{ fontSize: 9, fontWeight: 800, color: '#92400E', background: '#FDE68A', padding: '1px 6px', letterSpacing: '.08em', textTransform: 'uppercase' as const }}>★ Recommended</div>}
                             </div>
                             <div style={{ fontSize: 14, fontWeight: 700, color: '#043D5D' }}>{r.name || r.type}</div>
-                            {r.hours && <div style={{ fontSize: 12, color: '#AAAAAA' }}>{r.hours}</div>}
                             {r.features.length > 0 && (
                               <div style={{ fontSize: 12, color: '#3A6278', marginTop: 4 }}>{r.features.join(' · ')}</div>
                             )}
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
                             <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                            <div style={{ fontSize: 11, color: '#AAAAAA' }}>/ month</div>
+                            <div style={{ fontSize: 11, color: '#AAAAAA' }}>/ month{r.term_months ? ` · ${r.term_months} mo` : ''}</div>
                           </div>
                         </div>
                       );
@@ -522,7 +520,7 @@ export default function ProposalView() {
                 <div style={{ padding: '0 24px', borderRight: '1px solid #DDE8EE' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>Monthly ongoing</div>
                   <div style={{ fontSize: 22, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 2 }}>£{monthlyTotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                  <div style={{ fontSize: 12, color: '#AAAAAA' }}>Excl. VAT / month</div>
+                  <div style={{ fontSize: 12, color: '#AAAAAA' }}>Excl. VAT / month{selectedStandardOption?.term_months ? ` · ${selectedStandardOption.term_months} months` : ''}</div>
                 </div>
               )}
               {proposal.payment_terms && (

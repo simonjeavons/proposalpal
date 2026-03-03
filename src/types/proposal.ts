@@ -20,7 +20,8 @@ export interface Phase {
 export interface RetainerOption {
   type: string;
   name: string;
-  hours: string;
+  hours?: string;
+  term_months?: number;
   quantity: number;
   price: number;
   features: string[];

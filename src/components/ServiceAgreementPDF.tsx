@@ -254,6 +254,12 @@ export function ServiceAgreementPDF({
             <Text style={styles.metaLabel}>Programme</Text>
             <Text style={styles.metaValue}>{programmeTitle}</Text>
           </View>
+          {selectedStandard?.term_months && (
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Initial Term</Text>
+              <Text style={styles.metaValue}>{selectedStandard.term_months} months</Text>
+            </View>
+          )}
         </View>
         <Text style={{ fontSize: 7, color: LIGHT, marginBottom: 10 }}>
           Shoothill Ltd · Willow House East, Shrewsbury Business Park, SY2 6LG · Company No. 05885234
@@ -312,13 +318,13 @@ export function ServiceAgreementPDF({
             <View style={{ height: 6 }} />
             {selectedStandard && (
               <View style={styles.tableRow}>
-                <Text style={styles.tableDesc}>{selectedStandard.name || selectedStandard.type} /month</Text>
+                <Text style={styles.tableDesc}>{selectedStandard.name || selectedStandard.type} /month{selectedStandard.term_months ? ` (${selectedStandard.term_months} months)` : ''}</Text>
                 <Text style={styles.tableAmt}>{fmt(optionTotal(selectedStandard))} + VAT/month</Text>
               </View>
             )}
             {selectedExtras.map((extra, i) => (
               <View key={i} style={styles.tableRow}>
-                <Text style={styles.tableDesc}>{extra.name || extra.type} /month</Text>
+                <Text style={styles.tableDesc}>{extra.name || extra.type} /month{extra.term_months ? ` (${extra.term_months} months)` : ''}</Text>
                 <Text style={styles.tableAmt}>{fmt(optionTotal(extra))} + VAT/month</Text>
               </View>
             ))}
