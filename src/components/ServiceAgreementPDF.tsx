@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Document, Image, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import type { Phase, RetainerOption, UpfrontItem } from '@/types/proposal';
 
 interface TemplateSection {
@@ -49,21 +49,23 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 60,
-    backgroundColor: NAVY,
+    backgroundColor: 'white',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingLeft: 56,
     paddingRight: 56,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: 'Helvetica-Bold',
-    color: 'white',
+  headerLogo: {
+    height: 22,
+    width: 112,
+    objectFit: 'contain',
+    objectPositionX: 0,
+    objectPositionY: 'center',
   },
   headerSub: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.6)',
+    color: MID,
   },
   accentStripe: {
     position: 'absolute',
@@ -228,7 +230,10 @@ export function ServiceAgreementPDF({
       <Page size="A4" style={styles.page}>
         {/* Fixed header */}
         <View style={styles.headerBar} fixed>
-          <Text style={styles.headerTitle}>SHOOTHILL LIMITED</Text>
+          <Image
+            src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg"
+            style={styles.headerLogo}
+          />
           <Text style={styles.headerSub}>Service Agreement</Text>
         </View>
         <View style={styles.accentStripe} fixed />
@@ -302,14 +307,16 @@ export function ServiceAgreementPDF({
           </View>
         )}
 
-        {/* Monthly */}
-        {selectedStandard && (
+        {/* Monthly — shown if any ongoing items are present */}
+        {(selectedStandard || selectedExtras.length > 0) && (
           <>
             <View style={{ height: 6 }} />
-            <View style={styles.tableRow}>
-              <Text style={styles.tableDesc}>{selectedStandard.name || selectedStandard.type} /month</Text>
-              <Text style={styles.tableAmt}>{fmt(optionTotal(selectedStandard))} + VAT/month</Text>
-            </View>
+            {selectedStandard && (
+              <View style={styles.tableRow}>
+                <Text style={styles.tableDesc}>{selectedStandard.name || selectedStandard.type} /month</Text>
+                <Text style={styles.tableAmt}>{fmt(optionTotal(selectedStandard))} + VAT/month</Text>
+              </View>
+            )}
             {selectedExtras.map((extra, i) => (
               <View key={i} style={styles.tableRow}>
                 <Text style={styles.tableDesc}>{extra.name || extra.type} /month</Text>

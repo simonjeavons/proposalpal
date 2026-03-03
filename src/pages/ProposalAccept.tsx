@@ -206,8 +206,12 @@ export default function ProposalAccept() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
   const standardIndex = Number(searchParams.get('standard') ?? 0);
-  const extrasParam = searchParams.get('extras') ?? '';
-  const checkedExtrasIndices: number[] = extrasParam ? extrasParam.split(',').map(Number).filter(n => !isNaN(n)) : [];
+  const extrasParam = searchParams.get('extras');
+  // extrasParam === null means the user navigated directly (no URL param set yet).
+  // In that case we'll fall back to recommended extras once the proposal loads.
+  const checkedExtrasIndices: number[] = extrasParam !== null
+    ? (extrasParam ? extrasParam.split(',').map(Number).filter(n => !isNaN(n)) : [])
+    : [];
 
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
@@ -274,7 +278,10 @@ export default function ProposalAccept() {
         const stdOpts = proposal.retainer_options.filter(r => r.option_type === 'standard');
         const optExtras = proposal.retainer_options.filter(r => r.option_type === 'optional_extra');
         const selStandard = stdOpts[standardIndex] || null;
-        const selExtras = checkedExtrasIndices.map(i => optExtras[i]).filter(Boolean);
+        // If no extras param was present in the URL, default to recommended extras
+        const selExtras = extrasParam !== null
+          ? checkedExtrasIndices.map(i => optExtras[i]).filter(Boolean)
+          : optExtras.filter(r => r.recommended);
         const upfrontAmt = Number(proposal.upfront_total);
         const stdPrice = selStandard ? (selStandard.quantity ?? 1) * selStandard.price : 0;
         const extrasPrice = selExtras.reduce((sum, r) => sum + (r.quantity ?? 1) * r.price, 0);
