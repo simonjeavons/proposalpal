@@ -609,14 +609,15 @@ export default function ProposalAccept() {
         <div style={{ width: 56, height: 56, background: '#009FE3', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
         </div>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: '#043D5D', marginBottom: 8 }}>Proposal Accepted</h1>
-        <p style={{ fontSize: 14, color: '#3A6278', lineHeight: 1.7, marginBottom: 24 }}>
-          Thank you, {signerName}. Your acceptance has been recorded.<br />
-          {proposal.contact_name} will be in touch within one working day to prepare your Statement of Work.
+        <h1 style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', marginBottom: 16 }}>Let's Get Started</h1>
+        <p style={{ fontSize: 15, fontWeight: 600, color: '#043D5D', marginBottom: 12 }}>Your approval is confirmed.</p>
+        <p style={{ fontSize: 14, color: '#3A6278', lineHeight: 1.8, marginBottom: 8 }}>
+          Your project is now in motion. Our team is preparing your delivery plan, and {proposal.contact_name} will be in touch shortly to schedule your kickoff meeting.
         </p>
-        <div style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '16px 20px', fontSize: 13, color: '#3A6278' }}>
-          First Year Total: <strong style={{ color: '#043D5D' }}>{formatCurrency(firstYearTotal)} + VAT</strong>
-        </div>
+        <p style={{ fontSize: 14, color: '#3A6278', lineHeight: 1.8, marginBottom: 32 }}>
+          We're excited to be part of your next chapter. Welcome aboard.
+        </p>
+        <p style={{ fontSize: 12, color: '#8FA8B8' }}>You can now close this window.</p>
       </div>
     </div>
   );
