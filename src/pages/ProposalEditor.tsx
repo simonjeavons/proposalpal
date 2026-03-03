@@ -209,11 +209,13 @@ export default function ProposalEditor() {
 
   const save = async () => {
     setSaving(true);
+    const preparedUser = users.find(u => u.id === form.prepared_by_user_id);
     const payload = {
       ...form,
       upfront_total: form.upfront_items.reduce((sum, item) => sum + item.price, 0),
       contract_file_url: contractFileUrl,
       prepared_by_user_id: form.prepared_by_user_id || null,
+      lead_team_member_id: preparedUser?.team_member_id || null,
     } as any;
     if (isNew) {
       const { data, error } = await supabase.from("proposals").insert(payload).select().single();

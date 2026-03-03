@@ -60,29 +60,25 @@ export default function ProposalView() {
         const extras = opts.filter(r => r.option_type === 'optional_extra');
         setCheckedExtras(new Set(extras.reduce<number[]>((acc, r, i) => r.recommended ? [...acc, i] : acc, [])));
 
-        // Load team members: lead from prepared_by_user's team_member_id, then additional from team_member_ids
-        const additionalIds: string[] = ((data as any).team_member_ids as string[]) || [];
-        const preparedByUserId: string = (data as any).prepared_by_user_id || '';
-
-        // Collect all IDs we need to fetch
-        let leadTeamMemberId: string | null = null;
-        if (preparedByUserId) {
-          const { data: profileData } = await supabase.from('profiles').select('team_member_id').eq('id', preparedByUserId).single();
-          leadTeamMemberId = (profileData as any)?.team_member_id ?? null;
-        }
-
-        const allIds = [...new Set([leadTeamMemberId, ...additionalIds].filter(Boolean))] as string[];
-        if (allIds.length > 0) {
-          const { data: membersData } = await (supabase as any).from('team_members').select('*').in('id', allIds);
-          if (membersData) {
-            const memberMap: Record<string, TeamMember> = {};
-            (membersData as TeamMember[]).forEach(m => { memberMap[m.id] = m; });
-            // Build ordered array: lead first, then additional in slot order
-            const ordered: TeamMember[] = [];
-            if (leadTeamMemberId && memberMap[leadTeamMemberId]) ordered.push(memberMap[leadTeamMemberId]);
-            additionalIds.forEach(id => { if (memberMap[id] && !ordered.find(m => m.id === id)) ordered.push(memberMap[id]); });
-            setTeamCards(ordered);
+        // Load team members: lead from lead_team_member_id column, additional from team_member_ids
+        try {
+          const leadTeamMemberId: string | null = (data as any).lead_team_member_id ?? null;
+          const additionalIds: string[] = ((data as any).team_member_ids as string[]) || [];
+          const allIds = [...new Set([leadTeamMemberId, ...additionalIds].filter(Boolean))] as string[];
+          if (allIds.length > 0) {
+            const { data: membersData } = await (supabase as any).from('team_members').select('*').in('id', allIds);
+            if (membersData) {
+              const memberMap: Record<string, TeamMember> = {};
+              (membersData as TeamMember[]).forEach(m => { memberMap[m.id] = m; });
+              // Build ordered array: lead first, then additional in slot order
+              const ordered: TeamMember[] = [];
+              if (leadTeamMemberId && memberMap[leadTeamMemberId]) ordered.push(memberMap[leadTeamMemberId]);
+              additionalIds.forEach(id => { if (memberMap[id] && !ordered.find(m => m.id === id)) ordered.push(memberMap[id]); });
+              setTeamCards(ordered);
+            }
           }
+        } catch {
+          // Team loading failed gracefully — proposal still renders
         }
       }
       setLoading(false);
