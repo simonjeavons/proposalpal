@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { Proposal } from "@/types/proposal";
-import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Layers, Download, GitBranch, ShoppingBag } from "lucide-react";
+import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Target, Download, GitBranch, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ interface Profile {
   created_at: string;
 }
 
-type Tab = "proposals" | "users" | "services" | "phases" | "products";
+type Tab = "proposals" | "users" | "items" | "phases" | "challenges";
 
 interface ServiceTypeChallenge {
   id: string | null;
@@ -86,12 +86,17 @@ export default function AdminDashboard() {
   // Services state
   const [serviceTypes, setServiceTypes] = useState<ServiceTypeWithChallenges[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
-  const [newServiceName, setNewServiceName] = useState("");
 
   // Products state
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
-  const [newProductName, setNewProductName] = useState("");
+
+  // Items tab shared state (add-item controls)
+  const [newItemName, setNewItemName] = useState("");
+  const [newItemType, setNewItemType] = useState<'product' | 'service'>('product');
+
+  // Challenges tab state
+  const [selectedServiceForChallenges, setSelectedServiceForChallenges] = useState<string>("");
 
   // Journey Phases state
   const [selectedServiceForPhases, setSelectedServiceForPhases] = useState<string>("");
@@ -236,6 +241,30 @@ export default function AdminDashboard() {
     if (!p) return;
     if (p.id) await supabase.from("products" as any).delete().eq("id", p.id);
     setProducts(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const addItem = async () => {
+    const name = newItemName.trim();
+    if (!name) return;
+    if (newItemType === 'product') {
+      const nextOrder = products.length > 0 ? Math.max(...products.map(p => p.sort_order)) + 1 : 1;
+      const { data, error } = await supabase.from("products" as any).insert({ name, default_price: 0, sort_order: nextOrder }).select().single();
+      if (!error && data) {
+        setProducts(prev => [...prev, data as Product]);
+        setNewItemName("");
+      } else {
+        toast.error("Failed to add item");
+      }
+    } else {
+      const nextOrder = serviceTypes.length > 0 ? Math.max(...serviceTypes.map(s => s.sort_order)) + 1 : 1;
+      const { data, error } = await supabase.from("service_types" as any).insert({ name, sort_order: nextOrder }).select().single();
+      if (!error && data) {
+        setServiceTypes(prev => [...prev, { ...(data as any), challenges: [] }]);
+        setNewItemName("");
+      } else {
+        toast.error("Failed to add item");
+      }
+    }
   };
 
   const fetchTemplatePhases = async (serviceTypeId: string) => {
@@ -478,14 +507,14 @@ export default function AdminDashboard() {
             <Users className="w-3.5 h-3.5" /> Users
           </button>
           <button
-            onClick={() => setActiveTab("services")}
+            onClick={() => setActiveTab("items")}
             className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === "services"
+              activeTab === "items"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Layers className="w-3.5 h-3.5" /> Services
+            <ShoppingBag className="w-3.5 h-3.5" /> Items
           </button>
           <button
             onClick={() => setActiveTab("phases")}
@@ -498,14 +527,14 @@ export default function AdminDashboard() {
             <GitBranch className="w-3.5 h-3.5" /> Journey Phases
           </button>
           <button
-            onClick={() => setActiveTab("products")}
+            onClick={() => setActiveTab("challenges")}
             className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === "products"
+              activeTab === "challenges"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            <ShoppingBag className="w-3.5 h-3.5" /> Products
+            <Target className="w-3.5 h-3.5" /> Challenges
           </button>
         </div>
       </div>
@@ -589,25 +618,33 @@ export default function AdminDashboard() {
           </>
         )}
 
-        {/* Services Tab */}
-        {activeTab === "services" && (
+        {/* Items Tab */}
+        {activeTab === "items" && (
           <>
             <div className="flex items-start justify-between mb-6">
               <div>
-                <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Services</h1>
-                <p className="text-sm text-muted-foreground">Manage proposal types and their template challenges.</p>
+                <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Items</h1>
+                <p className="text-sm text-muted-foreground">Manage service types and products available in proposals.</p>
               </div>
               <div className="flex items-center gap-2">
+                <select
+                  value={newItemType}
+                  onChange={e => setNewItemType(e.target.value as 'product' | 'service')}
+                  className="h-8 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="product">Product</option>
+                  <option value="service">Service Type</option>
+                </select>
                 <Input
-                  value={newServiceName}
-                  onChange={e => setNewServiceName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && addServiceType()}
-                  placeholder="New service type name…"
-                  className="h-8 text-sm w-52"
+                  value={newItemName}
+                  onChange={e => setNewItemName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addItem()}
+                  placeholder="Item name…"
+                  className="h-8 text-sm w-48"
                 />
                 <Button
-                  onClick={addServiceType}
-                  disabled={!newServiceName.trim()}
+                  onClick={addItem}
+                  disabled={!newItemName.trim()}
                   className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold uppercase tracking-wide h-8"
                 >
                   <Plus className="w-3.5 h-3.5" /> Add
@@ -615,104 +652,109 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {servicesLoading ? (
+            {(servicesLoading || productsLoading) ? (
               <div className="flex items-center justify-center py-20">
                 <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : serviceTypes.length === 0 ? (
+            ) : (serviceTypes.length === 0 && products.length === 0) ? (
               <div className="bg-card border border-border p-12 text-center">
-                <p className="text-muted-foreground">No service types yet. Add one above.</p>
+                <p className="text-muted-foreground">No items yet. Add one above.</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="bg-card border border-border divide-y divide-border">
+                {/* Service Types */}
                 {serviceTypes.map(st => (
-                  <div key={st.id} className="bg-card border border-border">
-                    {/* Service type header */}
-                    <div className="px-6 py-4 border-b border-border flex items-center gap-3">
+                  <div key={st.id} className="px-6 py-4 flex items-center gap-4">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-2 py-1 rounded flex-shrink-0">Service</span>
+                    <Input
+                      value={st.name}
+                      onChange={e => updateServiceTypeName(st.id, e.target.value)}
+                      onBlur={e => saveServiceTypeName(st.id, e.target.value)}
+                      className="h-8 text-sm font-semibold flex-1"
+                      placeholder="Service type name"
+                    />
+                    <div className="flex items-center gap-4 flex-shrink-0">
+                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                        <input type="checkbox" checked={st.is_upfront ?? true} className="w-3.5 h-3.5"
+                          onChange={e => {
+                            const val = e.target.checked;
+                            setServiceTypes(prev => prev.map(s => s.id === st.id ? { ...s, is_upfront: val } : s));
+                            saveServiceTypeFlags(st.id, val, st.is_ongoing ?? true);
+                          }} />
+                        <span className="text-xs text-muted-foreground">Upfront</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                        <input type="checkbox" checked={st.is_ongoing ?? true} className="w-3.5 h-3.5"
+                          onChange={e => {
+                            const val = e.target.checked;
+                            setServiceTypes(prev => prev.map(s => s.id === st.id ? { ...s, is_ongoing: val } : s));
+                            saveServiceTypeFlags(st.id, st.is_upfront ?? true, val);
+                          }} />
+                        <span className="text-xs text-muted-foreground">Ongoing</span>
+                      </label>
+                    </div>
+                    <Button
+                      variant="ghost" size="sm"
+                      className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
+                      onClick={() => deleteServiceType(st.id)}
+                      title="Delete service type"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ))}
+                {/* Products */}
+                {products.map((p, idx) => (
+                  <div key={`product-${idx}`} className="px-6 py-4 space-y-2">
+                    <div className="flex items-center gap-4">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-primary/70 bg-primary/10 px-2 py-1 rounded flex-shrink-0">Product</span>
                       <Input
-                        value={st.name}
-                        onChange={e => updateServiceTypeName(st.id, e.target.value)}
-                        onBlur={e => saveServiceTypeName(st.id, e.target.value)}
-                        className="h-8 text-sm font-bold flex-1 max-w-xs"
+                        value={p.name}
+                        onChange={e => updateProductField(idx, 'name', e.target.value)}
+                        onBlur={() => saveProduct(idx)}
+                        className="h-8 text-sm font-semibold flex-1"
+                        placeholder="Product name"
                       />
-                      <span className="text-xs text-muted-foreground">{st.challenges.length} template challenge{st.challenges.length !== 1 ? 's' : ''}</span>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-sm text-muted-foreground">£</span>
+                        <Input
+                          type="number"
+                          value={p.default_price}
+                          onChange={e => updateProductField(idx, 'default_price', Number(e.target.value) || 0)}
+                          onBlur={() => saveProduct(idx)}
+                          className="h-8 text-sm w-28"
+                          placeholder="0.00"
+                        />
+                        <span className="text-xs text-muted-foreground">default</span>
+                      </div>
+                      <div className="flex items-center gap-4 flex-shrink-0">
                         <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                          <input type="checkbox" checked={st.is_upfront ?? true} className="w-3.5 h-3.5"
-                            onChange={e => {
-                              const val = e.target.checked;
-                              setServiceTypes(prev => prev.map(s => s.id === st.id ? { ...s, is_upfront: val } : s));
-                              saveServiceTypeFlags(st.id, val, st.is_ongoing ?? true);
-                            }} />
+                          <input type="checkbox" checked={p.is_upfront} className="w-3.5 h-3.5"
+                            onChange={e => { updateProductField(idx, 'is_upfront', e.target.checked); saveProduct(idx); }} />
                           <span className="text-xs text-muted-foreground">Upfront</span>
                         </label>
                         <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                          <input type="checkbox" checked={st.is_ongoing ?? true} className="w-3.5 h-3.5"
-                            onChange={e => {
-                              const val = e.target.checked;
-                              setServiceTypes(prev => prev.map(s => s.id === st.id ? { ...s, is_ongoing: val } : s));
-                              saveServiceTypeFlags(st.id, st.is_upfront ?? true, val);
-                            }} />
+                          <input type="checkbox" checked={p.is_ongoing} className="w-3.5 h-3.5"
+                            onChange={e => { updateProductField(idx, 'is_ongoing', e.target.checked); saveProduct(idx); }} />
                           <span className="text-xs text-muted-foreground">Ongoing</span>
                         </label>
                       </div>
-                      <div className="ml-auto flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1 text-primary text-xs h-7"
-                          onClick={() => addChallenge(st.id)}
-                        >
-                          <Plus className="w-3.5 h-3.5" /> Add Challenge
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
-                          onClick={() => deleteServiceType(st.id)}
-                          title="Delete service type"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
+                      <Button
+                        variant="ghost" size="sm"
+                        className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
+                        onClick={() => deleteProduct(idx)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
-
-                    {/* Template challenges */}
-                    <div className="px-6 py-4">
-                      {st.challenges.length === 0 ? (
-                        <p className="text-xs text-muted-foreground italic">No template challenges yet. Click "Add Challenge" to create one.</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {st.challenges.map((c, idx) => (
-                            <div key={idx} className="flex gap-3 items-start bg-muted p-3 border border-border">
-                              <div className="flex-1 grid grid-cols-2 gap-3">
-                                <Input
-                                  placeholder="Challenge title"
-                                  value={c.title}
-                                  onChange={e => updateChallengeField(st.id, idx, 'title', e.target.value)}
-                                  onBlur={() => saveChallenge(st.id, idx)}
-                                  className="text-sm font-semibold h-8"
-                                />
-                                <Input
-                                  placeholder="Description"
-                                  value={c.description}
-                                  onChange={e => updateChallengeField(st.id, idx, 'description', e.target.value)}
-                                  onBlur={() => saveChallenge(st.id, idx)}
-                                  className="text-sm h-8"
-                                />
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
-                                onClick={() => deleteChallenge(st.id, idx)}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                    <div className="pl-16">
+                      <Input
+                        value={p.description || ''}
+                        onChange={e => updateProductField(idx, 'description', e.target.value)}
+                        onBlur={() => saveProduct(idx)}
+                        className="h-8 text-sm text-muted-foreground"
+                        placeholder="Description (auto-fills proposal item when selected)"
+                      />
                     </div>
                   </div>
                 ))}
@@ -847,95 +889,82 @@ export default function AdminDashboard() {
           </>
         )}
 
-        {/* Products Tab */}
-        {activeTab === "products" && (
+        {/* Challenges Tab */}
+        {activeTab === "challenges" && (
           <>
             <div className="flex items-start justify-between mb-6">
               <div>
-                <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Products</h1>
-                <p className="text-sm text-muted-foreground">Manage products and services available for ongoing options in proposals.</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={newProductName}
-                  onChange={e => setNewProductName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && addProduct()}
-                  placeholder="New product name…"
-                  className="h-8 text-sm w-52"
-                />
-                <Button
-                  onClick={addProduct}
-                  disabled={!newProductName.trim()}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold uppercase tracking-wide h-8"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add
-                </Button>
+                <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Challenges</h1>
+                <p className="text-sm text-muted-foreground">Define template challenges per service type to import into proposals.</p>
               </div>
             </div>
 
-            {productsLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : products.length === 0 ? (
+            <div className="mb-6">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 block">Service Type</Label>
+              <select
+                value={selectedServiceForChallenges}
+                onChange={e => setSelectedServiceForChallenges(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm w-72"
+              >
+                <option value="">Select a service type…</option>
+                {serviceTypes.map(st => (
+                  <option key={st.id} value={st.id}>{st.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {!selectedServiceForChallenges ? (
               <div className="bg-card border border-border p-12 text-center">
-                <p className="text-muted-foreground">No products yet. Add one above.</p>
+                <p className="text-muted-foreground">Select a service type above to manage its template challenges.</p>
               </div>
-            ) : (
-              <div className="bg-card border border-border divide-y divide-border">
-                {products.map((p, idx) => (
-                  <div key={idx} className="px-6 py-4 space-y-3">
-                    <div className="flex items-center gap-4">
-                      <Input
-                        value={p.name}
-                        onChange={e => updateProductField(idx, 'name', e.target.value)}
-                        onBlur={() => saveProduct(idx)}
-                        className="h-8 text-sm font-semibold flex-1"
-                        placeholder="Product / service name"
-                      />
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <span className="text-sm text-muted-foreground">£</span>
+            ) : (() => {
+              const selectedST = serviceTypes.find(s => s.id === selectedServiceForChallenges);
+              if (!selectedST) return null;
+              return (
+                <div className="space-y-2">
+                  {selectedST.challenges.length === 0 && (
+                    <div className="bg-card border border-border p-8 text-center">
+                      <p className="text-muted-foreground text-sm">No challenges yet. Add one below.</p>
+                    </div>
+                  )}
+                  {selectedST.challenges.map((c, idx) => (
+                    <div key={idx} className="flex gap-3 items-start bg-card border border-border p-4">
+                      <div className="flex-1 grid grid-cols-2 gap-3">
                         <Input
-                          type="number"
-                          value={p.default_price}
-                          onChange={e => updateProductField(idx, 'default_price', Number(e.target.value) || 0)}
-                          onBlur={() => saveProduct(idx)}
-                          className="h-8 text-sm w-28"
-                          placeholder="0.00"
+                          placeholder="Challenge title"
+                          value={c.title}
+                          onChange={e => updateChallengeField(selectedST.id, idx, 'title', e.target.value)}
+                          onBlur={() => saveChallenge(selectedST.id, idx)}
+                          className="text-sm font-semibold h-8"
                         />
-                        <span className="text-xs text-muted-foreground">default</span>
-                      </div>
-                      <div className="flex items-center gap-4 flex-shrink-0">
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                          <input type="checkbox" checked={p.is_upfront} className="w-3.5 h-3.5"
-                            onChange={e => { updateProductField(idx, 'is_upfront', e.target.checked); saveProduct(idx); }} />
-                          <span className="text-xs text-muted-foreground">Upfront</span>
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                          <input type="checkbox" checked={p.is_ongoing} className="w-3.5 h-3.5"
-                            onChange={e => { updateProductField(idx, 'is_ongoing', e.target.checked); saveProduct(idx); }} />
-                          <span className="text-xs text-muted-foreground">Ongoing</span>
-                        </label>
+                        <Input
+                          placeholder="Description"
+                          value={c.description}
+                          onChange={e => updateChallengeField(selectedST.id, idx, 'description', e.target.value)}
+                          onBlur={() => saveChallenge(selectedST.id, idx)}
+                          className="text-sm h-8"
+                        />
                       </div>
                       <Button
-                        variant="ghost" size="sm"
+                        variant="ghost"
+                        size="sm"
                         className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
-                        onClick={() => deleteProduct(idx)}
+                        onClick={() => deleteChallenge(selectedST.id, idx)}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </div>
-                    <Input
-                      value={p.description || ''}
-                      onChange={e => updateProductField(idx, 'description', e.target.value)}
-                      onBlur={() => saveProduct(idx)}
-                      className="h-8 text-sm text-muted-foreground"
-                      placeholder="Description (auto-fills proposal item when selected)"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2 text-xs font-bold uppercase tracking-wide"
+                    onClick={() => addChallenge(selectedST.id)}
+                  >
+                    <Plus className="w-4 h-4" /> Add Challenge
+                  </Button>
+                </div>
+              );
+            })()}
           </>
         )}
 
