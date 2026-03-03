@@ -1,4 +1,4 @@
-import { Document, Image, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import type { Phase, RetainerOption, UpfrontItem } from '@/types/proposal';
 
 interface TemplateSection {
@@ -49,23 +49,21 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 60,
-    backgroundColor: 'white',
+    backgroundColor: NAVY,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingLeft: 56,
     paddingRight: 56,
   },
-  headerLogo: {
-    height: 22,
-    width: 112,
-    objectFit: 'contain',
-    objectPositionX: 0,
-    objectPositionY: 'center',
+  headerTitle: {
+    fontSize: 18,
+    fontFamily: 'Helvetica-Bold',
+    color: 'white',
   },
   headerSub: {
     fontSize: 10,
-    color: MID,
+    color: 'rgba(255,255,255,0.6)',
   },
   accentStripe: {
     position: 'absolute',
@@ -230,10 +228,7 @@ export function ServiceAgreementPDF({
       <Page size="A4" style={styles.page}>
         {/* Fixed header */}
         <View style={styles.headerBar} fixed>
-          <Image
-            src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg"
-            style={styles.headerLogo}
-          />
+          <Text style={styles.headerTitle}>SHOOTHILL LIMITED</Text>
           <Text style={styles.headerSub}>Service Agreement</Text>
         </View>
         <View style={styles.accentStripe} fixed />
