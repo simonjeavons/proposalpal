@@ -207,11 +207,17 @@ export default function ProposalAccept() {
   const [searchParams] = useSearchParams();
   const standardIndex = Number(searchParams.get('standard') ?? 0);
   const extrasParam = searchParams.get('extras');
-  // extrasParam === null means the user navigated directly (no URL param set yet).
-  // In that case we'll fall back to recommended extras once the proposal loads.
-  const checkedExtrasIndices: number[] = extrasParam !== null
-    ? (extrasParam ? extrasParam.split(',').map(Number).filter(n => !isNaN(n)) : [])
-    : [];
+  // Initialise from URL param immediately; when extrasParam is null (direct nav)
+  // we'll default to recommended extras once the proposal loads.
+  const [selectedExtrasIndices, setSelectedExtrasIndices] = useState<number[]>(() =>
+    extrasParam !== null
+      ? (extrasParam ? extrasParam.split(',').map(Number).filter(n => !isNaN(n)) : [])
+      : []
+  );
+  const toggleExtra = (i: number) =>
+    setSelectedExtrasIndices(prev =>
+      prev.includes(i) ? prev.filter(j => j !== i) : [...prev, i]
+    );
 
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
@@ -248,6 +254,12 @@ export default function ProposalAccept() {
           retainer_options: (data.retainer_options || []) as unknown as RetainerOption[],
         } as Proposal);
         notifyEdgeFunction('viewed', data.id);
+        // If no extras param in URL, default to recommended extras
+        if (extrasParam === null) {
+          const optExtras = ((data.retainer_options || []) as unknown as RetainerOption[])
+            .filter(r => r.option_type === 'optional_extra');
+          setSelectedExtrasIndices(optExtras.reduce<number[]>((acc, r, i) => r.recommended ? [...acc, i] : acc, []));
+        }
 
         // Fetch template sections if a template is selected
         const templateId = (data as any).service_agreement_template_id;
@@ -279,9 +291,7 @@ export default function ProposalAccept() {
         const optExtras = proposal.retainer_options.filter(r => r.option_type === 'optional_extra');
         const selStandard = stdOpts[standardIndex] || null;
         // If no extras param was present in the URL, default to recommended extras
-        const selExtras = extrasParam !== null
-          ? checkedExtrasIndices.map(i => optExtras[i]).filter(Boolean)
-          : optExtras.filter(r => r.recommended);
+        const selExtras = selectedExtrasIndices.map(i => optExtras[i]).filter(Boolean);
         const upfrontAmt = Number(proposal.upfront_total);
         const stdPrice = selStandard ? (selStandard.quantity ?? 1) * selStandard.price : 0;
         const extrasPrice = selExtras.reduce((sum, r) => sum + (r.quantity ?? 1) * r.price, 0);
@@ -327,7 +337,7 @@ export default function ProposalAccept() {
     })();
 
     return () => { cancelled = true; };
-  }, [proposal, templateSections]);
+  }, [proposal, templateSections, selectedExtrasIndices]);
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#F4F7FA' }}>
@@ -344,7 +354,7 @@ export default function ProposalAccept() {
   const standardOptions = proposal.retainer_options.filter(r => r.option_type === 'standard');
   const optionalExtras = proposal.retainer_options.filter(r => r.option_type === 'optional_extra');
   const selectedStandard = standardOptions[standardIndex] || null;
-  const selectedExtras = checkedExtrasIndices.map(i => optionalExtras[i]).filter(Boolean);
+  const selectedExtras = selectedExtrasIndices.map(i => optionalExtras[i]).filter(Boolean);
   const upfront = Number(proposal.upfront_total);
   const optionTotal = (r: { price: number; quantity?: number }) => (r.quantity ?? 1) * r.price;
   const standardPrice = selectedStandard ? optionTotal(selectedStandard) : 0;
@@ -406,7 +416,7 @@ export default function ProposalAccept() {
       signer_name: signerName,
       signer_title: signerTitle,
       selected_retainer_index: standardIndex,
-      selected_extras: checkedExtrasIndices,
+      selected_extras: selectedExtrasIndices,
       upfront_total: upfront,
       retainer_price: monthlyTotal,
       first_year_total: firstYearTotal,
@@ -493,6 +503,51 @@ export default function ProposalAccept() {
                 </div>
               )}
             </div>
+            {/* Optional extras toggle */}
+            {optionalExtras.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 8 }}>Optional Add-ons</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {optionalExtras.map((extra, i) => {
+                    const checked = selectedExtrasIndices.includes(i);
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => toggleExtra(i)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 12,
+                          padding: '10px 14px',
+                          background: checked ? '#F0FAFF' : '#F9FAFB',
+                          border: `1.5px solid ${checked ? '#009FE3' : '#DDE8EE'}`,
+                          cursor: 'pointer',
+                          transition: 'all .2s',
+                        }}
+                      >
+                        <div style={{
+                          width: 18, height: 18, borderRadius: 3, flexShrink: 0,
+                          background: checked ? '#009FE3' : 'transparent',
+                          border: checked ? 'none' : '1.5px solid #AAAAAA',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'all .2s',
+                        }}>
+                          {checked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        </div>
+                        <span style={{ flex: 1, fontSize: 13, color: '#1A2E3B', fontWeight: 600 }}>
+                          {extra.name || extra.type}
+                          {extra.recommended && (
+                            <span style={{ marginLeft: 8, fontSize: 9, background: '#FDE68A', color: '#92400E', padding: '1px 5px', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Recommended</span>
+                          )}
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#043D5D', flexShrink: 0 }}>
+                          +{formatCurrency((extra.quantity ?? 1) * extra.price)}/mo
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div style={{ background: '#043D5D', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>First Year Total</span>
               <span style={{ fontSize: 24, fontWeight: 800, color: '#009FE3', letterSpacing: '-.02em' }}>{formatCurrency(firstYearTotal)}<span style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,.4)' }}> + VAT</span></span>

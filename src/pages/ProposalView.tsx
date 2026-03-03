@@ -62,6 +62,20 @@ export default function ProposalView() {
     fetchProposal();
   }, [slug]);
 
+  // Scroll-reveal IntersectionObserver
+  useEffect(() => {
+    if (!proposal) return;
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('in-view'); obs.unobserve(e.target); }
+      });
+    }, { threshold: 0.08 });
+    const timer = setTimeout(() => {
+      document.querySelectorAll('.scroll-reveal, .scale-reveal').forEach(el => obs.observe(el));
+    }, 60);
+    return () => { clearTimeout(timer); obs.disconnect(); };
+  }, [proposal]);
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen" style={{ background: '#F4F7FA' }}>
       <div className="text-center">
@@ -121,7 +135,7 @@ export default function ProposalView() {
 
       {/* ABOUT */}
       <section id="about" style={{ background: 'white', borderBottom: '1px solid #DDE8EE' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '52px 48px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 72, alignItems: 'center' }}>
+        <div className="scroll-reveal" style={{ maxWidth: 1100, margin: '0 auto', padding: '52px 48px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 72, alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <span style={{ width: 24, height: 2, background: '#009FE3', display: 'block' }} />About Shoothill
@@ -143,8 +157,8 @@ export default function ProposalView() {
               { num: '500+', text: 'Projects delivered with honesty & expertise' },
               { num: '4', text: 'UK offices: Shrewsbury, Telford, Chester and London' },
               { num: '100+', text: 'Years combined technical experience' },
-            ].map(s => (
-              <div key={s.num} style={{ background: '#043D5D', padding: '28px 22px' }}>
+            ].map((s, i) => (
+              <div key={s.num} className="scale-reveal" style={{ background: '#043D5D', padding: '28px 22px', transitionDelay: `${i * 80}ms` }}>
                 <strong style={{ display: 'block', fontSize: 36, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>{s.num}</strong>
                 <span style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', fontWeight: 500, lineHeight: 1.4 }}>{s.text}</span>
               </div>
@@ -155,7 +169,7 @@ export default function ProposalView() {
 
       {/* SIMON QUOTE */}
       <section style={{ background: '#F4F7FA', borderBottom: '1px solid #DDE8EE' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '56px 48px', display: 'grid', gridTemplateColumns: '1fr 280px', gap: 64, alignItems: 'center' }}>
+        <div className="scroll-reveal" style={{ maxWidth: 1100, margin: '0 auto', padding: '56px 48px', display: 'grid', gridTemplateColumns: '1fr 280px', gap: 64, alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: 80, fontWeight: 900, color: '#009FE3', opacity: .2, lineHeight: .8, marginBottom: 6, fontFamily: 'Georgia, serif' }}>"</div>
             <div style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', lineHeight: 1.55, letterSpacing: '-.01em', marginBottom: 20 }}>
@@ -174,7 +188,7 @@ export default function ProposalView() {
       {/* YOUR BUSINESS AND OUR PARTNERSHIP */}
       {(proposal as any).partnership_overview && (
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
-          <div style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
+          <div className="scroll-reveal" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
             <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE' }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                 <span style={{ width: 24, height: 2, background: '#009FE3', display: 'block' }} />Your Business &amp; Our Partnership
@@ -219,7 +233,7 @@ export default function ProposalView() {
             {proposal.challenge_intro && <p style={{ color: '#3A6278', marginBottom: 18 }}>{proposal.challenge_intro}</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {proposal.challenges.map((c, i) => (
-                <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '14px 16px', borderLeft: '3px solid #DDE8EE', background: '#F4F7FA' }}>
+                <div key={i} className="scroll-reveal" style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '14px 16px', borderLeft: '3px solid #DDE8EE', background: '#F4F7FA', transitionDelay: `${i * 60}ms` }}>
                   <div style={{ width: 10, height: 10, background: '#009FE3', flexShrink: 0, borderRadius: '50%', marginTop: 6 }} />
                   <div>
                     <strong style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#043D5D', marginBottom: 1 }}>{c.title}</strong>
@@ -244,8 +258,8 @@ export default function ProposalView() {
         return (
           <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28 }}>
-              {marketingSections.map(({ key, label }) => (
-                <div key={key} style={{ background: 'white', border: '1px solid #DDE8EE' }}>
+              {marketingSections.map(({ key, label }, msIdx) => (
+                <div key={key} className="scroll-reveal" style={{ background: 'white', border: '1px solid #DDE8EE', transitionDelay: `${msIdx * 80}ms` }}>
                   <div style={{ padding: '16px 32px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ width: 3, height: 18, background: '#009FE3', display: 'block', flexShrink: 0 }} />
                     <h3 style={{ fontSize: 14, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>{label}</h3>
@@ -279,7 +293,7 @@ export default function ProposalView() {
                   {/* Card slot above */}
                   {isAbove ? (
                     <div style={{ gridRow: 1, gridColumn: i + 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', zIndex: 1 }}>
-                      <div style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', padding: '18px 16px', width: '90%' }}>
+                      <div className="scroll-reveal" style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', padding: '18px 16px', width: '90%', transitionDelay: `${i * 100}ms` }}>
                         <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 5 }}>{phase.label}</div>
                         <h3 style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 5, lineHeight: 1.3 }}>{phase.title}</h3>
                         <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, background: '#009FE3', color: 'white', padding: '2px 8px', marginBottom: 10 }}>{phase.duration}</div>
@@ -305,7 +319,7 @@ export default function ProposalView() {
                   {!isAbove ? (
                     <div style={{ gridRow: 3, gridColumn: i + 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', zIndex: 1 }}>
                       <div style={{ width: 2, height: 36, background: 'rgba(0,159,227,.5)', flexShrink: 0 }} />
-                      <div style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', padding: '18px 16px', width: '90%' }}>
+                      <div className="scroll-reveal" style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', padding: '18px 16px', width: '90%', transitionDelay: `${i * 100}ms` }}>
                         <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 5 }}>{phase.label}</div>
                         <h3 style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 5, lineHeight: 1.3 }}>{phase.title}</h3>
                         <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, background: '#009FE3', color: 'white', padding: '2px 8px', marginBottom: 10 }}>{phase.duration}</div>
@@ -331,7 +345,7 @@ export default function ProposalView() {
 
       {/* PRICING */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
-        <div id="pricing" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
+        <div id="pricing" className="scroll-reveal" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
           <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>02</div>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Investment &amp; Pricing</h2>
@@ -541,8 +555,8 @@ export default function ProposalView() {
                 { name: 'Josh Welch', role: 'Head of Commercial Operations', bio: 'Josh joined Shoothill as an apprentice in 2016 and has grown to lead the Commercial team. Working closely alongside Simon, he focuses on business development, project management and cross-functional coordination. Your primary point of contact from proposal through to delivery.', photo: 'https://shoothill.com/wp-content/uploads/2024/09/josh-bg.jpg' },
                 { name: 'Mike Davis', role: 'Head of IT Services', bio: 'With over 20 years of IT services, procurement and project management experience across multiple industries, Mike has the breadth to integrate services effectively into any business environment and ensure smooth transitions with continued high-quality support.', photo: 'https://shoothill.com/wp-content/uploads/2024/09/mike-bg2.jpg' },
                 { name: 'Claire Critchell', role: 'Head of Marketing Services', bio: 'Claire brings over 20 years of experience in marketing, communications and project management. From brand strategy and campaign planning to content and digital, she works closely with clients to deliver creative, practical solutions aligned with their business objectives.', photo: 'https://shoothill.com/wp-content/uploads/2024/09/claire-bg.jpg' },
-              ].map(member => (
-                <div key={member.name} style={{ background: 'white', overflow: 'hidden' }}>
+              ].map((member, i) => (
+                <div key={member.name} className="scale-reveal" style={{ background: 'white', overflow: 'hidden', transitionDelay: `${i * 80}ms` }}>
                   <div style={{ width: '100%', aspectRatio: '1', overflow: 'hidden', background: '#043D5D' }}>
                     <img style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block' }} src={member.photo} alt={member.name} />
                   </div>
@@ -570,8 +584,8 @@ export default function ProposalView() {
                 { n: 2, title: 'Sign your service agreement', desc: 'Sign to accept your Shoothill service agreement. No work begins and no payment is due until you\'ve signed.' },
                 { n: 3, title: 'Kick-off meeting', desc: `A 30-minute call with ${proposal.contact_name} to align on timelines, access requirements and next steps.` },
                 { n: 4, title: 'Handover to project manager', desc: 'Once signed, you\'ll be introduced to your dedicated Shoothill project manager who will guide you through onboarding, set up your project workspace, and ensure a smooth transition into delivery.' },
-              ].map(step => (
-                <div key={step.n} style={{ display: 'flex', gap: 14, padding: '18px 20px', border: '1px solid #DDE8EE', alignItems: 'flex-start' }}>
+              ].map((step, i) => (
+                <div key={step.n} className="scroll-reveal" style={{ display: 'flex', gap: 14, padding: '18px 20px', border: '1px solid #DDE8EE', alignItems: 'flex-start', transitionDelay: `${i * 80}ms` }}>
                   <div style={{ width: 30, height: 30, background: '#009FE3', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>{step.n}</div>
                   <div>
                     <h4 style={{ fontSize: 13, fontWeight: 700, color: '#043D5D', marginBottom: 2 }}>{step.title}</h4>
@@ -586,6 +600,7 @@ export default function ProposalView() {
                 <p style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', margin: 0 }}>Contact {proposal.contact_name} on {proposal.contact_phone} if you have any questions.</p>
               </div>
               <button
+                className="cta-pulse"
                 onClick={() => navigate(`/p/${slug}/accept?standard=${selectedStandard}&extras=${[...checkedExtras].join(',')}`)}
                 style={{ background: '#009FE3', color: 'white', fontSize: 13, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' as const, padding: '13px 28px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
               >
@@ -611,8 +626,8 @@ export default function ProposalView() {
               { quote: 'We switched to Shoothill after our relationship with an existing IT supplier broke down. The team guided us through with flexibility, competence and safety nets in place.', name: 'Ben Horrix', co: 'Head of IT, Specialist Lines' },
               { quote: 'When the opportunity arose to consolidate our IT services, we not only saved a considerable amount of money, but the level of service now far exceeds what we had before.', name: 'Russell Gwilliam', co: 'Matrix IDC' },
               { quote: 'What an experience working with Shoothill. Nothing but positive things to say — always going above and beyond. The perfect partner to trust with your development.', name: 'Sam Jones', co: 'Founder & CEO, Supporta' },
-            ].map(t => (
-              <div key={t.name} style={{ background: 'white', padding: '26px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            ].map((t, i) => (
+              <div key={t.name} className="scroll-reveal" style={{ background: 'white', padding: '26px 22px', display: 'flex', flexDirection: 'column', gap: 14, transitionDelay: `${i * 60}ms` }}>
                 <div style={{ fontSize: 13, color: '#3A6278', lineHeight: 1.7, position: 'relative', paddingTop: 20 }}>
                   <span style={{ fontSize: 52, fontWeight: 900, color: '#009FE3', opacity: .22, position: 'absolute', top: -10, left: -3, lineHeight: 1, fontFamily: 'Georgia, serif' }}>"</span>
                   {t.quote}
@@ -642,8 +657,8 @@ export default function ProposalView() {
               { src: 'https://shoothill.com/wp-content/uploads/2024/09/warnerBros.jpg', alt: 'Warner Bros' },
               { src: 'https://shoothill.com/wp-content/uploads/2024/09/environmentAgency.jpg', alt: 'Environment Agency' },
               { src: 'https://shoothill.com/wp-content/uploads/2024/09/bbcNews.jpg', alt: 'BBC' },
-            ].map(logo => (
-              <div key={logo.alt} style={{ background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', minHeight: 96 }}>
+            ].map((logo, i) => (
+              <div key={logo.alt} className="scale-reveal" style={{ background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', minHeight: 96, transitionDelay: `${i * 50}ms` }}>
                 <img style={{ width: '100%', height: 96, objectFit: 'cover', objectPosition: 'center', filter: 'grayscale(100%)', opacity: .75 }} src={logo.src} alt={logo.alt} />
               </div>
             ))}
@@ -665,8 +680,8 @@ export default function ProposalView() {
               { badge: 'Midlands', name: 'Telford', addr: '3rd Floor, The Quad\nStation Quarter, Ironmasters Way\nTF3 4NT', tel: '01952 264 126' },
               { badge: 'North West', name: 'Chester', addr: '29 Grosvenor Street\nChester\nCH1 2DD', tel: '01244 628 874' },
               { badge: 'London', name: 'Stansted', addr: "Suite 53, Stansted Courtyard\nBishop's Stortford\nCM22 6PU", tel: '01371 868 486' },
-            ].map(office => (
-              <div key={office.name} style={{ background: 'rgba(255,255,255,.05)', padding: '24px 22px', border: '1px solid rgba(255,255,255,.1)' }}>
+            ].map((office, i) => (
+              <div key={office.name} className="scroll-reveal" style={{ background: 'rgba(255,255,255,.05)', padding: '24px 22px', border: '1px solid rgba(255,255,255,.1)', transitionDelay: `${i * 80}ms` }}>
                 <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 8 }}>{office.badge}</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 8 }}>{office.name}</div>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)', lineHeight: 1.65, marginBottom: 10, whiteSpace: 'pre-line' }}>{office.addr}</div>
@@ -680,7 +695,7 @@ export default function ProposalView() {
       {/* CONTACT */}
       <section id="contact" style={{ background: '#043D5D', padding: '64px 0', position: 'relative', overflow: 'hidden' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 56px', position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1 }}>
+          <div className="scroll-reveal" style={{ display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1 }}>
             <img style={{ height: 28, marginBottom: 20, filter: 'brightness(0) invert(1)', width: 'fit-content' }} src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg" alt="Shoothill" />
             <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.4)', letterSpacing: '.06em', marginBottom: 36 }}>Award-winning, full-service digital technology experts</div>
             <h2 style={{ fontSize: 'clamp(26px, 3vw, 44px)', fontWeight: 800, color: 'white', letterSpacing: '-.03em', marginBottom: 22, lineHeight: 1.1 }}>Any questions then<br />get in touch!</h2>
