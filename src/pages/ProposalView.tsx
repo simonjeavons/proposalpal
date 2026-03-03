@@ -171,6 +171,25 @@ export default function ProposalView() {
         </div>
       </section>
 
+      {/* YOUR BUSINESS AND OUR PARTNERSHIP */}
+      {(proposal as any).partnership_overview && (
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
+          <div style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
+            <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <span style={{ width: 24, height: 2, background: '#009FE3', display: 'block' }} />Your Business &amp; Our Partnership
+              </div>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>How we work together</h2>
+            </div>
+            <div style={{ padding: '28px 32px' }}>
+              {((proposal as any).partnership_overview as string).split('\n').filter(Boolean).map((para: string, i: number) => (
+                <p key={i} style={{ color: '#3A6278', fontSize: 14, lineHeight: 1.75, marginBottom: 12 }}>{para}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* CLIENT CHALLENGE */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
         <div id="challenge" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
@@ -212,6 +231,36 @@ export default function ProposalView() {
           </div>
         </div>
       </div>
+
+      {/* MARKETING SERVICES — additional narrative sections */}
+      {proposal.sector?.toLowerCase().includes('marketing') && (() => {
+        const marketingSections = [
+          { key: 'commercial_opportunity', label: 'Commercial Opportunity' },
+          { key: 'strategic_focus',        label: 'Strategic Focus' },
+          { key: 'whats_needed',           label: "What's Needed?" },
+          { key: 'working_together',       label: 'Working Together' },
+        ].filter(s => (proposal as any)[s.key]?.trim());
+        if (marketingSections.length === 0) return null;
+        return (
+          <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28 }}>
+              {marketingSections.map(({ key, label }) => (
+                <div key={key} style={{ background: 'white', border: '1px solid #DDE8EE' }}>
+                  <div style={{ padding: '16px 32px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ width: 3, height: 18, background: '#009FE3', display: 'block', flexShrink: 0 }} />
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>{label}</h3>
+                  </div>
+                  <div style={{ padding: '20px 32px' }}>
+                    {((proposal as any)[key] as string).split('\n').filter(Boolean).map((para: string, i: number) => (
+                      <p key={i} style={{ color: '#3A6278', fontSize: 14, lineHeight: 1.75, marginBottom: 10 }}>{para}</p>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* JOURNEY */}
       <section id="journey" style={{ background: '#043D5D', padding: '60px 0', position: 'relative', overflow: 'hidden' }}>

@@ -67,6 +67,11 @@ export interface Proposal {
   launch_phase: LaunchPhase;
   payment_terms?: string;
   upfront_notes?: string;
+  partnership_overview?: string;
+  commercial_opportunity?: string;
+  strategic_focus?: string;
+  whats_needed?: string;
+  working_together?: string;
   created_at: string;
   updated_at: string;
 }

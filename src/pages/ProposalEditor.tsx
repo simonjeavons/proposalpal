@@ -66,6 +66,11 @@ interface FormData {
   contact_mobile: string;
   payment_terms: string;
   service_agreement_template_id: string | null;
+  partnership_overview: string;
+  commercial_opportunity: string;
+  strategic_focus: string;
+  whats_needed: string;
+  working_together: string;
   status: string;
 }
 
@@ -117,6 +122,11 @@ export default function ProposalEditor() {
     contact_mobile: '07904 810 378',
     payment_terms: '',
     service_agreement_template_id: null,
+    partnership_overview: '',
+    commercial_opportunity: '',
+    strategic_focus: '',
+    whats_needed: '',
+    working_together: '',
     status: 'draft',
   });
 
@@ -163,6 +173,11 @@ export default function ProposalEditor() {
             contact_mobile: data.contact_mobile,
             payment_terms: (data as any).payment_terms || '',
             service_agreement_template_id: (data as any).service_agreement_template_id || null,
+            partnership_overview: (data as any).partnership_overview || '',
+            commercial_opportunity: (data as any).commercial_opportunity || '',
+            strategic_focus: (data as any).strategic_focus || '',
+            whats_needed: (data as any).whats_needed || '',
+            working_together: (data as any).working_together || '',
             status: data.status,
           });
           setSlug(data.slug);
@@ -293,9 +308,22 @@ export default function ProposalEditor() {
           </div>
         </Section>
 
-        {/* Cover */}
-        <Section title="Cover Details">
+        {/* Proposal Details */}
+        <Section title="Proposal Details">
           <Grid>
+            <div>
+              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Type</Label>
+              <select
+                value={form.sector}
+                onChange={e => { updateField('sector', e.target.value); setShowImportOptions(false); }}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+              >
+                <option value="">Select a type…</option>
+                {serviceTypes.map(st => (
+                  <option key={st.id} value={st.name}>{st.name}</option>
+                ))}
+              </select>
+            </div>
             <Field label="Client Name" value={form.client_name} onChange={v => updateField('client_name', v)} />
             <Field label="Project Title" value={form.programme_title} onChange={v => updateField('programme_title', v)} />
             <div>
@@ -315,19 +343,6 @@ export default function ProposalEditor() {
             </div>
             <Field label="Proposal Date" value={form.proposal_date} onChange={v => updateField('proposal_date', v)} type="date" />
             <Field label="Valid Until" value={form.valid_until} onChange={v => updateField('valid_until', v)} type="date" />
-            <div>
-              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Type</Label>
-              <select
-                value={form.sector}
-                onChange={e => { updateField('sector', e.target.value); setShowImportOptions(false); }}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
-              >
-                <option value="">Select a type…</option>
-                {serviceTypes.map(st => (
-                  <option key={st.id} value={st.name}>{st.name}</option>
-                ))}
-              </select>
-            </div>
           </Grid>
         </Section>
 
@@ -342,6 +357,18 @@ export default function ProposalEditor() {
             <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Challenge Introduction</Label>
             <Textarea value={form.challenge_intro} onChange={e => updateField('challenge_intro', e.target.value)} rows={3} className="text-sm" />
           </div>
+        </Section>
+
+        {/* Your Business and Our Partnership */}
+        <Section title="Your Business and Our Partnership">
+          <p className="text-xs text-muted-foreground mb-3">Free-form narrative shown near the top of the proposal, before the Understanding section. Leave blank to omit.</p>
+          <Textarea
+            value={form.partnership_overview}
+            onChange={e => updateField('partnership_overview', e.target.value)}
+            rows={6}
+            className="text-sm"
+            placeholder="e.g. Describe your understanding of the client's business context, the nature of the partnership, strategic goals…"
+          />
         </Section>
 
         {/* Challenges */}
@@ -392,6 +419,32 @@ export default function ProposalEditor() {
             ))}
           </div>
         </Section>
+
+        {/* Marketing Services — additional sections */}
+        {form.sector.toLowerCase().includes('marketing') && (
+          <Section title="Marketing Details">
+            <p className="text-xs text-muted-foreground mb-4">These sections are shown in the proposal beneath the Understanding section when content is entered. Leave any blank to omit it.</p>
+            <div className="space-y-5">
+              {[
+                { field: 'commercial_opportunity' as const, label: 'Commercial Opportunity' },
+                { field: 'strategic_focus' as const, label: 'Strategic Focus' },
+                { field: 'whats_needed' as const, label: "What's Needed?" },
+                { field: 'working_together' as const, label: 'Working Together' },
+              ].map(({ field, label }) => (
+                <div key={field}>
+                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{label}</Label>
+                  <Textarea
+                    value={form[field]}
+                    onChange={e => updateField(field, e.target.value)}
+                    rows={4}
+                    className="text-sm"
+                    placeholder={`Enter content for "${label}"…`}
+                  />
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
 
         {/* Phases */}
         <Section title="Journey Phases" action={
