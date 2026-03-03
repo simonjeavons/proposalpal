@@ -98,7 +98,7 @@ export default function ProposalView() {
       document.querySelectorAll('.scroll-reveal, .scale-reveal').forEach(el => obs.observe(el));
     }, 60);
     return () => { clearTimeout(timer); obs.disconnect(); };
-  }, [proposal]);
+  }, [proposal, teamCards]);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen" style={{ background: '#F4F7FA' }}>
