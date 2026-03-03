@@ -449,8 +449,8 @@ export default function ProposalView() {
                           key={i}
                           onClick={() => setCheckedExtras(prev => { const s = new Set(prev); s.has(i) ? s.delete(i) : s.add(i); return s; })}
                           style={{
-                            background: checked ? '#F0FAFF' : r.recommended ? '#FFFBEB' : 'white',
-                            border: checked ? '2px solid #009FE3' : r.recommended ? '2px solid #F59E0B' : '2px solid #DDE8EE',
+                            background: checked ? '#F0FAFF' : 'white',
+                            border: checked ? '2px solid #009FE3' : '2px solid #DDE8EE',
                             padding: '16px 20px',
                             cursor: 'pointer',
                             display: 'flex',
