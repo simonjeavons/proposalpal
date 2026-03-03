@@ -17,6 +17,18 @@ interface UserProfile {
   email: string;
   job_title: string;
   phone_number: string;
+  team_member_id: string | null;
+}
+
+interface TeamMember {
+  id: string;
+  full_name: string;
+  job_title: string;
+  bio: string;
+  photo_url: string;
+  linkedin_url: string | null;
+  is_active: boolean;
+  sort_order: number;
 }
 
 interface ServiceType {
@@ -71,6 +83,7 @@ interface FormData {
   strategic_focus: string;
   whats_needed: string;
   working_together: string;
+  team_member_ids: string[];
   status: string;
 }
 
@@ -92,6 +105,7 @@ export default function ProposalEditor() {
   const [contractFileUrl, setContractFileUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [showImportOptions, setShowImportOptions] = useState(false);
@@ -127,12 +141,16 @@ export default function ProposalEditor() {
     strategic_focus: '',
     whats_needed: '',
     working_together: '',
+    team_member_ids: [],
     status: 'draft',
   });
 
   useEffect(() => {
-    supabase.from("profiles").select("id, full_name, email, job_title, phone_number").order("full_name").then(({ data }) => {
+    supabase.from("profiles").select("id, full_name, email, job_title, phone_number, team_member_id").order("full_name").then(({ data }) => {
       if (data) setUsers(data as UserProfile[]);
+    });
+    (supabase as any).from("team_members").select("id, full_name, job_title, bio, photo_url, linkedin_url, is_active, sort_order").eq("is_active", true).order("sort_order").then(({ data }: { data: TeamMember[] | null }) => {
+      if (data) setTeamMembers(data);
     });
     supabase.from("service_types" as any).select("id, name, sort_order, is_upfront, is_ongoing").order("sort_order").then(({ data }) => {
       if (data) setServiceTypes(data as ServiceType[]);
@@ -178,6 +196,7 @@ export default function ProposalEditor() {
             strategic_focus: (data as any).strategic_focus || '',
             whats_needed: (data as any).whats_needed || '',
             working_together: (data as any).working_together || '',
+            team_member_ids: ((data as any).team_member_ids as string[]) || [],
             status: data.status,
           });
           setSlug(data.slug);
@@ -344,6 +363,91 @@ export default function ProposalEditor() {
             <Field label="Proposal Date" value={form.proposal_date} onChange={v => updateField('proposal_date', v)} type="date" />
             <Field label="Valid Until" value={form.valid_until} onChange={v => updateField('valid_until', v)} type="date" />
           </Grid>
+        </Section>
+
+        {/* Project Team */}
+        <Section title="Project Team">
+          <p className="text-xs text-muted-foreground mb-4">The left card is always the proposal creator. Select up to three additional team members shown in the proposal.</p>
+          <div className="grid grid-cols-4 gap-3">
+            {/* Card 0: Lead — always the prepared_by user's team member */}
+            {(() => {
+              const preparedUser = users.find(u => u.id === form.prepared_by_user_id);
+              const leadMember = preparedUser?.team_member_id
+                ? teamMembers.find(tm => tm.id === preparedUser.team_member_id) ?? null
+                : null;
+              return (
+                <div className="border border-primary/30 bg-primary/5 overflow-hidden">
+                  <div className="w-full aspect-square bg-muted overflow-hidden">
+                    {leadMember?.photo_url ? (
+                      <img src={leadMember.photo_url} alt={leadMember.full_name} className="w-full h-full object-cover object-top" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs text-center p-2">
+                        {form.prepared_by_user_id ? 'No photo linked' : 'Select prepared by →'}
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2.5">
+                    <div className="text-xs font-bold text-foreground truncate">
+                      {leadMember?.full_name ?? (form.prepared_by ? form.prepared_by.split(',')[0] : '—')}
+                    </div>
+                    <div className="text-xs text-primary uppercase tracking-wide truncate mt-0.5">
+                      {leadMember?.job_title ?? ''}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground bg-primary/10 px-1.5 py-0.5 inline-block">Lead</div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Cards 1-3: selectable additional team members */}
+            {[0, 1, 2].map(slot => {
+              const selectedId = form.team_member_ids[slot] ?? '';
+              const selectedMember = teamMembers.find(tm => tm.id === selectedId);
+              // Already-selected IDs (other slots) to avoid duplicates in dropdown
+              const usedIds = new Set(form.team_member_ids.filter((_, i) => i !== slot));
+              const preparedUser = users.find(u => u.id === form.prepared_by_user_id);
+              if (preparedUser?.team_member_id) usedIds.add(preparedUser.team_member_id);
+
+              return (
+                <div key={slot} className="border border-border overflow-hidden">
+                  <div className="w-full aspect-square bg-muted overflow-hidden relative">
+                    {selectedMember?.photo_url ? (
+                      <img src={selectedMember.photo_url} alt={selectedMember.full_name} className="w-full h-full object-cover object-top" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                        <span className="text-3xl font-thin opacity-30">+</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2.5">
+                    {selectedMember && (
+                      <>
+                        <div className="text-xs font-bold text-foreground truncate mb-0.5">{selectedMember.full_name}</div>
+                        <div className="text-xs text-primary uppercase tracking-wide truncate mb-1.5">{selectedMember.job_title}</div>
+                      </>
+                    )}
+                    <select
+                      value={selectedId}
+                      onChange={e => {
+                        const updated = [...form.team_member_ids];
+                        while (updated.length <= slot) updated.push('');
+                        updated[slot] = e.target.value;
+                        // trim trailing empties
+                        while (updated.length > 0 && !updated[updated.length - 1]) updated.pop();
+                        updateField('team_member_ids', updated);
+                      }}
+                      className="w-full h-7 rounded border border-input bg-background px-2 text-xs"
+                    >
+                      <option value="">— select member —</option>
+                      {teamMembers.filter(tm => !usedIds.has(tm.id) || tm.id === selectedId).map(tm => (
+                        <option key={tm.id} value={tm.id}>{tm.full_name}, {tm.job_title}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </Section>
 
         {/* Client Details */}

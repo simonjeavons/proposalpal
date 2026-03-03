@@ -9,6 +9,11 @@ interface TemplateSection {
   body: string;
 }
 
+// Replace with a base64-encoded PNG data URI of Simon Jeavons' actual signature image.
+// e.g. 'data:image/png;base64,iVBORw0KGgo...'
+// When set, the image will appear in the Shoothill execution block of every contract.
+export const SIMON_SIGNATURE_URI = 'data:image/png;base64,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';
+
 export interface ServiceAgreementPDFProps {
   // Dynamic — from proposal + customer selections
   clientName: string;
@@ -27,6 +32,11 @@ export interface ServiceAgreementPDFProps {
   contactEmail: string;
   // Static — from chosen template
   templateSections: TemplateSection[];
+  // Signature data — passed at signing time to embed into execution block
+  clientSignerName?: string;
+  clientSignerTitle?: string;
+  clientSignatureUri?: string;
+  signingDate?: string;
 }
 
 const NAVY = '#043D5D';
@@ -224,6 +234,10 @@ export function ServiceAgreementPDF({
   contactName,
   contactEmail,
   templateSections,
+  clientSignerName,
+  clientSignerTitle,
+  clientSignatureUri,
+  signingDate,
 }: ServiceAgreementPDFProps) {
   const entityName = organisation || clientName;
 
@@ -362,20 +376,53 @@ export function ServiceAgreementPDF({
           <Text style={styles.sectionHeading}>Execution</Text>
         </View>
         <Text style={{ fontSize: 9, color: '#222222', marginBottom: 10 }}>
-          IN WITNESS WHEREOF the parties have signed this Agreement on {agreementDate}.
+          IN WITNESS WHEREOF the parties have signed this Agreement on {signingDate || agreementDate}.
         </Text>
         <View style={styles.execRow}>
+          {/* Shoothill side — always pre-filled */}
           <View style={styles.execCol}>
             <Text style={styles.execLabel}>For Shoothill Limited</Text>
-            <View style={styles.execLine}><Text style={styles.execLineLabel}>Authorised Signatory</Text></View>
-            <View style={styles.execLine}><Text style={styles.execLineLabel}>Print Name</Text></View>
-            <View style={styles.execLine}><Text style={styles.execLineLabel}>Date</Text></View>
+            {/* Signature image or electronic placeholder */}
+            <View style={{ backgroundColor: '#F4F7FA', borderWidth: 0.5, borderColor: '#DDE8EE', height: 52, marginBottom: 6, justifyContent: 'center', alignItems: 'center' }}>
+              {SIMON_SIGNATURE_URI ? (
+                <Image src={SIMON_SIGNATURE_URI} style={{ height: 44, width: 160 }} />
+              ) : (
+                <Text style={{ fontSize: 7, color: '#CCCCCC' }}>Electronic signature</Text>
+              )}
+            </View>
+            <View style={{ borderTopWidth: 0.5, borderTopColor: '#DDE8EE', paddingTop: 5 }}>
+              <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: NAVY, marginBottom: 2 }}>Simon Jeavons</Text>
+              <Text style={{ fontSize: 8, color: MID, marginBottom: 2 }}>Group Managing Director</Text>
+              <Text style={{ fontSize: 7, color: LIGHT }}>Shoothill Limited</Text>
+            </View>
           </View>
+          {/* Client side — filled at signing time */}
           <View style={styles.execCol}>
             <Text style={styles.execLabel}>For {entityName}</Text>
-            <View style={styles.execLine}><Text style={styles.execLineLabel}>Authorised Signatory</Text></View>
-            <View style={styles.execLine}><Text style={styles.execLineLabel}>Print Name</Text></View>
-            <View style={styles.execLine}><Text style={styles.execLineLabel}>Date</Text></View>
+            {clientSignatureUri ? (
+              <>
+                <View style={{ backgroundColor: '#F4F7FA', borderWidth: 0.5, borderColor: '#DDE8EE', height: 52, marginBottom: 6, justifyContent: 'center', alignItems: 'center' }}>
+                  <Image src={clientSignatureUri} style={{ height: 44, width: 160 }} />
+                </View>
+                <View style={{ borderTopWidth: 0.5, borderTopColor: '#DDE8EE', paddingTop: 5 }}>
+                  <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: NAVY, marginBottom: 2 }}>{clientSignerName}</Text>
+                  {clientSignerTitle ? (
+                    <Text style={{ fontSize: 8, color: MID, marginBottom: 2 }}>{clientSignerTitle}</Text>
+                  ) : null}
+                  <Text style={{ fontSize: 7, color: LIGHT }}>{entityName}</Text>
+                  {signingDate ? (
+                    <Text style={{ fontSize: 7, color: LIGHT, marginTop: 2 }}>{signingDate}</Text>
+                  ) : null}
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.execLine}><Text style={styles.execLineLabel}>Authorised Signatory</Text></View>
+                <View style={styles.execLine}><Text style={styles.execLineLabel}>Print Name</Text></View>
+                <View style={styles.execLine}><Text style={styles.execLineLabel}>Job Title</Text></View>
+                <View style={styles.execLine}><Text style={styles.execLineLabel}>Date</Text></View>
+              </>
+            )}
           </View>
         </View>
 
