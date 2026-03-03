@@ -325,7 +325,7 @@ export default function ProposalView() {
                         <h3 style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 5, lineHeight: 1.3 }}>{phase.title}</h3>
                         <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, background: '#009FE3', color: 'white', padding: '2px 8px', marginBottom: 10 }}>{phase.duration}</div>
                         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3, padding: 0, margin: 0 }}>
-                          {phase.tasks.map((t, j) => (
+                          {phase.tasks.filter(t => t.trim()).map((t, j) => (
                             <li key={j} style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', display: 'flex', gap: 6 }}>
                               <span style={{ color: '#009FE3', flexShrink: 0, fontWeight: 700 }}>›</span>{t}
                             </li>
@@ -351,7 +351,7 @@ export default function ProposalView() {
                         <h3 style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 5, lineHeight: 1.3 }}>{phase.title}</h3>
                         <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, background: '#009FE3', color: 'white', padding: '2px 8px', marginBottom: 10 }}>{phase.duration}</div>
                         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3, padding: 0, margin: 0 }}>
-                          {phase.tasks.map((t, j) => (
+                          {phase.tasks.filter(t => t.trim()).map((t, j) => (
                             <li key={j} style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', display: 'flex', gap: 6 }}>
                               <span style={{ color: '#009FE3', flexShrink: 0, fontWeight: 700 }}>›</span>{t}
                             </li>
