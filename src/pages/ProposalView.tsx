@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import type { Proposal, Challenge, Phase, RetainerOption, UpfrontItem } from "@/types/proposal";
+import type { Proposal, Challenge, Phase, RetainerOption, UpfrontItem, TeamMember } from "@/types/proposal";
 import { DEFAULT_LAUNCH_PHASE } from "@/types/proposal";
 
 const ShootHillMark = () => (
@@ -33,6 +33,7 @@ export default function ProposalView() {
   const [loading, setLoading] = useState(true);
   const [selectedStandard, setSelectedStandard] = useState(-1);
   const [checkedExtras, setCheckedExtras] = useState<Set<number>>(new Set());
+  const [teamCards, setTeamCards] = useState<TeamMember[]>([]);
 
   useEffect(() => {
     const fetchProposal = async () => {
@@ -43,19 +44,46 @@ export default function ProposalView() {
         .single();
 
       if (!error && data) {
-        setProposal({
+        const proposalData = {
           ...data,
           challenges: (data.challenges || []) as unknown as Challenge[],
           phases: (data.phases || []) as unknown as Phase[],
           retainer_options: (data.retainer_options || []) as unknown as RetainerOption[],
           launch_phase: ((data as any).launch_phase || { ...DEFAULT_LAUNCH_PHASE }),
-        } as Proposal);
+          team_member_ids: ((data as any).team_member_ids as string[]) || [],
+        } as Proposal;
+        setProposal(proposalData);
         const opts = ((data.retainer_options || []) as RetainerOption[]);
         const standards = opts.filter(r => r.option_type === 'standard');
         const defaultStdIdx = standards.findIndex(r => r.recommended);
-        setSelectedStandard(defaultStdIdx); // -1 if none recommended → nothing pre-selected
+        setSelectedStandard(defaultStdIdx);
         const extras = opts.filter(r => r.option_type === 'optional_extra');
         setCheckedExtras(new Set(extras.reduce<number[]>((acc, r, i) => r.recommended ? [...acc, i] : acc, [])));
+
+        // Load team members: lead from prepared_by_user's team_member_id, then additional from team_member_ids
+        const additionalIds: string[] = ((data as any).team_member_ids as string[]) || [];
+        const preparedByUserId: string = (data as any).prepared_by_user_id || '';
+
+        // Collect all IDs we need to fetch
+        let leadTeamMemberId: string | null = null;
+        if (preparedByUserId) {
+          const { data: profileData } = await supabase.from('profiles').select('team_member_id').eq('id', preparedByUserId).single();
+          leadTeamMemberId = (profileData as any)?.team_member_id ?? null;
+        }
+
+        const allIds = [...new Set([leadTeamMemberId, ...additionalIds].filter(Boolean))] as string[];
+        if (allIds.length > 0) {
+          const { data: membersData } = await (supabase as any).from('team_members').select('*').in('id', allIds);
+          if (membersData) {
+            const memberMap: Record<string, TeamMember> = {};
+            (membersData as TeamMember[]).forEach(m => { memberMap[m.id] = m; });
+            // Build ordered array: lead first, then additional in slot order
+            const ordered: TeamMember[] = [];
+            if (leadTeamMemberId && memberMap[leadTeamMemberId]) ordered.push(memberMap[leadTeamMemberId]);
+            additionalIds.forEach(id => { if (memberMap[id] && !ordered.find(m => m.id === id)) ordered.push(memberMap[id]); });
+            setTeamCards(ordered);
+          }
+        }
       }
       setLoading(false);
     };
@@ -547,24 +575,36 @@ export default function ProposalView() {
           </div>
           <div style={{ padding: '28px 32px' }}>
             <p style={{ color: '#3A6278', marginBottom: 22 }}>Our senior leadership team is personally involved in every engagement. Once your project begins, you'll be introduced to a dedicated Shoothill project manager who guides you through onboarding and delivery.</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2, background: '#DDE8EE' }}>
-              {[
-                { name: 'Simon Jeavons', role: 'Group Managing Director', bio: 'A Fellow of the Institute of Consulting with over 20 years of commercial operations expertise. Simon joined Shoothill in 2015 and was promoted to Group Managing Director in 2024, overseeing all aspects of the company and its subsidiary operations.', photo: 'https://shoothill.com/wp-content/uploads/2024/10/simon-bg.jpg' },
-                { name: 'Josh Welch', role: 'Head of Commercial Operations', bio: 'Josh joined Shoothill as an apprentice in 2016 and has grown to lead the Commercial team. Working closely alongside Simon, he focuses on business development, project management and cross-functional coordination. Your primary point of contact from proposal through to delivery.', photo: 'https://shoothill.com/wp-content/uploads/2024/09/josh-bg.jpg' },
-                { name: 'Mike Davis', role: 'Head of IT Services', bio: 'With over 20 years of IT services, procurement and project management experience across multiple industries, Mike has the breadth to integrate services effectively into any business environment and ensure smooth transitions with continued high-quality support.', photo: 'https://shoothill.com/wp-content/uploads/2024/09/mike-bg2.jpg' },
-                { name: 'Claire Critchell', role: 'Head of Marketing Services', bio: 'Claire brings over 20 years of experience in marketing, communications and project management. From brand strategy and campaign planning to content and digital, she works closely with clients to deliver creative, practical solutions aligned with their business objectives.', photo: 'https://shoothill.com/wp-content/uploads/2024/09/claire-bg.jpg' },
-              ].map((member, i) => (
-                <div key={member.name} className="scale-reveal" style={{ background: 'white', overflow: 'hidden', transitionDelay: `${i * 80}ms` }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(2, Math.min(4, teamCards.length))}, 1fr)`, gap: 2, background: '#DDE8EE' }}>
+              {teamCards.map((member, i) => (
+                <div key={member.id} className="scale-reveal" style={{ background: 'white', overflow: 'hidden', transitionDelay: `${i * 80}ms` }}>
                   <div style={{ width: '100%', aspectRatio: '1', overflow: 'hidden', background: '#043D5D' }}>
-                    <img style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block' }} src={member.photo} alt={member.name} />
+                    {member.photo_url ? (
+                      <img style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block' }} src={member.photo_url} alt={member.full_name} />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 40, fontWeight: 100 }}>
+                        {member.full_name.charAt(0)}
+                      </div>
+                    )}
                   </div>
                   <div style={{ padding: '18px 18px 20px' }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#043D5D', marginBottom: 1 }}>{member.name}</div>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 8 }}>{member.role}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#043D5D', marginBottom: 1 }}>{member.full_name}</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 8 }}>{member.job_title}</div>
                     <div style={{ fontSize: 12, color: '#3A6278', lineHeight: 1.6 }}>{member.bio}</div>
+                    {member.linkedin_url && (
+                      <a href={member.linkedin_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 10, fontSize: 10, fontWeight: 600, color: '#009FE3', textDecoration: 'none', letterSpacing: '.05em' }}>
+                        LinkedIn →
+                      </a>
+                    )}
                   </div>
                 </div>
               ))}
+              {/* Fallback if no team configured */}
+              {teamCards.length === 0 && (
+                <div style={{ background: 'white', padding: '32px 24px', gridColumn: '1/-1', color: '#AAAAAA', fontSize: 13 }}>
+                  Team members will appear here once configured in the proposal editor.
+                </div>
+              )}
             </div>
           </div>
         </div>

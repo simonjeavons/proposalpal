@@ -41,6 +41,17 @@ export const DEFAULT_LAUNCH_PHASE: LaunchPhase = {
   description: "Full rollout, partner and compliance sign-off, complete documentation and runbooks delivered.",
 };
 
+export interface TeamMember {
+  id: string;
+  full_name: string;
+  job_title: string;
+  bio: string;
+  photo_url: string;
+  linkedin_url: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
 export interface Proposal {
   id: string;
   slug: string;
@@ -73,6 +84,7 @@ export interface Proposal {
   strategic_focus?: string;
   whats_needed?: string;
   working_together?: string;
+  team_member_ids?: string[];
   created_at: string;
   updated_at: string;
 }

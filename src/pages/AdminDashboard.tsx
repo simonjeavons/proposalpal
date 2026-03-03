@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { Proposal } from "@/types/proposal";
-import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Target, Download, GitBranch, ShoppingBag, Scale } from "lucide-react";
+import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Target, Download, GitBranch, ShoppingBag, Scale, UserCircle2, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,18 @@ interface Profile {
   created_at: string;
 }
 
-type Tab = "proposals" | "users" | "items" | "phases" | "challenges" | "agreements";
+type Tab = "proposals" | "users" | "team" | "items" | "phases" | "challenges" | "agreements";
+
+interface TeamMember {
+  id: string;
+  full_name: string;
+  job_title: string;
+  bio: string;
+  photo_url: string;
+  linkedin_url: string;
+  sort_order: number;
+  is_active: boolean;
+}
 
 interface ServiceTypeChallenge {
   id: string | null;
@@ -95,6 +106,18 @@ export default function AdminDashboard() {
   const [inviting, setInviting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ full_name: "", job_title: "", phone_number: "" });
+
+  // Team members state
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [teamEditForm, setTeamEditForm] = useState<Omit<TeamMember, 'id' | 'sort_order'>>({
+    full_name: "", job_title: "", bio: "", photo_url: "", linkedin_url: "", is_active: true,
+  });
+  const [addingTeam, setAddingTeam] = useState(false);
+  const [newTeamForm, setNewTeamForm] = useState<Omit<TeamMember, 'id' | 'sort_order'>>({
+    full_name: "", job_title: "", bio: "", photo_url: "", linkedin_url: "", is_active: true,
+  });
 
   // Services state
   const [serviceTypes, setServiceTypes] = useState<ServiceTypeWithChallenges[]>([]);
@@ -404,6 +427,7 @@ export default function AdminDashboard() {
     fetchServiceTypes();
     fetchProducts();
     fetchAgreementTemplates();
+    fetchTeamMembers();
   }, []);
 
   const duplicateProposal = async (p: Proposal) => {
@@ -483,6 +507,67 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchTeamMembers = async () => {
+    setTeamLoading(true);
+    const { data } = await (supabase as any).from("team_members").select("*").order("sort_order");
+    setTeamMembers((data as TeamMember[]) || []);
+    setTeamLoading(false);
+  };
+
+  const startEditTeam = (member: TeamMember) => {
+    setEditingTeamId(member.id);
+    setTeamEditForm({
+      full_name: member.full_name,
+      job_title: member.job_title || "",
+      bio: member.bio || "",
+      photo_url: member.photo_url || "",
+      linkedin_url: member.linkedin_url || "",
+      is_active: member.is_active,
+    });
+  };
+
+  const saveTeamMember = async (id: string) => {
+    const { error } = await (supabase as any).from("team_members").update({
+      ...teamEditForm,
+      updated_at: new Date().toISOString(),
+    }).eq("id", id);
+    if (!error) {
+      toast.success("Team member updated");
+      setEditingTeamId(null);
+      fetchTeamMembers();
+    } else {
+      toast.error("Failed to update team member");
+    }
+  };
+
+  const deleteTeamMember = async (id: string) => {
+    if (!confirm("Delete this team member?")) return;
+    const { error } = await (supabase as any).from("team_members").delete().eq("id", id);
+    if (!error) {
+      setTeamMembers(prev => prev.filter(m => m.id !== id));
+      toast.success("Team member deleted");
+    } else {
+      toast.error("Failed to delete");
+    }
+  };
+
+  const addTeamMember = async () => {
+    if (!newTeamForm.full_name.trim()) return;
+    const nextOrder = teamMembers.length > 0 ? Math.max(...teamMembers.map(m => m.sort_order)) + 1 : 1;
+    const { data, error } = await (supabase as any).from("team_members").insert({
+      ...newTeamForm,
+      sort_order: nextOrder,
+    }).select().single();
+    if (!error && data) {
+      setTeamMembers(prev => [...prev, data as TeamMember]);
+      setNewTeamForm({ full_name: "", job_title: "", bio: "", photo_url: "", linkedin_url: "", is_active: true });
+      setAddingTeam(false);
+      toast.success("Team member added");
+    } else {
+      toast.error("Failed to add team member");
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'draft': return 'bg-muted text-muted-foreground';
@@ -544,6 +629,16 @@ export default function AdminDashboard() {
             }`}
           >
             <Users className="w-3.5 h-3.5" /> Users
+          </button>
+          <button
+            onClick={() => setActiveTab("team")}
+            className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+              activeTab === "team"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <UserCircle2 className="w-3.5 h-3.5" /> Team
           </button>
           <button
             onClick={() => setActiveTab("items")}
@@ -1286,6 +1381,156 @@ export default function AdminDashboard() {
                             <Pencil className="w-3.5 h-3.5" />
                           </Button>
                         )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Team Tab */}
+        {activeTab === "team" && (
+          <>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Team Members</h1>
+                <p className="text-sm text-muted-foreground">Manage the team members shown in proposals. Photos and bios are sourced from Shoothill.com.</p>
+              </div>
+              <Button
+                className="bg-primary text-primary-foreground gap-2 text-xs font-bold uppercase tracking-wide"
+                onClick={() => { setAddingTeam(true); setNewTeamForm({ full_name: "", job_title: "", bio: "", photo_url: "", linkedin_url: "", is_active: true }); }}
+              >
+                <Plus className="w-4 h-4" /> Add Member
+              </Button>
+            </div>
+
+            {/* Add new team member form */}
+            {addingTeam && (
+              <div className="bg-card border border-primary/30 rounded p-6 mb-6 space-y-4">
+                <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">New Team Member</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Full Name *</Label>
+                    <Input value={newTeamForm.full_name} onChange={e => setNewTeamForm(f => ({ ...f, full_name: e.target.value }))} placeholder="e.g. Jane Smith" className="h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Job Title</Label>
+                    <Input value={newTeamForm.job_title} onChange={e => setNewTeamForm(f => ({ ...f, job_title: e.target.value }))} placeholder="e.g. Head of Development" className="h-8 text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Photo URL</Label>
+                  <Input value={newTeamForm.photo_url} onChange={e => setNewTeamForm(f => ({ ...f, photo_url: e.target.value }))} placeholder="https://shoothill.com/wp-content/uploads/..." className="h-8 text-sm font-mono" />
+                </div>
+                <div>
+                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">LinkedIn URL</Label>
+                  <Input value={newTeamForm.linkedin_url} onChange={e => setNewTeamForm(f => ({ ...f, linkedin_url: e.target.value }))} placeholder="https://www.linkedin.com/in/..." className="h-8 text-sm font-mono" />
+                </div>
+                <div>
+                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Bio</Label>
+                  <Textarea value={newTeamForm.bio} onChange={e => setNewTeamForm(f => ({ ...f, bio: e.target.value }))} rows={4} className="text-sm" placeholder="Client-facing bio for proposal display…" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button className="bg-primary text-primary-foreground text-xs h-8" onClick={addTeamMember}>Add Member</Button>
+                  <Button variant="ghost" className="text-xs h-8" onClick={() => setAddingTeam(false)}>Cancel</Button>
+                </div>
+              </div>
+            )}
+
+            {teamLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {teamMembers.map(member => {
+                  const isEditing = editingTeamId === member.id;
+                  return (
+                    <div key={member.id} className={`bg-card border rounded p-0 overflow-hidden ${!member.is_active ? 'opacity-50' : ''}`}>
+                      <div className="flex items-start gap-0">
+                        {/* Photo column */}
+                        <div className="w-24 h-24 flex-shrink-0 bg-muted overflow-hidden">
+                          {member.photo_url ? (
+                            <img src={member.photo_url} alt={member.full_name} className="w-full h-full object-cover object-top" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                              <UserCircle2 className="w-10 h-10" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Content column */}
+                        <div className="flex-1 p-4 min-w-0">
+                          {isEditing ? (
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-xs text-muted-foreground mb-1 block">Full Name</Label>
+                                  <Input value={teamEditForm.full_name} onChange={e => setTeamEditForm(f => ({ ...f, full_name: e.target.value }))} className="h-7 text-xs" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-muted-foreground mb-1 block">Job Title</Label>
+                                  <Input value={teamEditForm.job_title} onChange={e => setTeamEditForm(f => ({ ...f, job_title: e.target.value }))} className="h-7 text-xs" />
+                                </div>
+                              </div>
+                              <div>
+                                <Label className="text-xs text-muted-foreground mb-1 block">Photo URL</Label>
+                                <Input value={teamEditForm.photo_url} onChange={e => setTeamEditForm(f => ({ ...f, photo_url: e.target.value }))} className="h-7 text-xs font-mono" placeholder="https://shoothill.com/…" />
+                              </div>
+                              <div>
+                                <Label className="text-xs text-muted-foreground mb-1 block">LinkedIn URL</Label>
+                                <Input value={teamEditForm.linkedin_url} onChange={e => setTeamEditForm(f => ({ ...f, linkedin_url: e.target.value }))} className="h-7 text-xs font-mono" placeholder="https://linkedin.com/in/…" />
+                              </div>
+                              <div>
+                                <Label className="text-xs text-muted-foreground mb-1 block">Bio</Label>
+                                <Textarea value={teamEditForm.bio} onChange={e => setTeamEditForm(f => ({ ...f, bio: e.target.value }))} rows={4} className="text-xs" />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                                  <input type="checkbox" checked={teamEditForm.is_active} onChange={e => setTeamEditForm(f => ({ ...f, is_active: e.target.checked }))} className="w-3 h-3" />
+                                  Active (shown in proposal picker)
+                                </label>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button size="sm" className="h-7 text-xs bg-primary text-primary-foreground" onClick={() => saveTeamMember(member.id)}>
+                                  <Check className="w-3 h-3 mr-1" /> Save
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditingTeamId(null)}>Cancel</Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <div>
+                                  <span className="font-bold text-sm text-foreground">{member.full_name}</span>
+                                  {!member.is_active && <span className="ml-2 text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Inactive</span>}
+                                  <div className="text-xs font-semibold text-primary uppercase tracking-wider mt-0.5">{member.job_title}</div>
+                                </div>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  {member.linkedin_url && (
+                                    <a href={member.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary" title="LinkedIn">
+                                      <LinkIcon className="w-3.5 h-3.5" />
+                                    </a>
+                                  )}
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary" onClick={() => startEditTeam(member)} title="Edit">
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={() => deleteTeamMember(member.id)} title="Delete">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{member.bio || <span className="italic opacity-50">No bio yet</span>}</p>
+                              {member.photo_url && (
+                                <div className="mt-2">
+                                  <span className="text-xs font-mono text-muted-foreground/60 truncate block">{member.photo_url}</span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );

@@ -100,104 +100,226 @@ function SignatureCanvas({ onSave }: { onSave: (dataUrl: string | null) => void 
   );
 }
 
-// Accepts Uint8Array bytes directly instead of fetching from a URL.
-async function appendSignaturePage(
+// DocuSign-style electronic signature certificate page.
+// Shows both parties' signatures side-by-side with audit trail and document metadata.
+async function appendCertificatePage(
   sourcePdfBytes: Uint8Array,
-  signatureDataUrl: string,
-  signerName: string,
-  signerTitle: string,
-  clientName: string,
+  clientSignatureDataUrl: string,
+  clientSignerName: string,
+  clientSignerTitle: string,
+  clientEntityName: string,
+  shootHillSignatureDataUrl: string | null,
   signedAt: Date,
+  documentTitle: string,
+  referenceId: string,
 ): Promise<Uint8Array> {
   const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
 
   const pdfDoc = await PDFDocument.load(sourcePdfBytes);
-
-  // Embed signature image
-  const sigBase64 = signatureDataUrl.split(',')[1];
-  const sigBytes = Uint8Array.from(atob(sigBase64), c => c.charCodeAt(0));
-  const sigImage = await pdfDoc.embedPng(sigBytes);
-
   const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  // Embed client signature (PNG from canvas)
+  const clientSigBase64 = clientSignatureDataUrl.split(',')[1];
+  const clientSigBytes = Uint8Array.from(atob(clientSigBase64), c => c.charCodeAt(0));
+  const clientSigImage = await pdfDoc.embedPng(clientSigBytes);
+
+  // Embed Simon's signature if provided
+  let shootHillSigImage: Awaited<ReturnType<typeof pdfDoc.embedPng>> | null = null;
+  if (shootHillSignatureDataUrl) {
+    try {
+      const shBase64 = shootHillSignatureDataUrl.split(',')[1];
+      const shBytes = Uint8Array.from(atob(shBase64), c => c.charCodeAt(0));
+      shootHillSigImage = await pdfDoc.embedPng(shBytes);
+    } catch { /* ignore embed errors */ }
+  }
 
   // A4 page
   const page = pdfDoc.addPage([595, 842]);
   const { width, height } = page.getSize();
 
-  const navy = rgb(4 / 255, 61 / 255, 93 / 255);    // #043D5D
-  const blue = rgb(0 / 255, 159 / 255, 227 / 255);  // #009FE3
-  const mid = rgb(58 / 255, 98 / 255, 120 / 255);   // #3A6278
-  const light = rgb(170 / 255, 170 / 255, 170 / 255); // #AAAAAA
-  const bg = rgb(244 / 255, 247 / 255, 250 / 255);  // #F4F7FA
+  // Colours
+  const navy  = rgb(4/255,   61/255,  93/255);   // #043D5D
+  const blue  = rgb(0/255,  159/255, 227/255);   // #009FE3
+  const mid   = rgb(58/255,  98/255, 120/255);   // #3A6278
+  const light = rgb(170/255,170/255, 170/255);   // #AAAAAA
+  const bg    = rgb(244/255,247/255, 250/255);   // #F4F7FA
+  const lbg   = rgb(235/255,245/255, 251/255);   // light blue tint
+  const white = rgb(1, 1, 1);
+  const green = rgb(0/255, 155/255,  85/255);
 
-  // Header bar
+  // ── HEADER ─────────────────────────────────────────────────────────────────
   page.drawRectangle({ x: 0, y: height - 70, width, height: 70, color: navy });
-  page.drawText('Accepted & Signed', {
-    x: 36, y: height - 42,
-    size: 18, font: helveticaBold, color: rgb(1, 1, 1),
+  page.drawText('Electronic Signature Certificate', {
+    x: 36, y: height - 40, size: 16, font: helveticaBold, color: white,
   });
   page.drawText('Shoothill Proposal Manager', {
-    x: 36, y: height - 60,
-    size: 9, font: helvetica, color: rgb(0.6, 0.7, 0.75),
+    x: 36, y: height - 58, size: 9, font: helvetica, color: rgb(0.6, 0.7, 0.75),
   });
-
-  // Blue accent line
+  // Blue accent stripe
   page.drawRectangle({ x: 0, y: height - 73, width, height: 3, color: blue });
 
-  let y = height - 110;
-
-  // "Signed for" label
-  page.drawText('SIGNED FOR', { x: 36, y, size: 8, font: helveticaBold, color: light });
-  y -= 18;
-  page.drawText(clientName, { x: 36, y, size: 14, font: helveticaBold, color: navy });
-  y -= 14;
-
-  // Date/time
   const dateStr = signedAt.toLocaleString('en-GB', {
     day: 'numeric', month: 'long', year: 'numeric',
     hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
   });
-  page.drawText(dateStr, { x: 36, y, size: 10, font: helvetica, color: mid });
-  y -= 36;
 
-  // Divider
-  page.drawLine({ start: { x: 36, y }, end: { x: width - 36, y }, thickness: 0.5, color: rgb(0.87, 0.91, 0.93) });
-  y -= 36;
+  // ── DOCUMENT DETAILS BOX ───────────────────────────────────────────────────
+  let y = height - 97;
+  const detailsH = 108;
+  const boxX = 36;
+  const boxW = width - 72;
 
-  // Signature box background
-  const sigBoxHeight = 140;
-  const sigBoxWidth = width - 72;
-  page.drawRectangle({ x: 36, y: y - sigBoxHeight, width: sigBoxWidth, height: sigBoxHeight, color: bg });
-  page.drawRectangle({ x: 36, y: y - sigBoxHeight, width: sigBoxWidth, height: sigBoxHeight, borderColor: rgb(0.87, 0.91, 0.93), borderWidth: 1 });
+  page.drawRectangle({ x: boxX, y: y - detailsH, width: boxW, height: detailsH, color: lbg });
+  page.drawRectangle({ x: boxX, y: y - detailsH, width: boxW, height: detailsH, borderColor: rgb(0.87, 0.91, 0.93), borderWidth: 0.5 });
 
-  // Fit signature image inside the box with padding
-  const pad = 12;
-  const maxSigW = sigBoxWidth - pad * 2;
-  const maxSigH = sigBoxHeight - pad * 2;
-  const sigDims = sigImage.scaleToFit(maxSigW, maxSigH);
-  page.drawImage(sigImage, {
-    x: 36 + pad,
-    y: y - sigBoxHeight + (sigBoxHeight - sigDims.height) / 2,
-    width: sigDims.width,
-    height: sigDims.height,
+  const c1 = boxX + 12;
+  const c2 = boxX + boxW / 2 + 6;
+
+  y -= 16;
+  page.drawText('DOCUMENT', { x: c1, y, size: 7, font: helveticaBold, color: light });
+  page.drawText('REFERENCE', { x: c2, y, size: 7, font: helveticaBold, color: light });
+  y -= 14;
+  const titleTrunc = documentTitle.length > 44 ? documentTitle.slice(0, 44) + '…' : documentTitle;
+  page.drawText(titleTrunc, { x: c1, y, size: 9, font: helveticaBold, color: navy });
+  page.drawText(referenceId, { x: c2, y, size: 9, font: helveticaBold, color: navy });
+
+  y -= 20;
+  page.drawText('PARTIES', { x: c1, y, size: 7, font: helveticaBold, color: light });
+  page.drawText('DATE & TIME SIGNED', { x: c2, y, size: 7, font: helveticaBold, color: light });
+  y -= 14;
+  const partiesText = `Shoothill Limited  ·  ${clientEntityName}`;
+  page.drawText(partiesText.length > 50 ? partiesText.slice(0, 50) + '…' : partiesText, { x: c1, y, size: 9, font: helvetica, color: navy });
+  page.drawText(dateStr, { x: c2, y, size: 9, font: helvetica, color: navy });
+
+  y -= 20;
+  // "Completed" status badge
+  page.drawRectangle({ x: c1, y: y - 3, width: 76, height: 15, color: rgb(0.88, 0.98, 0.92) });
+  page.drawText('✓  COMPLETED', { x: c1 + 5, y: y + 1, size: 7.5, font: helveticaBold, color: green });
+
+  // ── SIGNATURES HEADING ─────────────────────────────────────────────────────
+  y = height - 97 - detailsH - 24;
+  page.drawText('SIGNATURES', { x: 36, y, size: 8, font: helveticaBold, color: navy });
+  page.drawLine({ start: { x: 36, y: y - 5 }, end: { x: width - 36, y: y - 5 }, thickness: 0.5, color: rgb(0.87, 0.91, 0.93) });
+  y -= 18;
+
+  // ── TWO SIGNATURE BOXES ────────────────────────────────────────────────────
+  const colW = (boxW - 12) / 2;
+  const sigBoxH = 175;
+  const lColX = 36;
+  const rColX = 36 + colW + 12;
+  const sigAreaH = 72;
+  const sigAreaW = colW - 24;
+  const boxBottomY = y - sigBoxH;
+
+  // Box backgrounds + borders
+  for (const bx of [lColX, rColX]) {
+    page.drawRectangle({ x: bx, y: boxBottomY, width: colW, height: sigBoxH, color: bg });
+    page.drawRectangle({ x: bx, y: boxBottomY, width: colW, height: sigBoxH, borderColor: rgb(0.87, 0.91, 0.93), borderWidth: 0.5 });
+  }
+
+  // ── LEFT BOX: Shoothill ────────────────────────────────────────────────────
+  const li = lColX + 12;
+  let ly = y - 14;
+  page.drawText('FOR SHOOTHILL LIMITED', { x: li, y: ly, size: 7, font: helveticaBold, color: light });
+  // Blue accent top border
+  page.drawLine({ start: { x: lColX, y: y }, end: { x: lColX + colW, y: y }, thickness: 2.5, color: blue });
+
+  ly -= 14;
+  // Signature area
+  page.drawRectangle({ x: li, y: ly - sigAreaH, width: sigAreaW, height: sigAreaH, color: white });
+  page.drawRectangle({ x: li, y: ly - sigAreaH, width: sigAreaW, height: sigAreaH, borderColor: rgb(0.87, 0.91, 0.93), borderWidth: 0.5 });
+  if (shootHillSigImage) {
+    const d = shootHillSigImage.scaleToFit(sigAreaW - 8, sigAreaH - 8);
+    page.drawImage(shootHillSigImage, {
+      x: li + (sigAreaW - d.width) / 2,
+      y: ly - sigAreaH + (sigAreaH - d.height) / 2,
+      width: d.width, height: d.height,
+    });
+  } else {
+    page.drawText('Signed electronically', {
+      x: li + 6, y: ly - sigAreaH / 2 - 3,
+      size: 7.5, font: helvetica, color: rgb(0.75, 0.75, 0.75),
+    });
+  }
+
+  ly -= sigAreaH + 10;
+  page.drawLine({ start: { x: li, y: ly }, end: { x: li + sigAreaW, y: ly }, thickness: 0.5, color: rgb(0.87, 0.91, 0.93) });
+  ly -= 12;
+  page.drawText('Simon Jeavons', { x: li, y: ly, size: 10, font: helveticaBold, color: navy });
+  ly -= 14;
+  page.drawText('Group Managing Director', { x: li, y: ly, size: 8, font: helvetica, color: mid });
+  ly -= 12;
+  page.drawText('Shoothill Limited', { x: li, y: ly, size: 8, font: helvetica, color: light });
+  ly -= 11;
+  page.drawText(dateStr, { x: li, y: ly, size: 7, font: helvetica, color: light });
+
+  // ── RIGHT BOX: Client ──────────────────────────────────────────────────────
+  const ri = rColX + 12;
+  const clientLabel = `FOR ${clientEntityName.toUpperCase()}`;
+  const clientLabelTrunc = clientLabel.length > 34 ? clientLabel.slice(0, 34) + '…' : clientLabel;
+  let ry = y - 14;
+  page.drawText(clientLabelTrunc, { x: ri, y: ry, size: 7, font: helveticaBold, color: light });
+  page.drawLine({ start: { x: rColX, y: y }, end: { x: rColX + colW, y: y }, thickness: 2.5, color: blue });
+
+  ry -= 14;
+  // Client signature image
+  page.drawRectangle({ x: ri, y: ry - sigAreaH, width: sigAreaW, height: sigAreaH, color: white });
+  page.drawRectangle({ x: ri, y: ry - sigAreaH, width: sigAreaW, height: sigAreaH, borderColor: rgb(0.87, 0.91, 0.93), borderWidth: 0.5 });
+  const cd = clientSigImage.scaleToFit(sigAreaW - 8, sigAreaH - 8);
+  page.drawImage(clientSigImage, {
+    x: ri + (sigAreaW - cd.width) / 2,
+    y: ry - sigAreaH + (sigAreaH - cd.height) / 2,
+    width: cd.width, height: cd.height,
   });
 
-  y -= sigBoxHeight + 20;
+  ry -= sigAreaH + 10;
+  page.drawLine({ start: { x: ri, y: ry }, end: { x: ri + sigAreaW, y: ry }, thickness: 0.5, color: rgb(0.87, 0.91, 0.93) });
+  ry -= 12;
+  page.drawText(clientSignerName, { x: ri, y: ry, size: 10, font: helveticaBold, color: navy });
+  ry -= 14;
+  if (clientSignerTitle) {
+    page.drawText(clientSignerTitle, { x: ri, y: ry, size: 8, font: helvetica, color: mid });
+    ry -= 12;
+  }
+  const entityTrunc = clientEntityName.length > 38 ? clientEntityName.slice(0, 38) + '…' : clientEntityName;
+  page.drawText(entityTrunc, { x: ri, y: ry, size: 8, font: helvetica, color: light });
+  ry -= 11;
+  page.drawText(dateStr, { x: ri, y: ry, size: 7, font: helvetica, color: light });
 
-  // Name and title
-  page.drawText(signerName, { x: 36, y, size: 14, font: helveticaBold, color: navy });
+  // ── AUDIT TRAIL ────────────────────────────────────────────────────────────
+  y = boxBottomY - 22;
+  page.drawText('AUDIT TRAIL', { x: 36, y, size: 8, font: helveticaBold, color: navy });
+  page.drawLine({ start: { x: 36, y: y - 5 }, end: { x: width - 36, y: y - 5 }, thickness: 0.5, color: rgb(0.87, 0.91, 0.93) });
   y -= 18;
-  if (signerTitle) {
-    page.drawText(signerTitle, { x: 36, y, size: 10, font: helvetica, color: mid });
+
+  const auditItems = [
+    `Proposal prepared by Shoothill Limited for ${clientEntityName}`,
+    `Proposal sent to ${clientEntityName}`,
+    `Service agreement viewed by ${clientEntityName}`,
+    `Agreement signed by ${clientSignerName}${clientSignerTitle ? `, ${clientSignerTitle}` : ''} — ${dateStr}`,
+    `Signature certificate generated — Reference: ${referenceId}`,
+  ];
+
+  for (const item of auditItems) {
+    page.drawRectangle({ x: 36, y: y - 2, width: 8, height: 8, color: rgb(0.88, 0.98, 0.92) });
+    page.drawText('✓', { x: 37.5, y: y - 1, size: 6, font: helveticaBold, color: green });
+    const itemTrunc = item.length > 90 ? item.slice(0, 90) + '…' : item;
+    page.drawText(itemTrunc, { x: 50, y, size: 8, font: helvetica, color: mid });
     y -= 14;
   }
 
-  // Footer
-  page.drawLine({ start: { x: 36, y: 56 }, end: { x: width - 36, y: 56 }, thickness: 0.5, color: rgb(0.87, 0.91, 0.93) });
-  page.drawText('This document was accepted electronically via Shoothill Proposal Manager.', {
-    x: 36, y: 40, size: 8, font: helvetica, color: light,
-  });
+  // ── FOOTER ─────────────────────────────────────────────────────────────────
+  page.drawLine({ start: { x: 36, y: 58 }, end: { x: width - 36, y: 58 }, thickness: 0.5, color: rgb(0.87, 0.91, 0.93) });
+  page.drawText(
+    'This certificate confirms that the above-named parties have electronically executed the Service Agreement via Shoothill Proposal Manager.',
+    { x: 36, y: 46, size: 7, font: helvetica, color: light },
+  );
+  page.drawText(
+    'Shoothill Limited · Company No. 05885234 · Willow House East, Shrewsbury Business Park, Shrewsbury, England, SY2 6LG',
+    { x: 36, y: 35, size: 7, font: helvetica, color: light },
+  );
+  page.drawText(referenceId, { x: width - 36 - 90, y: 40, size: 7, font: helveticaBold, color: light });
 
   return pdfDoc.save();
 }
@@ -372,28 +494,76 @@ export default function ProposalAccept() {
     if (!canSubmit) return;
 
     let signedContractUrl: string | null = null;
+    const signedAt = new Date();
+    const signingDateStr = signedAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const referenceId = `SH-${proposal.slug.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)}-${Date.now().toString(36).toUpperCase()}`;
 
     setSubmitState('signing');
     try {
+      // Always import these — dynamic imports are module-cached so no wasted cost
+      const [{ pdf }, { ServiceAgreementPDF, SIMON_SIGNATURE_URI }] = await Promise.all([
+        import('@react-pdf/renderer'),
+        import('../components/ServiceAgreementPDF'),
+      ]);
+
       let pdfBytes: Uint8Array | null = null;
 
       if (contractFileUrl) {
-        // Manual override PDF: fetch from storage proxy
+        // Manual override PDF: fetch from storage proxy, then append certificate
         const response = await fetch(`/contracts/${contractFileUrl}`);
         pdfBytes = new Uint8Array(await response.arrayBuffer());
-      } else if (generatedPdfBytesRef.current) {
-        // Auto-generated PDF already in memory
-        pdfBytes = generatedPdfBytesRef.current;
+      } else {
+        // Regenerate the PDF with both signatures embedded in the execution block
+        const stdOpts = proposal.retainer_options.filter(r => r.option_type === 'standard');
+        const optExtras = proposal.retainer_options.filter(r => r.option_type === 'optional_extra');
+        const selStandard = stdOpts[standardIndex] || null;
+        const selExtras = selectedExtrasIndices.map(i => optExtras[i]).filter(Boolean);
+        const upfrontAmt = Number(proposal.upfront_total);
+        const stdPrice = selStandard ? (selStandard.quantity ?? 1) * selStandard.price : 0;
+        const extrasPrice = selExtras.reduce((sum, r) => sum + (r.quantity ?? 1) * r.price, 0);
+        const monthlyAmt = stdPrice + extrasPrice;
+        const firstYrTotal = upfrontAmt + monthlyAmt * 12;
+
+        const signedProps = {
+          clientName: proposal.client_name,
+          organisation: proposal.organisation || '',
+          programmeTitle: proposal.programme_title,
+          agreementDate: signingDateStr,
+          phases: proposal.phases || [],
+          upfrontItems: (proposal as any).upfront_items || [],
+          selectedStandard: selStandard,
+          selectedExtras: selExtras,
+          upfrontTotal: upfrontAmt,
+          monthlyTotal: monthlyAmt,
+          firstYearTotal: firstYrTotal,
+          paymentTerms: (proposal as any).payment_terms || '',
+          contactName: proposal.contact_name || '',
+          contactEmail: proposal.contact_email || '',
+          templateSections,
+          // Embed signatures directly into the execution block of the PDF
+          clientSignerName: signerName,
+          clientSignerTitle: signerTitle,
+          clientSignatureUri: signatureData!,
+          signingDate: signingDateStr,
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const blob = await pdf(React.createElement(ServiceAgreementPDF as any, signedProps)).toBlob();
+        pdfBytes = new Uint8Array(await blob.arrayBuffer());
+        generatedPdfBytesRef.current = pdfBytes;
       }
 
       if (pdfBytes) {
-        const signedBytes = await appendSignaturePage(
+        const finalBytes = await appendCertificatePage(
           pdfBytes,
           signatureData!,
           signerName,
           signerTitle,
           proposal.organisation || proposal.client_name,
-          new Date(),
+          SIMON_SIGNATURE_URI || null,
+          signedAt,
+          proposal.programme_title,
+          referenceId,
         );
         const baseName = contractFileUrl
           ? contractFileUrl.replace(/\.[^.]+$/, '')
@@ -401,7 +571,7 @@ export default function ProposalAccept() {
         const signedPath = `${baseName}-signed-${Date.now()}.pdf`;
         const { error: uploadError } = await supabase.storage
           .from('contracts')
-          .upload(signedPath, new Blob([signedBytes], { type: 'application/pdf' }));
+          .upload(signedPath, new Blob([finalBytes], { type: 'application/pdf' }));
         if (!uploadError) signedContractUrl = signedPath;
       }
     } catch (err) {
