@@ -74,6 +74,9 @@ export default function ProposalView() {
               const ordered: TeamMember[] = [];
               if (leadTeamMemberId && memberMap[leadTeamMemberId]) ordered.push(memberMap[leadTeamMemberId]);
               additionalIds.forEach(id => { if (memberMap[id] && !ordered.find(m => m.id === id)) ordered.push(memberMap[id]); });
+              // Simon Jeavons (MD) always first if present — most senior
+              const simonIdx = ordered.findIndex(m => m.full_name === 'Simon Jeavons');
+              if (simonIdx > 0) { ordered.unshift(ordered.splice(simonIdx, 1)[0]); }
               setTeamCards(ordered);
             }
           }
