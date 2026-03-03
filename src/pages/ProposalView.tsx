@@ -31,7 +31,7 @@ export default function ProposalView() {
   const navigate = useNavigate();
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedStandard, setSelectedStandard] = useState(0);
+  const [selectedStandard, setSelectedStandard] = useState(-1);
   const [checkedExtras, setCheckedExtras] = useState<Set<number>>(new Set());
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export default function ProposalView() {
         const opts = ((data.retainer_options || []) as RetainerOption[]);
         const standards = opts.filter(r => r.option_type === 'standard');
         const defaultStdIdx = standards.findIndex(r => r.recommended);
-        setSelectedStandard(defaultStdIdx >= 0 ? defaultStdIdx : 0);
+        setSelectedStandard(defaultStdIdx); // -1 if none recommended → nothing pre-selected
         const extras = opts.filter(r => r.option_type === 'optional_extra');
         setCheckedExtras(new Set(extras.reduce<number[]>((acc, r, i) => r.recommended ? [...acc, i] : acc, [])));
       }
@@ -392,13 +392,13 @@ export default function ProposalView() {
                     {standardOptions.map((r, i) => (
                       <div
                         key={i}
-                        onClick={() => setSelectedStandard(i)}
+                        onClick={() => setSelectedStandard(prev => prev === i ? -1 : i)}
                         style={{
                           background: selectedStandard === i ? '#F0FAFF' : 'white',
                           padding: '22px 18px',
                           cursor: 'pointer',
                           transition: 'background .2s',
-                          border: selectedStandard === i ? '2px solid #009FE3' : r.recommended ? '2px solid #F59E0B' : '2px solid transparent',
+                          border: selectedStandard === i ? '2px solid #009FE3' : '2px solid transparent',
                           position: 'relative' as const,
                           overflow: 'hidden' as const,
                         }}
