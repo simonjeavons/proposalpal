@@ -887,29 +887,30 @@ export default function ProposalView() {
         </div>
       </section>
 
-      {/* CONTACT */}
-      <section id="contact" style={{ background: '#043D5D', padding: '64px 0', position: 'relative', overflow: 'hidden' }}>
+      {/* FOOTER */}
+      <section id="contact" style={{ background: '#043D5D', padding: '52px 0 40px', position: 'relative', overflow: 'hidden' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 20px' : '0 56px', position: 'relative', zIndex: 1 }}>
           <div className="scroll-reveal" style={{ display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1 }}>
-            <img style={{ height: 28, marginBottom: 20, filter: 'brightness(0) invert(1)', width: 'fit-content' }} src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg" alt="Shoothill" />
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.4)', letterSpacing: '.06em', marginBottom: 36 }}>Award-winning, full-service digital technology experts</div>
-            <h2 style={{ fontSize: 'clamp(26px, 3vw, 44px)', fontWeight: 800, color: 'white', letterSpacing: '-.03em', marginBottom: 22, lineHeight: 1.1 }}>Any questions then<br />get in touch!</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {proposal.contact_email && <a href={`mailto:${proposal.contact_email}`} style={{ fontSize: 15, color: 'rgba(255,255,255,.65)', textDecoration: 'none' }}>{proposal.contact_email}</a>}
-              {proposal.contact_phone && <a href={`tel:${proposal.contact_phone.replace(/\s/g, '')}`} style={{ fontSize: 15, color: 'rgba(255,255,255,.65)', textDecoration: 'none' }}>{proposal.contact_phone}</a>}
-              {proposal.contact_mobile && <a href={`tel:${proposal.contact_mobile.replace(/\s/g, '')}`} style={{ fontSize: 15, color: 'rgba(255,255,255,.65)', textDecoration: 'none' }}>{proposal.contact_mobile}</a>}
-            </div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.25)', marginTop: 40 }}>
-              <strong style={{ display: 'block', color: 'rgba(255,255,255,.35)', marginBottom: 3 }}>{formatDate(proposal.proposal_date)} &nbsp;·&nbsp; Classification: Customer</strong>
-              Shoothill Ltd · Registered in England &amp; Wales · Confidential{proposal.organisation ? `, prepared for ${proposal.organisation}` : ''}
-            </div>
-            <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,.08)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-              <img src="https://arh-group.co.uk/wp-content/uploads/2025/07/ShoothillMadeThisWork-darktbg.svg" alt="Shoothill Made This Work" style={{ height: 28, flexShrink: 0 }} />
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', lineHeight: 1.6 }}>
-                This proposal was created using the Shoothill Proposal Manager, built by the Shoothill software development team.{' '}
-                <a href="mailto:webenquiry@shoothill.com" style={{ color: 'rgba(255,255,255,.5)', textDecoration: 'underline' }}>Contact us</a> if you'd like to use it in your business.
+
+            {/* Promo blurb */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', paddingBottom: 32, borderBottom: '1px solid rgba(255,255,255,.1)' }}>
+              <img src="https://arh-group.co.uk/wp-content/uploads/2025/07/ShoothillMadeThisWork-darktbg.svg" alt="Shoothill Made This Work" style={{ height: 36, flexShrink: 0 }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.55)', lineHeight: 1.6 }}>
+                This proposal was created using the Shoothill Proposal Manager, built by our in-house software development team.{' '}
+                <a href="mailto:webenquiry@shoothill.com" style={{ color: 'rgba(255,255,255,.75)', textDecoration: 'underline' }}>Contact us</a> if you'd like to use it in your business.
               </span>
             </div>
+
+            {/* Legal footer */}
+            <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', margin: 0 }}>
+                {formatDate(proposal.proposal_date)} &nbsp;·&nbsp; Classification: Customer{proposal.organisation ? ` · Prepared for ${proposal.organisation}` : ''}
+              </p>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,.22)', margin: 0 }}>
+                Shoothill<sup>®</sup> is a registered trademark owned by Shoothill Ltd. Shoothill Ltd is a company registered in England &amp; Wales (company no. 5885234). Registered office: Willow House East, Shrewsbury Business Park, Shrewsbury SY2&nbsp;6LG.
+              </p>
+            </div>
+
           </div>
           <ShootHillMark />
         </div>
