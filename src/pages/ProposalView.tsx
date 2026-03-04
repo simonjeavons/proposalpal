@@ -163,7 +163,7 @@ export default function ProposalView() {
   const ownerPhone = proposal.contact_mobile || proposal.contact_phone || '';
 
   return (
-    <div style={{ background: '#F4F7FA', color: '#1A2E3B', fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.7 }}>
+    <div className="print-bg-white" style={{ background: '#F4F7FA', color: '#1A2E3B', fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.7 }}>
       {/* COVER */}
       <div style={{ background: '#043D5D', minHeight: 360, position: 'relative', overflow: 'hidden', animation: 'fadeUp .6s ease both' }}>
         <div style={{ padding: isMobile ? '28px 20px' : '52px 56px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 32, position: 'relative', zIndex: 1, minHeight: 360 }}>
@@ -202,7 +202,7 @@ export default function ProposalView() {
 
       {/* ABOUT */}
       <section id="about" style={{ background: 'white', borderBottom: '1px solid #DDE8EE' }}>
-        <div className="scroll-reveal" style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '32px 20px' : '52px 48px', display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1fr 1fr', gap: isTablet ? 32 : 72, alignItems: 'center' }}>
+        <div className="scroll-reveal print-compact" style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '32px 20px' : '52px 48px', display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1fr 1fr', gap: isTablet ? 32 : 72, alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <span style={{ width: 24, height: 2, background: '#009FE3', display: 'block' }} />About Shoothill
@@ -235,8 +235,8 @@ export default function ProposalView() {
       </section>
 
       {/* SIMON QUOTE */}
-      <section style={{ background: '#F4F7FA', borderBottom: '1px solid #DDE8EE' }}>
-        <div className="scroll-reveal" style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '32px 20px' : '56px 48px', display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1fr 280px', gap: isTablet ? 24 : 64, alignItems: 'center' }}>
+      <section className="print-bg-white" style={{ background: '#F4F7FA', borderBottom: '1px solid #DDE8EE' }}>
+        <div className="scroll-reveal print-compact" style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '32px 20px' : '56px 48px', display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1fr 280px', gap: isTablet ? 24 : 64, alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: 80, fontWeight: 900, color: '#009FE3', opacity: .2, lineHeight: .8, marginBottom: 6, fontFamily: 'Georgia, serif' }}>"</div>
             <div style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', lineHeight: 1.55, letterSpacing: '-.01em', marginBottom: 20 }}>
@@ -297,7 +297,7 @@ export default function ProposalView() {
               return clientFields.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 22 }}>
                   {clientFields.map(s => (
-                    <div key={s.label} style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '16px 20px' }}>
+                    <div key={s.label} className="print-bg-white" style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '16px 20px' }}>
                       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 3 }}>{s.label}</div>
                       <div style={{ fontSize: 15, fontWeight: 700, color: '#043D5D' }}>{s.value}</div>
                     </div>
@@ -308,7 +308,7 @@ export default function ProposalView() {
             {proposal.challenge_intro && <p style={{ color: '#3A6278', marginBottom: 18 }}>{proposal.challenge_intro}</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {proposal.challenges.map((c, i) => (
-                <div key={i} className="scroll-reveal" style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '14px 16px', borderLeft: '3px solid #DDE8EE', background: '#F4F7FA', transitionDelay: `${i * 60}ms` }}>
+                <div key={i} className="scroll-reveal print-bg-white" style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '14px 16px', borderLeft: '3px solid #DDE8EE', background: '#F4F7FA', transitionDelay: `${i * 60}ms` }}>
                   <div style={{ width: 10, height: 10, background: '#009FE3', flexShrink: 0, borderRadius: '50%', marginTop: 6 }} />
                   <div>
                     <strong style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#043D5D', marginBottom: 1 }}>{c.title}</strong>
@@ -507,8 +507,8 @@ export default function ProposalView() {
                             : <div style={{ fontSize: 10, color: '#DDE8EE', marginTop: 3 }}>Date TBC</div>
                           }
                         </div>
-                        {/* Gantt track + bar — hidden on mobile */}
-                        <div style={{ position: 'relative', height: 36, display: isMobile ? 'none' : undefined }}>
+                        {/* Gantt track + bar — hidden on mobile and in print */}
+                        <div className="no-print" style={{ position: 'relative', height: 36, display: isMobile ? 'none' : undefined }}>
                           {/* Track */}
                           <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 8, background: '#F4F7FA', border: '1px solid #DDE8EE', transform: 'translateY(-50%)', borderRadius: 2 }} />
                           {/* Bar */}
@@ -806,8 +806,8 @@ export default function ProposalView() {
       </div>
 
       {/* TESTIMONIALS */}
-      <section id="testimonials" style={{ background: '#F4F7FA', borderBottom: '1px solid #DDE8EE' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '32px 20px' : '52px 48px' }}>
+      <section id="testimonials" className="print-bg-white" style={{ background: '#F4F7FA', borderBottom: '1px solid #DDE8EE' }}>
+        <div className="print-compact" style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '32px 20px' : '52px 48px' }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <span style={{ width: 24, height: 2, background: '#009FE3', display: 'block' }} />What Our Clients Say
           </div>
