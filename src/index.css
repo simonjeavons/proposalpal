@@ -162,9 +162,12 @@
   }
 
   /* Force scroll-reveal elements fully visible regardless of scroll position */
+  /* AND prevent them from splitting across pages */
   .scroll-reveal, .scale-reveal {
     opacity: 1 !important;
     transform: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   /* Hide UI chrome that makes no sense on paper */
@@ -177,14 +180,26 @@
     position: static !important;
   }
 
-  /* Avoid splitting cards and section boxes across pages */
-  .print-avoid {
-    break-inside: avoid;
-    page-break-inside: avoid;
+  /* Keep headings with the content that follows them */
+  h1, h2, h3, h4 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Start each major section on a new page */
+  section {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* …except the very first one (About) which follows the cover */
+  section:first-of-type {
+    break-before: auto;
+    page-break-before: auto;
   }
 
   /* Give some breathing room at the page edges */
   @page {
-    margin: 12mm 10mm;
+    margin: 14mm 12mm;
   }
 }
