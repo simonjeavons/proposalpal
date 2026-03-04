@@ -21,8 +21,7 @@ interface Profile {
   created_at: string;
 }
 
-type Tab = "proposals" | "users" | "team" | "items" | "phases" | "challenges" | "agreements";
-type ItemsSubTab = "service-types" | "solutions";
+type Tab = "proposals" | "users" | "team" | "solutions" | "services" | "agreements";
 
 interface TeamMember {
   id: string;
@@ -50,6 +49,11 @@ interface ServiceTypeWithChallenges {
   is_upfront: boolean;
   is_ongoing: boolean;
   challenges: ServiceTypeChallenge[];
+  partnership_overview_template: string;
+  commercial_opportunity_template: string;
+  strategic_focus_template: string;
+  whats_needed_template: string;
+  working_together_template: string;
 }
 
 interface Product {
@@ -128,15 +132,10 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
 
-  // Items tab state
-  const [itemsSubTab, setItemsSubTab] = useState<ItemsSubTab>("service-types");
-  const [newItemName, setNewItemName] = useState("");
-
-  // Challenges tab state
-  const [selectedServiceForChallenges, setSelectedServiceForChallenges] = useState<string>("");
-
-  // Journey Phases state
-  const [selectedServiceForPhases, setSelectedServiceForPhases] = useState<string>("");
+  // Services tab state - two-level navigation
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [newServiceName, setNewServiceName] = useState("");
+  const [newSolutionName, setNewSolutionName] = useState("");
   const [templatePhases, setTemplatePhases] = useState<TemplatePhase[]>([]);
   const [phasesLoading, setPhasesLoading] = useState(false);
 
@@ -146,7 +145,7 @@ export default function AdminDashboard() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
 
   const fetchServiceTypes = async () => {
-    const { data: types } = await supabase.from("service_types" as any).select("id, name, sort_order, is_upfront, is_ongoing").order("sort_order");
+    const { data: types } = await supabase.from("service_types" as any).select("id, name, sort_order, is_upfront, is_ongoing, partnership_overview_template, commercial_opportunity_template, strategic_focus_template, whats_needed_template, working_together_template").order("sort_order");
     if (!types) { setServicesLoading(false); return; }
     const { data: challenges } = await supabase.from("service_type_challenges" as any).select("id, service_type_id, title, description, sort_order").order("sort_order");
     const challengeMap: Record<string, ServiceTypeChallenge[]> = {};
@@ -154,7 +153,15 @@ export default function AdminDashboard() {
       if (!challengeMap[c.service_type_id]) challengeMap[c.service_type_id] = [];
       challengeMap[c.service_type_id].push(c);
     });
-    setServiceTypes((types as any[]).map(t => ({ ...t, challenges: challengeMap[t.id] || [] })));
+    setServiceTypes((types as any[]).map(t => ({
+      ...t,
+      challenges: challengeMap[t.id] || [],
+      partnership_overview_template: t.partnership_overview_template || '',
+      commercial_opportunity_template: t.commercial_opportunity_template || '',
+      strategic_focus_template: t.strategic_focus_template || '',
+      whats_needed_template: t.whats_needed_template || '',
+      working_together_template: t.working_together_template || '',
+    })));
     setServicesLoading(false);
   };
 
@@ -167,8 +174,17 @@ export default function AdminDashboard() {
     setServiceTypes(prev => prev.map(s => s.id === id ? { ...s, name } : s));
   };
 
+  const saveServiceTemplate = async (id: string, field: string, value: string) => {
+    const { error } = await supabase.from("service_types" as any).update({ [field]: value }).eq("id", id);
+    if (error) toast.error("Failed to save");
+  };
+
+  const updateServiceTemplate = (id: string, field: string, value: string) => {
+    setServiceTypes(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
+  };
+
   const deleteServiceType = async (id: string) => {
-    if (!confirm("Delete this service type and all its template challenges?")) return;
+    if (!confirm("Delete this service and all its phases and challenges?")) return;
     const { error } = await supabase.from("service_types" as any).delete().eq("id", id);
     if (!error) {
       setServiceTypes(prev => prev.filter(s => s.id !== id));
@@ -305,27 +321,29 @@ export default function AdminDashboard() {
     }));
   };
 
-  const addItem = async () => {
-    const name = newItemName.trim();
+  const addServiceType = async () => {
+    const name = newServiceName.trim();
     if (!name) return;
-    if (itemsSubTab === 'solutions') {
-      const nextOrder = products.length > 0 ? Math.max(...products.map(p => p.sort_order)) + 1 : 1;
-      const { data, error } = await supabase.from("products" as any).insert({ name, default_price: 0, sort_order: nextOrder }).select().single();
-      if (!error && data) {
-        setProducts(prev => [...prev, data as Product]);
-        setNewItemName("");
-      } else {
-        toast.error("Failed to add solution");
-      }
+    const nextOrder = serviceTypes.length > 0 ? Math.max(...serviceTypes.map(s => s.sort_order)) + 1 : 1;
+    const { data, error } = await supabase.from("service_types" as any).insert({ name, sort_order: nextOrder }).select().single();
+    if (!error && data) {
+      setServiceTypes(prev => [...prev, { ...(data as any), challenges: [], partnership_overview_template: '', commercial_opportunity_template: '', strategic_focus_template: '', whats_needed_template: '', working_together_template: '' }]);
+      setNewServiceName("");
     } else {
-      const nextOrder = serviceTypes.length > 0 ? Math.max(...serviceTypes.map(s => s.sort_order)) + 1 : 1;
-      const { data, error } = await supabase.from("service_types" as any).insert({ name, sort_order: nextOrder }).select().single();
-      if (!error && data) {
-        setServiceTypes(prev => [...prev, { ...(data as any), challenges: [] }]);
-        setNewItemName("");
-      } else {
-        toast.error("Failed to add service type");
-      }
+      toast.error("Failed to add service");
+    }
+  };
+
+  const addSolution = async () => {
+    const name = newSolutionName.trim();
+    if (!name) return;
+    const nextOrder = products.length > 0 ? Math.max(...products.map(p => p.sort_order)) + 1 : 1;
+    const { data, error } = await supabase.from("products" as any).insert({ name, default_price: 0, sort_order: nextOrder }).select().single();
+    if (!error && data) {
+      setProducts(prev => [...prev, data as Product]);
+      setNewSolutionName("");
+    } else {
+      toast.error("Failed to add solution");
     }
   };
 
@@ -343,11 +361,11 @@ export default function AdminDashboard() {
   };
 
   const addTemplatePhase = async () => {
-    if (!selectedServiceForPhases) return;
+    if (!selectedServiceId) return;
     const nextOrder = templatePhases.length;
     const nextLabel = `Phase ${templatePhases.length + 1}`;
     const { data, error } = await supabase.from("template_phases" as any)
-      .insert({ service_type_id: selectedServiceForPhases, label: nextLabel, title: '', duration: '', tasks: [], price: '', sort_order: nextOrder })
+      .insert({ service_type_id: selectedServiceId, label: nextLabel, title: '', duration: '', tasks: [], price: '', sort_order: nextOrder })
       .select().single();
     if (!error && data) {
       setTemplatePhases(prev => [...prev, { ...(data as any), tasks: [] }]);
@@ -614,9 +632,7 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab("proposals")}
             className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === "proposals"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+              activeTab === "proposals" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             <FileText className="w-3.5 h-3.5" /> Proposals
@@ -624,9 +640,7 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab("users")}
             className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === "users"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+              activeTab === "users" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             <Users className="w-3.5 h-3.5" /> Users
@@ -634,49 +648,31 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab("team")}
             className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === "team"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+              activeTab === "team" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             <UserCircle2 className="w-3.5 h-3.5" /> Team
           </button>
           <button
-            onClick={() => setActiveTab("items")}
+            onClick={() => { setActiveTab("services"); setSelectedServiceId(null); }}
             className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === "items"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+              activeTab === "services" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            <ShoppingBag className="w-3.5 h-3.5" /> Items
+            <Target className="w-3.5 h-3.5" /> Services
           </button>
           <button
-            onClick={() => setActiveTab("phases")}
+            onClick={() => setActiveTab("solutions")}
             className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === "phases"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+              activeTab === "solutions" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            <GitBranch className="w-3.5 h-3.5" /> Journey Phases
-          </button>
-          <button
-            onClick={() => setActiveTab("challenges")}
-            className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === "challenges"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Target className="w-3.5 h-3.5" /> Challenges
+            <ShoppingBag className="w-3.5 h-3.5" /> Solutions
           </button>
           <button
             onClick={() => setActiveTab("agreements")}
             className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === "agreements"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+              activeTab === "agreements" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             <Scale className="w-3.5 h-3.5" /> Agreements
@@ -763,46 +759,118 @@ export default function AdminDashboard() {
           </>
         )}
 
-        {/* Items Tab */}
-        {activeTab === "items" && (
+        {/* SOLUTIONS TAB */}
+        {activeTab === "solutions" && (
           <>
-            <div className="mb-6">
-              <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Items</h1>
-              <p className="text-sm text-muted-foreground">Manage proposal types and sellable solutions.</p>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Solutions</h1>
+                <p className="text-sm text-muted-foreground">Products and services you sell. These appear as selectable items in the proposal editor.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={newSolutionName}
+                  onChange={e => setNewSolutionName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addSolution(); }}
+                  placeholder="New solution…"
+                  className="h-8 text-sm w-48"
+                />
+                <Button
+                  onClick={addSolution}
+                  disabled={!newSolutionName.trim()}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold uppercase tracking-wide h-8"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add
+                </Button>
+              </div>
             </div>
-
-            {/* Sub-tabs */}
-            <div className="flex gap-0 border-b border-border mb-6">
-              <button
-                onClick={() => { setItemsSubTab("service-types"); setNewItemName(""); }}
-                className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${itemsSubTab === "service-types" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-              >
-                Service Types
-              </button>
-              <button
-                onClick={() => { setItemsSubTab("solutions"); setNewItemName(""); }}
-                className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${itemsSubTab === "solutions" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-              >
-                Solutions
-              </button>
-            </div>
-
-            {/* Service Types sub-tab */}
-            {itemsSubTab === "service-types" && (
-              <>
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-sm text-muted-foreground">These appear in the proposal <strong>Type</strong> dropdown. Selecting <strong>Marketing Services</strong> unlocks additional marketing-specific fields in the proposal editor.</p>
-                  <div className="flex items-center gap-2 ml-6 flex-shrink-0">
+            {productsLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : products.length === 0 ? (
+              <div className="bg-card border border-border p-12 text-center">
+                <p className="text-muted-foreground">No solutions yet. Add one above.</p>
+              </div>
+            ) : (
+              <div className="bg-card border border-border divide-y divide-border">
+                {products.map((p, idx) => (
+                  <div key={`product-${idx}`} className="px-6 py-4 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <Input
+                        value={p.name}
+                        onChange={e => updateProductField(idx, 'name', e.target.value)}
+                        onBlur={() => saveProduct(idx)}
+                        className="h-8 text-sm font-semibold flex-1"
+                        placeholder="Solution name"
+                      />
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-sm text-muted-foreground">£</span>
+                        <Input
+                          type="number"
+                          value={p.default_price}
+                          onChange={e => updateProductField(idx, 'default_price', Number(e.target.value) || 0)}
+                          onBlur={() => saveProduct(idx)}
+                          className="h-8 text-sm w-28"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div className="flex items-center gap-4 flex-shrink-0">
+                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                          <input type="checkbox" checked={!!p.is_upfront} className="w-3.5 h-3.5"
+                            onChange={e => { updateProductField(idx, 'is_upfront', e.target.checked); saveProduct(idx); }} />
+                          <span className="text-xs text-muted-foreground">Upfront</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                          <input type="checkbox" checked={!!p.is_ongoing} className="w-3.5 h-3.5"
+                            onChange={e => { updateProductField(idx, 'is_ongoing', e.target.checked); saveProduct(idx); }} />
+                          <span className="text-xs text-muted-foreground">Ongoing</span>
+                        </label>
+                      </div>
+                      <Button
+                        variant="ghost" size="sm"
+                        className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
+                        onClick={() => deleteProduct(idx)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                     <Input
-                      value={newItemName}
-                      onChange={e => setNewItemName(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { addItem(); } }}
-                      placeholder="New service type…"
+                      value={p.description || ''}
+                      onChange={e => updateProductField(idx, 'description', e.target.value)}
+                      onBlur={() => saveProduct(idx)}
+                      className="h-7 text-xs text-muted-foreground"
+                      placeholder="Description — auto-fills in proposal when this solution is selected"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* SERVICES TAB */}
+        {activeTab === "services" && (
+          <>
+            {!selectedServiceId ? (
+              /* SERVICE LIST VIEW */
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Services</h1>
+                    <p className="text-sm text-muted-foreground">Click a service to configure its challenges, journey phases, and boilerplate content.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={newServiceName}
+                      onChange={e => setNewServiceName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') addServiceType(); }}
+                      placeholder="New service…"
                       className="h-8 text-sm w-48"
                     />
                     <Button
-                      onClick={addItem}
-                      disabled={!newItemName.trim()}
+                      onClick={addServiceType}
+                      disabled={!newServiceName.trim()}
                       className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold uppercase tracking-wide h-8"
                     >
                       <Plus className="w-3.5 h-3.5" /> Add
@@ -815,27 +883,30 @@ export default function AdminDashboard() {
                   </div>
                 ) : serviceTypes.length === 0 ? (
                   <div className="bg-card border border-border p-12 text-center">
-                    <p className="text-muted-foreground">No service types yet. Add one above.</p>
+                    <p className="text-muted-foreground">No services yet. Add one above.</p>
                   </div>
                 ) : (
                   <div className="bg-card border border-border divide-y divide-border">
                     {serviceTypes.map(st => (
                       <div key={st.id} className="px-6 py-3 flex items-center gap-3">
-                        {st.name.toLowerCase().includes('marketing') && (
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded flex-shrink-0">+ Extra fields</span>
-                        )}
-                        <Input
-                          value={st.name}
-                          onChange={e => updateServiceTypeName(st.id, e.target.value)}
-                          onBlur={e => saveServiceTypeName(st.id, e.target.value)}
-                          className="h-8 text-sm font-semibold flex-1"
-                          placeholder="Service type name"
-                        />
+                        <button
+                          onClick={() => {
+                            setSelectedServiceId(st.id);
+                            fetchTemplatePhases(st.id);
+                          }}
+                          className="flex-1 text-left text-sm font-semibold text-foreground hover:text-primary transition-colors"
+                        >
+                          {st.name}
+                          {st.name.toLowerCase().includes('marketing') && (
+                            <span className="ml-2 text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded">+ Extra fields</span>
+                          )}
+                        </button>
+                        <span className="text-xs text-muted-foreground">{st.challenges.length} challenge{st.challenges.length !== 1 ? 's' : ''}</span>
                         <Button
                           variant="ghost" size="sm"
                           className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
                           onClick={() => deleteServiceType(st.id)}
-                          title="Delete service type"
+                          title="Delete service"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
@@ -844,297 +915,215 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </>
-            )}
-
-            {/* Solutions sub-tab */}
-            {itemsSubTab === "solutions" && (
-              <>
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-sm text-muted-foreground">Products and services you sell. These appear as selectable items in the proposal editor. The description auto-fills in proposals when selected.</p>
-                  <div className="flex items-center gap-2 ml-6 flex-shrink-0">
-                    <Input
-                      value={newItemName}
-                      onChange={e => setNewItemName(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { addItem(); } }}
-                      placeholder="New solution…"
-                      className="h-8 text-sm w-48"
-                    />
-                    <Button
-                      onClick={addItem}
-                      disabled={!newItemName.trim()}
-                      className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold uppercase tracking-wide h-8"
+            ) : (() => {
+              /* SERVICE DETAIL VIEW */
+              const st = serviceTypes.find(s => s.id === selectedServiceId);
+              if (!st) return null;
+              const isMarketing = st.name.toLowerCase().includes('marketing');
+              return (
+                <>
+                  <div className="flex items-center gap-3 mb-6">
+                    <button
+                      onClick={() => setSelectedServiceId(null)}
+                      className="text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors"
                     >
-                      <Plus className="w-3.5 h-3.5" /> Add
-                    </Button>
+                      ← Services
+                    </button>
+                    <span className="text-muted-foreground/40">/</span>
+                    <Input
+                      value={st.name}
+                      onChange={e => updateServiceTypeName(st.id, e.target.value)}
+                      onBlur={e => saveServiceTypeName(st.id, e.target.value)}
+                      className="h-8 text-sm font-extrabold flex-1 max-w-sm"
+                    />
                   </div>
-                </div>
-                {productsLoading ? (
-                  <div className="flex items-center justify-center py-20">
-                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+
+                  {/* Your Business & Our Partnership boilerplate */}
+                  <div className="bg-card border border-border p-5 mb-4 space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Your Business &amp; Our Partnership — Default Boilerplate</Label>
+                    <p className="text-xs text-muted-foreground">This text auto-fills the "Your Business &amp; Our Partnership" field when this service is selected in a new proposal.</p>
+                    <Textarea
+                      value={st.partnership_overview_template}
+                      onChange={e => updateServiceTemplate(st.id, 'partnership_overview_template', e.target.value)}
+                      onBlur={e => saveServiceTemplate(st.id, 'partnership_overview_template', e.target.value)}
+                      rows={4}
+                      placeholder="Enter boilerplate text for this service's business &amp; partnership overview…"
+                      className="text-sm"
+                    />
                   </div>
-                ) : products.length === 0 ? (
-                  <div className="bg-card border border-border p-12 text-center">
-                    <p className="text-muted-foreground">No solutions yet. Add one above.</p>
-                  </div>
-                ) : (
-                  <div className="bg-card border border-border divide-y divide-border">
-                    {products.map((p, idx) => (
-                      <div key={`product-${idx}`} className="px-6 py-4 space-y-2">
-                        <div className="flex items-center gap-3">
-                          <Input
-                            value={p.name}
-                            onChange={e => updateProductField(idx, 'name', e.target.value)}
-                            onBlur={() => saveProduct(idx)}
-                            className="h-8 text-sm font-semibold flex-1"
-                            placeholder="Solution name"
-                          />
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            <span className="text-sm text-muted-foreground">£</span>
+
+                  {/* Marketing-specific template fields */}
+                  {isMarketing && (
+                    <div className="bg-card border border-border p-5 mb-4 space-y-4">
+                      <div>
+                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Commercial Opportunity — Default Boilerplate</Label>
+                        <Textarea
+                          value={st.commercial_opportunity_template}
+                          onChange={e => updateServiceTemplate(st.id, 'commercial_opportunity_template', e.target.value)}
+                          onBlur={e => saveServiceTemplate(st.id, 'commercial_opportunity_template', e.target.value)}
+                          rows={3}
+                          placeholder="Default commercial opportunity text…"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Strategic Focus — Default Boilerplate</Label>
+                        <Textarea
+                          value={st.strategic_focus_template}
+                          onChange={e => updateServiceTemplate(st.id, 'strategic_focus_template', e.target.value)}
+                          onBlur={e => saveServiceTemplate(st.id, 'strategic_focus_template', e.target.value)}
+                          rows={3}
+                          placeholder="Default strategic focus text…"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">What's Needed — Default Boilerplate</Label>
+                        <Textarea
+                          value={st.whats_needed_template}
+                          onChange={e => updateServiceTemplate(st.id, 'whats_needed_template', e.target.value)}
+                          onBlur={e => saveServiceTemplate(st.id, 'whats_needed_template', e.target.value)}
+                          rows={3}
+                          placeholder="Default what's needed text…"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Working Together — Default Boilerplate</Label>
+                        <Textarea
+                          value={st.working_together_template}
+                          onChange={e => updateServiceTemplate(st.id, 'working_together_template', e.target.value)}
+                          onBlur={e => saveServiceTemplate(st.id, 'working_together_template', e.target.value)}
+                          rows={3}
+                          placeholder="Default working together text…"
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Challenges section */}
+                  <div className="mb-6">
+                    <h2 className="text-base font-extrabold text-foreground mb-3">Challenges</h2>
+                    <div className="space-y-2">
+                      {st.challenges.length === 0 && (
+                        <div className="bg-card border border-border p-6 text-center">
+                          <p className="text-muted-foreground text-sm">No challenges yet. Add one below.</p>
+                        </div>
+                      )}
+                      {st.challenges.map((c, idx) => (
+                        <div key={idx} className="flex gap-3 items-start bg-card border border-border p-4">
+                          <div className="flex-1 grid grid-cols-2 gap-3">
                             <Input
-                              type="number"
-                              value={p.default_price}
-                              onChange={e => updateProductField(idx, 'default_price', Number(e.target.value) || 0)}
-                              onBlur={() => saveProduct(idx)}
-                              className="h-8 text-sm w-28"
-                              placeholder="0.00"
+                              placeholder="Challenge title"
+                              value={c.title}
+                              onChange={e => updateChallengeField(st.id, idx, 'title', e.target.value)}
+                              onBlur={() => saveChallenge(st.id, idx)}
+                              className="text-sm font-semibold h-8"
                             />
-                          </div>
-                          <div className="flex items-center gap-4 flex-shrink-0">
-                            <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                              <input type="checkbox" checked={p.is_upfront} className="w-3.5 h-3.5"
-                                onChange={e => { updateProductField(idx, 'is_upfront', e.target.checked); saveProduct(idx); }} />
-                              <span className="text-xs text-muted-foreground">Upfront</span>
-                            </label>
-                            <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                              <input type="checkbox" checked={p.is_ongoing} className="w-3.5 h-3.5"
-                                onChange={e => { updateProductField(idx, 'is_ongoing', e.target.checked); saveProduct(idx); }} />
-                              <span className="text-xs text-muted-foreground">Ongoing</span>
-                            </label>
+                            <Input
+                              placeholder="Description"
+                              value={c.description}
+                              onChange={e => updateChallengeField(st.id, idx, 'description', e.target.value)}
+                              onBlur={() => saveChallenge(st.id, idx)}
+                              className="text-sm h-8"
+                            />
                           </div>
                           <Button
                             variant="ghost" size="sm"
                             className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
-                            onClick={() => deleteProduct(idx)}
+                            onClick={() => deleteChallenge(st.id, idx)}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
-                        <Input
-                          value={p.description || ''}
-                          onChange={e => updateProductField(idx, 'description', e.target.value)}
-                          onBlur={() => saveProduct(idx)}
-                          className="h-7 text-xs text-muted-foreground"
-                          placeholder="Description — auto-fills in proposal when this solution is selected"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </>
-        )}
-
-        {/* Journey Phases Tab */}
-        {activeTab === "phases" && (
-          <>
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Journey Phases</h1>
-                <p className="text-sm text-muted-foreground">Define template phases per service type to import into proposals.</p>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 block">Service Type</Label>
-              <select
-                value={selectedServiceForPhases}
-                onChange={e => {
-                  setSelectedServiceForPhases(e.target.value);
-                  if (e.target.value) fetchTemplatePhases(e.target.value);
-                  else setTemplatePhases([]);
-                }}
-                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm w-72"
-              >
-                <option value="">Select a service type…</option>
-                {serviceTypes.map(st => (
-                  <option key={st.id} value={st.id}>{st.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {!selectedServiceForPhases ? (
-              <div className="bg-card border border-border p-12 text-center">
-                <p className="text-muted-foreground">Select a service type above to manage its template phases.</p>
-              </div>
-            ) : phasesLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {templatePhases.length === 0 && (
-                  <div className="bg-card border border-border p-8 text-center">
-                    <p className="text-muted-foreground text-sm">No template phases yet. Add one below.</p>
-                  </div>
-                )}
-                {templatePhases.map((p, idx) => (
-                  <div key={idx} className="bg-card border border-border p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-primary uppercase tracking-wider">{p.label || `Phase ${idx + 1}`}</span>
+                      ))}
                       <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
-                        onClick={() => deleteTemplatePhase(idx)}
-                        title="Delete phase"
+                        variant="outline"
+                        className="w-full gap-2 text-xs font-bold uppercase tracking-wide"
+                        onClick={() => addChallenge(st.id)}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Plus className="w-4 h-4" /> Add Challenge
                       </Button>
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Label</Label>
-                        <Input
-                          placeholder="Phase 1"
-                          value={p.label}
-                          onChange={e => updateTemplatePhaseField(idx, 'label', e.target.value)}
-                          onBlur={() => saveTemplatePhase(idx)}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Title</Label>
-                        <Input
-                          placeholder="Discovery & Audit"
-                          value={p.title}
-                          onChange={e => updateTemplatePhaseField(idx, 'title', e.target.value)}
-                          onBlur={() => saveTemplatePhase(idx)}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Duration</Label>
-                        <Input
-                          placeholder="2 wks"
-                          value={p.duration}
-                          onChange={e => updateTemplatePhaseField(idx, 'duration', e.target.value)}
-                          onBlur={() => saveTemplatePhase(idx)}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-[1fr_auto] gap-3 items-start">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tasks (one per line)</Label>
-                        <Textarea
-                          placeholder={"Task one\nTask two\nTask three"}
-                          value={p.tasks.join('\n')}
-                          onChange={e => updateTemplatePhaseField(idx, 'tasks', e.target.value.split('\n'))}
-                          onBlur={() => saveTemplatePhase(idx)}
-                          rows={3}
-                          className="text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Price (£)</Label>
-                        <Input
-                          placeholder="4500"
-                          value={p.price}
-                          onChange={e => updateTemplatePhaseField(idx, 'price', e.target.value)}
-                          onBlur={() => saveTemplatePhase(idx)}
-                          className="h-8 text-sm w-28"
-                        />
-                      </div>
-                    </div>
                   </div>
-                ))}
-                <Button
-                  variant="outline"
-                  className="w-full gap-2 text-xs font-bold uppercase tracking-wide"
-                  onClick={addTemplatePhase}
-                >
-                  <Plus className="w-4 h-4" /> Add Phase
-                </Button>
-              </div>
-            )}
-          </>
-        )}
 
-        {/* Challenges Tab */}
-        {activeTab === "challenges" && (
-          <>
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Challenges</h1>
-                <p className="text-sm text-muted-foreground">Define template challenges per service type to import into proposals.</p>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 block">Service Type</Label>
-              <select
-                value={selectedServiceForChallenges}
-                onChange={e => setSelectedServiceForChallenges(e.target.value)}
-                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm w-72"
-              >
-                <option value="">Select a service type…</option>
-                {serviceTypes.map(st => (
-                  <option key={st.id} value={st.id}>{st.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {!selectedServiceForChallenges ? (
-              <div className="bg-card border border-border p-12 text-center">
-                <p className="text-muted-foreground">Select a service type above to manage its template challenges.</p>
-              </div>
-            ) : (() => {
-              const selectedST = serviceTypes.find(s => s.id === selectedServiceForChallenges);
-              if (!selectedST) return null;
-              return (
-                <div className="space-y-2">
-                  {selectedST.challenges.length === 0 && (
-                    <div className="bg-card border border-border p-8 text-center">
-                      <p className="text-muted-foreground text-sm">No challenges yet. Add one below.</p>
-                    </div>
-                  )}
-                  {selectedST.challenges.map((c, idx) => (
-                    <div key={idx} className="flex gap-3 items-start bg-card border border-border p-4">
-                      <div className="flex-1 grid grid-cols-2 gap-3">
-                        <Input
-                          placeholder="Challenge title"
-                          value={c.title}
-                          onChange={e => updateChallengeField(selectedST.id, idx, 'title', e.target.value)}
-                          onBlur={() => saveChallenge(selectedST.id, idx)}
-                          className="text-sm font-semibold h-8"
-                        />
-                        <Input
-                          placeholder="Description"
-                          value={c.description}
-                          onChange={e => updateChallengeField(selectedST.id, idx, 'description', e.target.value)}
-                          onBlur={() => saveChallenge(selectedST.id, idx)}
-                          className="text-sm h-8"
-                        />
+                  {/* Journey Phases section */}
+                  <div>
+                    <h2 className="text-base font-extrabold text-foreground mb-3">Journey Phases</h2>
+                    {phasesLoading ? (
+                      <div className="flex items-center justify-center py-10">
+                        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
-                        onClick={() => deleteChallenge(selectedST.id, idx)}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  ))}
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2 text-xs font-bold uppercase tracking-wide"
-                    onClick={() => addChallenge(selectedST.id)}
-                  >
-                    <Plus className="w-4 h-4" /> Add Challenge
-                  </Button>
-                </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {templatePhases.length === 0 && (
+                          <div className="bg-card border border-border p-8 text-center">
+                            <p className="text-muted-foreground text-sm">No journey phases yet. Add one below.</p>
+                          </div>
+                        )}
+                        {templatePhases.map((p, idx) => (
+                          <div key={idx} className="bg-card border border-border p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-primary uppercase tracking-wider">{p.label || `Phase ${idx + 1}`}</span>
+                              <Button
+                                variant="ghost" size="sm"
+                                className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
+                                onClick={() => deleteTemplatePhase(idx)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Label</Label>
+                                <Input placeholder="Phase 1" value={p.label}
+                                  onChange={e => updateTemplatePhaseField(idx, 'label', e.target.value)}
+                                  onBlur={() => saveTemplatePhase(idx)} className="h-8 text-sm" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Title</Label>
+                                <Input placeholder="Discovery & Audit" value={p.title}
+                                  onChange={e => updateTemplatePhaseField(idx, 'title', e.target.value)}
+                                  onBlur={() => saveTemplatePhase(idx)} className="h-8 text-sm" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Duration</Label>
+                                <Input placeholder="2 wks" value={p.duration}
+                                  onChange={e => updateTemplatePhaseField(idx, 'duration', e.target.value)}
+                                  onBlur={() => saveTemplatePhase(idx)} className="h-8 text-sm" />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-[1fr_auto] gap-3 items-start">
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tasks (one per line)</Label>
+                                <Textarea
+                                  placeholder={"Task one\nTask two\nTask three"}
+                                  value={p.tasks.join('\n')}
+                                  onChange={e => updateTemplatePhaseField(idx, 'tasks', e.target.value.split('\n'))}
+                                  onBlur={() => saveTemplatePhase(idx)}
+                                  rows={3} className="text-sm" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Price (£)</Label>
+                                <Input placeholder="4500" value={p.price}
+                                  onChange={e => updateTemplatePhaseField(idx, 'price', e.target.value)}
+                                  onBlur={() => saveTemplatePhase(idx)} className="h-8 text-sm w-28" />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <Button
+                          variant="outline"
+                          className="w-full gap-2 text-xs font-bold uppercase tracking-wide"
+                          onClick={addTemplatePhase}
+                        >
+                          <Plus className="w-4 h-4" /> Add Phase
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </>
               );
             })()}
           </>

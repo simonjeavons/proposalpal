@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import type { Challenge, Phase, RetainerOption, LaunchPhase, UpfrontItem } from "@/types/proposal";
-import { DEFAULT_CHALLENGES, DEFAULT_PHASES, DEFAULT_RETAINER_OPTIONS, DEFAULT_LAUNCH_PHASE } from "@/types/proposal";
+import type { Challenge, Phase, RetainerOption, UpfrontItem } from "@/types/proposal";
+import { DEFAULT_CHALLENGES, DEFAULT_PHASES, DEFAULT_RETAINER_OPTIONS } from "@/types/proposal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,6 +37,11 @@ interface ServiceType {
   sort_order: number;
   is_upfront: boolean;
   is_ongoing: boolean;
+  partnership_overview_template: string;
+  commercial_opportunity_template: string;
+  strategic_focus_template: string;
+  whats_needed_template: string;
+  working_together_template: string;
 }
 
 interface Product {
@@ -71,7 +76,6 @@ interface FormData {
   upfront_items: UpfrontItem[];
   upfront_notes: string;
   retainer_options: RetainerOption[];
-  launch_phase: LaunchPhase;
   contact_name: string;
   contact_email: string;
   contact_phone: string;
@@ -129,7 +133,6 @@ export default function ProposalEditor() {
     upfront_items: [],
     upfront_notes: '',
     retainer_options: [...DEFAULT_RETAINER_OPTIONS],
-    launch_phase: { ...DEFAULT_LAUNCH_PHASE },
     contact_name: 'Josh Welch',
     contact_email: 'josh.welch@shoothill.com',
     contact_phone: '01743 636 300',
@@ -152,7 +155,7 @@ export default function ProposalEditor() {
     (supabase as any).from("team_members").select("id, full_name, job_title, bio, photo_url, linkedin_url, is_active, sort_order").eq("is_active", true).order("sort_order").then(({ data }: { data: TeamMember[] | null }) => {
       if (data) setTeamMembers(data);
     });
-    supabase.from("service_types" as any).select("id, name, sort_order, is_upfront, is_ongoing").order("sort_order").then(({ data }) => {
+    supabase.from("service_types" as any).select("id, name, sort_order, is_upfront, is_ongoing, partnership_overview_template, commercial_opportunity_template, strategic_focus_template, whats_needed_template, working_together_template").order("sort_order").then(({ data }) => {
       if (data) setServiceTypes(data as ServiceType[]);
     });
     supabase.from("products" as any).select("id, name, default_price, description, is_upfront, is_ongoing").order("sort_order").then(({ data }) => {
@@ -184,7 +187,6 @@ export default function ProposalEditor() {
             upfront_items: ((data as any).upfront_items || []) as UpfrontItem[],
             upfront_notes: (data as any).upfront_notes || '',
             retainer_options: (data.retainer_options || []) as unknown as RetainerOption[],
-            launch_phase: ((data as any).launch_phase || { ...DEFAULT_LAUNCH_PHASE }) as LaunchPhase,
             contact_name: data.contact_name,
             contact_email: data.contact_email,
             contact_phone: data.contact_phone,
@@ -336,7 +338,27 @@ export default function ProposalEditor() {
               <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Type</Label>
               <select
                 value={form.sector}
-                onChange={e => { updateField('sector', e.target.value); setShowImportOptions(false); }}
+                onChange={e => {
+                  const newSector = e.target.value;
+                  const st = serviceTypes.find(s => s.name === newSector);
+                  setForm(prev => {
+                    const updates: Partial<typeof prev> = { sector: newSector };
+                    if (st) {
+                      if (!prev.partnership_overview && st.partnership_overview_template)
+                        updates.partnership_overview = st.partnership_overview_template;
+                      if (!prev.commercial_opportunity && st.commercial_opportunity_template)
+                        updates.commercial_opportunity = st.commercial_opportunity_template;
+                      if (!prev.strategic_focus && st.strategic_focus_template)
+                        updates.strategic_focus = st.strategic_focus_template;
+                      if (!prev.whats_needed && st.whats_needed_template)
+                        updates.whats_needed = st.whats_needed_template;
+                      if (!prev.working_together && st.working_together_template)
+                        updates.working_together = st.working_together_template;
+                    }
+                    return { ...prev, ...updates };
+                  });
+                  setShowImportOptions(false);
+                }}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
               >
                 <option value="">Select a type…</option>
@@ -607,19 +629,6 @@ export default function ProposalEditor() {
                 </div>
               </div>
             ))}
-          </div>
-        </Section>
-
-        {/* Launch Phase */}
-        <Section title="Launch & Handover Phase">
-          <p className="text-xs text-muted-foreground mb-4">This always appears as the final "Included" card in the pricing section.</p>
-          <Grid>
-            <Field label="Title" value={form.launch_phase.title} onChange={v => updateField('launch_phase', { ...form.launch_phase, title: v })} />
-            <Field label="Duration" value={form.launch_phase.duration} onChange={v => updateField('launch_phase', { ...form.launch_phase, duration: v })} />
-          </Grid>
-          <div className="mt-4">
-            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Description</Label>
-            <Textarea value={form.launch_phase.description} onChange={e => updateField('launch_phase', { ...form.launch_phase, description: e.target.value })} rows={3} className="text-sm" />
           </div>
         </Section>
 

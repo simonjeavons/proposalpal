@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Proposal, Challenge, Phase, RetainerOption, UpfrontItem, TeamMember } from "@/types/proposal";
-import { DEFAULT_LAUNCH_PHASE } from "@/types/proposal";
 
 const ShootHillMark = () => (
   <svg className="absolute -right-[120px] -bottom-[120px] w-[560px] h-[560px] opacity-10 pointer-events-none z-0" viewBox="0 0 199 198" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -49,7 +48,6 @@ export default function ProposalView() {
           challenges: (data.challenges || []) as unknown as Challenge[],
           phases: (data.phases || []) as unknown as Phase[],
           retainer_options: (data.retainer_options || []) as unknown as RetainerOption[],
-          launch_phase: ((data as any).launch_phase || { ...DEFAULT_LAUNCH_PHASE }),
           team_member_ids: ((data as any).team_member_ids as string[]) || [],
         } as Proposal;
         setProposal(proposalData);
