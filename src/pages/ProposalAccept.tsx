@@ -494,6 +494,7 @@ export default function ProposalAccept() {
     if (!canSubmit) return;
 
     let signedContractUrl: string | null = null;
+    let signingError: string | null = null;
     const signedAt = new Date();
     const signingDateStr = signedAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
     const referenceId = `SH-${proposal.slug.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)}-${Date.now().toString(36).toUpperCase()}`;
@@ -573,10 +574,12 @@ export default function ProposalAccept() {
           .from('contracts')
           .upload(signedPath, new Blob([finalBytes], { type: 'application/pdf' }));
         if (!uploadError) signedContractUrl = signedPath;
-        else console.error('PDF upload error:', uploadError);
+        else { console.error('PDF upload error:', uploadError); signingError = `Upload error: ${uploadError.message}`; }
       }
     } catch (err) {
+      const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
       console.error('PDF signing failed:', err);
+      signingError = msg;
       // Continue without signed PDF rather than blocking acceptance
     }
 
@@ -593,6 +596,7 @@ export default function ProposalAccept() {
       first_year_total: firstYearTotal,
       signature_data: signatureData,
       signed_contract_url: signedContractUrl,
+      signing_error: signingError || null,
     });
 
     if (!error) {
