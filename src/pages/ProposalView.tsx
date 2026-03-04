@@ -150,6 +150,10 @@ export default function ProposalView() {
   const numTeam          = String(3 + po + (hasTimeline ? 1 : 0)).padStart(2, '0');
   const numSteps         = String(4 + po + (hasTimeline ? 1 : 0)).padStart(2, '0');
 
+  // Shoothill contact (proposal owner) — extract name only from "First Last, Job Title"
+  const ownerName = proposal.prepared_by ? proposal.prepared_by.split(',')[0].trim() : '';
+  const ownerPhone = proposal.contact_mobile || proposal.contact_phone || '';
+
   return (
     <div style={{ background: '#F4F7FA', color: '#1A2E3B', fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.7 }}>
       {/* COVER */}
@@ -773,7 +777,7 @@ export default function ProposalView() {
               {[
                 { n: 1, title: 'Choose your package', desc: 'Review the pricing above and click to choose your preferred package.' },
                 { n: 2, title: 'Sign your service agreement', desc: 'Sign to accept your Shoothill service agreement. No work begins and no payment is due until you\'ve signed.' },
-                { n: 3, title: 'Kick-off meeting', desc: `A 30-minute call with ${proposal.contact_name || 'your Shoothill contact'} to align on timelines, access requirements and next steps.` },
+                { n: 3, title: 'Kick-off meeting', desc: `A 30-minute call with ${ownerName || 'your Shoothill contact'} to align on timelines, access requirements and next steps.` },
                 { n: 4, title: 'Handover to project manager', desc: 'Once signed, you\'ll be introduced to your dedicated Shoothill project manager who will guide you through onboarding, set up your project workspace, and ensure a smooth transition into delivery.' },
               ].map((step, i) => (
                 <div key={step.n} className="scroll-reveal" style={{ display: 'flex', gap: 14, padding: '18px 20px', border: '1px solid #DDE8EE', alignItems: 'flex-start', transitionDelay: `${i * 80}ms` }}>
@@ -788,7 +792,7 @@ export default function ProposalView() {
             <div style={{ background: '#043D5D', padding: '26px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginTop: 28 }}>
               <div>
                 <h3 style={{ fontSize: 16, fontWeight: 700, color: 'white', marginBottom: 3 }}>Ready to move forward?</h3>
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', margin: 0 }}>{proposal.contact_name || proposal.contact_phone ? `Contact${proposal.contact_name ? ` ${proposal.contact_name}` : ''}${proposal.contact_phone ? ` on ${proposal.contact_phone}` : ''} if you have any questions.` : 'Get in touch if you have any questions.'}</p>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', margin: 0 }}>{ownerName || ownerPhone ? `Contact${ownerName ? ` ${ownerName}` : ''}${ownerPhone ? ` on ${ownerPhone}` : ''} if you have any questions.` : 'Get in touch if you have any questions.'}</p>
               </div>
               <button
                 className="cta-pulse"
