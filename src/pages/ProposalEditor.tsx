@@ -265,7 +265,6 @@ export default function ProposalEditor() {
       ...prev,
       prepared_by_user_id: user.id,
       prepared_by: user.job_title ? `${user.full_name}, ${user.job_title}` : user.full_name,
-      contact_name: user.full_name,
       contact_email: user.email,
       contact_phone: user.phone_number,
     }));
