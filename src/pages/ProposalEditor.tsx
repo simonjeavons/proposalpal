@@ -81,6 +81,7 @@ interface FormData {
   contact_email: string;
   contact_phone: string;
   contact_mobile: string;
+  client_email: string;
   payment_terms: string;
   service_agreement_template_id: string | null;
   partnership_overview: string;
@@ -138,6 +139,7 @@ export default function ProposalEditor() {
     contact_email: 'josh.welch@shoothill.com',
     contact_phone: '01743 636 300',
     contact_mobile: '07904 810 378',
+    client_email: '',
     payment_terms: '',
     service_agreement_template_id: null,
     partnership_overview: '',
@@ -192,6 +194,7 @@ export default function ProposalEditor() {
             contact_email: data.contact_email,
             contact_phone: data.contact_phone,
             contact_mobile: data.contact_mobile,
+            client_email: (data as any).client_email || '',
             payment_terms: (data as any).payment_terms || '',
             service_agreement_template_id: (data as any).service_agreement_template_id || null,
             partnership_overview: (data as any).partnership_overview || '',
@@ -415,8 +418,8 @@ export default function ProposalEditor() {
         <Section title="Client Details">
           <div className="grid grid-cols-2 gap-4">
             <Field label="Client Name" value={form.client_name} onChange={v => updateField('client_name', v)} />
-            <Field label="Contact Name" value={form.contact_name} onChange={v => updateField('contact_name', v)} />
-            <Field label="Contact Email" value={form.contact_email} onChange={v => updateField('contact_email', v)} type="email" />
+            <Field label="Client Contact Name" value={form.contact_name} onChange={v => updateField('contact_name', v)} />
+            <Field label="Client Email" value={form.client_email} onChange={v => updateField('client_email', v)} type="email" />
             <Field label="Staff" value={form.staff} onChange={v => updateField('staff', v)} />
             <div className="col-span-2">
               <Field label="Current Tech Stack" value={form.tech_stack} onChange={v => updateField('tech_stack', v)} />
@@ -913,8 +916,9 @@ export default function ProposalEditor() {
 
         {/* Contact */}
         <Section title="Contact Details">
-          <p className="text-xs text-muted-foreground mb-4">Contact phone details shown at the bottom of the proposal. Auto-populated from the selected user.</p>
+          <p className="text-xs text-muted-foreground mb-4">Shoothill contact details shown at the bottom of the proposal. Auto-populated from the selected user.</p>
           <Grid>
+            <Field label="Email" value={form.contact_email} onChange={v => updateField('contact_email', v)} type="email" />
             <Field label="Phone" value={form.contact_phone} onChange={v => updateField('contact_phone', v)} />
             <Field label="Mobile" value={form.contact_mobile} onChange={v => updateField('contact_mobile', v)} />
           </Grid>

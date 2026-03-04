@@ -66,6 +66,7 @@ export interface Proposal {
   contact_email: string;
   contact_phone: string;
   contact_mobile: string;
+  client_email?: string;
   payment_terms?: string;
   upfront_notes?: string;
   partnership_overview?: string;
