@@ -179,6 +179,18 @@ export default function AdminDashboard() {
     if (error) toast.error("Failed to save");
   };
 
+  const saveMarketingTemplates = async (id: string) => {
+    const st = serviceTypes.find(s => s.id === id);
+    if (!st) return;
+    const { error } = await supabase.from("service_types" as any).update({
+      commercial_opportunity_template: st.commercial_opportunity_template,
+      strategic_focus_template: st.strategic_focus_template,
+      whats_needed_template: st.whats_needed_template,
+      working_together_template: st.working_together_template,
+    }).eq("id", id);
+    if (error) toast.error("Failed to save");
+  };
+
   const updateServiceTemplate = (id: string, field: string, value: string) => {
     setServiceTypes(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
   };
@@ -958,6 +970,15 @@ export default function AdminDashboard() {
                       placeholder="Enter boilerplate text for this service's business &amp; partnership overview…"
                       className="text-sm"
                     />
+                    <div className="flex justify-end pt-1">
+                      <Button
+                        size="sm"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold uppercase tracking-wide h-8"
+                        onClick={() => saveServiceTemplate(st.id, 'partnership_overview_template', st.partnership_overview_template)}
+                      >
+                        <Check className="w-3.5 h-3.5" /> Save
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Marketing-specific template fields */}
@@ -1007,6 +1028,15 @@ export default function AdminDashboard() {
                           className="text-sm"
                         />
                       </div>
+                      <div className="flex justify-end pt-1">
+                        <Button
+                          size="sm"
+                          className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold uppercase tracking-wide h-8"
+                          onClick={() => saveMarketingTemplates(st.id)}
+                        >
+                          <Check className="w-3.5 h-3.5" /> Save
+                        </Button>
+                      </div>
                     </div>
                   )}
 
@@ -1037,6 +1067,14 @@ export default function AdminDashboard() {
                               className="text-sm h-8"
                             />
                           </div>
+                          <Button
+                            variant="ghost" size="sm"
+                            className="text-green-600 hover:text-green-700 hover:bg-green-50 h-8 w-8 p-0 flex-shrink-0"
+                            onClick={() => saveChallenge(st.id, idx)}
+                            title="Save"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </Button>
                           <Button
                             variant="ghost" size="sm"
                             className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
@@ -1074,13 +1112,23 @@ export default function AdminDashboard() {
                           <div key={idx} className="bg-card border border-border p-4 space-y-3">
                             <div className="flex items-center justify-between">
                               <span className="text-xs font-bold text-primary uppercase tracking-wider">{p.label || `Phase ${idx + 1}`}</span>
-                              <Button
-                                variant="ghost" size="sm"
-                                className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
-                                onClick={() => deleteTemplatePhase(idx)}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost" size="sm"
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-50 h-7 w-7 p-0"
+                                  onClick={() => saveTemplatePhase(idx)}
+                                  title="Save"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost" size="sm"
+                                  className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
+                                  onClick={() => deleteTemplatePhase(idx)}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
                             </div>
                             <div className="grid grid-cols-3 gap-3">
                               <div className="space-y-1">
