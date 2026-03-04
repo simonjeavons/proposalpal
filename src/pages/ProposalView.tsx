@@ -898,7 +898,7 @@ export default function ProposalView() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', paddingBottom: 32, borderBottom: '1px solid rgba(255,255,255,.1)' }}>
               <img src="https://arh-group.co.uk/wp-content/uploads/2025/07/ShoothillMadeThisWork-darktbg.svg" alt="Shoothill Made This Work" style={{ height: 36, flexShrink: 0 }} />
               <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.55)', lineHeight: 1.6 }}>
-                This proposal was created using the Shoothill Proposal Manager, built by our in-house software development team.{' '}
+                This proposal was created using the Shoothill Proposal Manager, built by our in-house software development team.<br />
                 <a href="mailto:webenquiry@shoothill.com" style={{ color: 'rgba(255,255,255,.75)', textDecoration: 'underline' }}>Contact us</a> if you'd like to use it in your business.
               </span>
             </div>
