@@ -74,6 +74,7 @@ export interface Proposal {
   whats_needed?: string;
   working_together?: string;
   team_member_ids?: string[];
+  hide_phase_durations?: boolean;
   created_at: string;
   updated_at: string;
 }

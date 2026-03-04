@@ -329,7 +329,7 @@ export default function ProposalView() {
                       <div className="scroll-reveal" style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', padding: '18px 16px', width: '90%', transitionDelay: `${i * 100}ms` }}>
                         <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 5 }}>{phase.label}</div>
                         <h3 style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 5, lineHeight: 1.3 }}>{phase.title}</h3>
-                        <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, background: '#009FE3', color: 'white', padding: '2px 8px', marginBottom: 10 }}>{phase.duration}</div>
+                        {!proposal.hide_phase_durations && phase.duration && <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, background: '#009FE3', color: 'white', padding: '2px 8px', marginBottom: 10 }}>{phase.duration}</div>}
                         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3, padding: 0, margin: 0 }}>
                           {phase.tasks.filter(t => t.trim()).map((t, j) => (
                             <li key={j} style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', display: 'flex', gap: 6 }}>
@@ -355,7 +355,7 @@ export default function ProposalView() {
                       <div className="scroll-reveal" style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', padding: '18px 16px', width: '90%', transitionDelay: `${i * 100}ms` }}>
                         <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 5 }}>{phase.label}</div>
                         <h3 style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 5, lineHeight: 1.3 }}>{phase.title}</h3>
-                        <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, background: '#009FE3', color: 'white', padding: '2px 8px', marginBottom: 10 }}>{phase.duration}</div>
+                        {!proposal.hide_phase_durations && phase.duration && <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, background: '#009FE3', color: 'white', padding: '2px 8px', marginBottom: 10 }}>{phase.duration}</div>}
                         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3, padding: 0, margin: 0 }}>
                           {phase.tasks.filter(t => t.trim()).map((t, j) => (
                             <li key={j} style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', display: 'flex', gap: 6 }}>
@@ -446,7 +446,7 @@ export default function ProposalView() {
                           <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 8, background: '#F4F7FA', border: '1px solid #DDE8EE', transform: 'translateY(-50%)', borderRadius: 2 }} />
                           {/* Bar */}
                           <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: `${leftPct}%`, width: `${Math.max(widthPct, 4)}%`, height: 28, background: barColor, borderRadius: 2, display: 'flex', alignItems: 'center', paddingLeft: 8, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,.15)' }}>
-                            <span style={{ fontSize: 9, fontWeight: 700, color: 'white', whiteSpace: 'nowrap', letterSpacing: '.06em' }}>{phase.duration}</span>
+                            {!proposal.hide_phase_durations && <span style={{ fontSize: 9, fontWeight: 700, color: 'white', whiteSpace: 'nowrap', letterSpacing: '.06em' }}>{phase.duration}</span>}
                           </div>
                         </div>
                       </div>

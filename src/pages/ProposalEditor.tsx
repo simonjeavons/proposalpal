@@ -546,6 +546,15 @@ export default function ProposalEditor() {
                 </Button>
               )
             )}
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={!form.hide_phase_durations}
+                onChange={e => updateField('hide_phase_durations', !e.target.checked)}
+                className="accent-primary"
+              />
+              Show durations
+            </label>
             <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('phases', [...form.phases, { label: `Phase ${form.phases.length + 1}`, title: '', duration: '', tasks: [], price: '' }])}>
               <Plus className="w-4 h-4" /> Add Phase
             </Button>
