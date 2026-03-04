@@ -828,10 +828,10 @@ export default function ProposalView() {
             {[
               { src: 'https://shoothill.com/wp-content/uploads/2024/09/microsoft.jpg', alt: 'Microsoft' },
               { src: 'https://shoothill.com/wp-content/uploads/2024/09/fujitsu.jpg', alt: 'Fujitsu' },
-              { src: 'https://shoothill.com/wp-content/uploads/2024/09/disney.jpg', alt: 'Disney' },
-              { src: 'https://shoothill.com/wp-content/uploads/2024/09/warnerBros.jpg', alt: 'Warner Bros' },
+              { src: 'https://shoothill.com/wp-content/uploads/2024/09/waterplus.jpg', alt: 'Water Plus' },
+              { src: 'https://shoothill.com/wp-content/uploads/2024/10/shrewsburyTownFC.jpg', alt: 'Shrewsbury Town FC' },
               { src: 'https://shoothill.com/wp-content/uploads/2024/09/environmentAgency.jpg', alt: 'Environment Agency' },
-              { src: 'https://shoothill.com/wp-content/uploads/2024/09/bbcNews.jpg', alt: 'BBC' },
+              { src: 'https://shoothill.com/wp-content/uploads/2024/09/darwin.jpg', alt: 'Darwin' },
             ].map((logo, i) => (
               <div key={logo.alt} className="scale-reveal" style={{ background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', minHeight: 96, transitionDelay: `${i * 50}ms` }}>
                 <img style={{ width: '100%', height: 96, objectFit: 'cover', objectPosition: 'center', filter: 'grayscale(100%)', opacity: .75 }} src={logo.src} alt={logo.alt} />
