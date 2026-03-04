@@ -135,9 +135,9 @@ export default function ProposalView() {
           </div>
           <div>
             <h1 style={{ fontSize: 'clamp(28px, 4vw, 52px)', fontWeight: 800, color: 'white', letterSpacing: '-.03em', lineHeight: 1.08, marginBottom: 10 }}>{proposal.client_name}</h1>
-            <div style={{ fontSize: 16, fontWeight: 600, color: '#009FE3', marginBottom: 28 }}>{proposal.programme_title}</div>
+            {proposal.programme_title && <div style={{ fontSize: 16, fontWeight: 600, color: '#009FE3', marginBottom: 28 }}>{proposal.programme_title}</div>}
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)' }}>
-              <strong style={{ display: 'block', color: 'rgba(255,255,255,.7)', fontSize: 13, marginBottom: 2 }}>Prepared by {proposal.prepared_by}</strong>
+              {proposal.prepared_by && <strong style={{ display: 'block', color: 'rgba(255,255,255,.7)', fontSize: 13, marginBottom: 2 }}>Prepared by {proposal.prepared_by}</strong>}
               {formatDate(proposal.proposal_date)} &nbsp;·&nbsp; Classification: Customer &nbsp;·&nbsp; Valid until {formatDate(proposal.valid_until)}
             </div>
           </div>
@@ -302,7 +302,7 @@ export default function ProposalView() {
       })()}
 
       {/* JOURNEY */}
-      <section id="journey" style={{ background: '#043D5D', padding: '60px 0', position: 'relative', overflow: 'hidden' }}>
+      {proposal.phases.length > 0 && <section id="journey" style={{ background: '#043D5D', padding: '60px 0', position: 'relative', overflow: 'hidden' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
           <div style={{ marginBottom: 48 }}>
             <h2 style={{ fontSize: 'clamp(20px, 2.5vw, 32px)', fontWeight: 800, color: 'white', letterSpacing: '-.025em', marginBottom: 8 }}>Your Transformation Journey</h2>
@@ -366,7 +366,7 @@ export default function ProposalView() {
             })}
           </div>
         </div>
-      </section>
+      </section>}
 
       {/* PRICING */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
@@ -618,7 +618,7 @@ export default function ProposalView() {
               {[
                 { n: 1, title: 'Choose your package', desc: 'Review the pricing above and click to choose your preferred package.' },
                 { n: 2, title: 'Sign your service agreement', desc: 'Sign to accept your Shoothill service agreement. No work begins and no payment is due until you\'ve signed.' },
-                { n: 3, title: 'Kick-off meeting', desc: `A 30-minute call with ${proposal.contact_name} to align on timelines, access requirements and next steps.` },
+                { n: 3, title: 'Kick-off meeting', desc: `A 30-minute call with ${proposal.contact_name || 'your Shoothill contact'} to align on timelines, access requirements and next steps.` },
                 { n: 4, title: 'Handover to project manager', desc: 'Once signed, you\'ll be introduced to your dedicated Shoothill project manager who will guide you through onboarding, set up your project workspace, and ensure a smooth transition into delivery.' },
               ].map((step, i) => (
                 <div key={step.n} className="scroll-reveal" style={{ display: 'flex', gap: 14, padding: '18px 20px', border: '1px solid #DDE8EE', alignItems: 'flex-start', transitionDelay: `${i * 80}ms` }}>
@@ -633,7 +633,7 @@ export default function ProposalView() {
             <div style={{ background: '#043D5D', padding: '26px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginTop: 28 }}>
               <div>
                 <h3 style={{ fontSize: 16, fontWeight: 700, color: 'white', marginBottom: 3 }}>Ready to move forward?</h3>
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', margin: 0 }}>Contact {proposal.contact_name} on {proposal.contact_phone} if you have any questions.</p>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', margin: 0 }}>{proposal.contact_name || proposal.contact_phone ? `Contact${proposal.contact_name ? ` ${proposal.contact_name}` : ''}${proposal.contact_phone ? ` on ${proposal.contact_phone}` : ''} if you have any questions.` : 'Get in touch if you have any questions.'}</p>
               </div>
               <button
                 className="cta-pulse"
@@ -736,13 +736,13 @@ export default function ProposalView() {
             <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.4)', letterSpacing: '.06em', marginBottom: 36 }}>Award-winning, full-service digital technology experts</div>
             <h2 style={{ fontSize: 'clamp(26px, 3vw, 44px)', fontWeight: 800, color: 'white', letterSpacing: '-.03em', marginBottom: 22, lineHeight: 1.1 }}>Any questions then<br />get in touch!</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <a href={`mailto:${proposal.contact_email}`} style={{ fontSize: 15, color: 'rgba(255,255,255,.65)', textDecoration: 'none' }}>{proposal.contact_email}</a>
-              <a href={`tel:${proposal.contact_phone.replace(/\s/g, '')}`} style={{ fontSize: 15, color: 'rgba(255,255,255,.65)', textDecoration: 'none' }}>{proposal.contact_phone}</a>
+              {proposal.contact_email && <a href={`mailto:${proposal.contact_email}`} style={{ fontSize: 15, color: 'rgba(255,255,255,.65)', textDecoration: 'none' }}>{proposal.contact_email}</a>}
+              {proposal.contact_phone && <a href={`tel:${proposal.contact_phone.replace(/\s/g, '')}`} style={{ fontSize: 15, color: 'rgba(255,255,255,.65)', textDecoration: 'none' }}>{proposal.contact_phone}</a>}
               {proposal.contact_mobile && <a href={`tel:${proposal.contact_mobile.replace(/\s/g, '')}`} style={{ fontSize: 15, color: 'rgba(255,255,255,.65)', textDecoration: 'none' }}>{proposal.contact_mobile}</a>}
             </div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,.25)', marginTop: 40 }}>
               <strong style={{ display: 'block', color: 'rgba(255,255,255,.35)', marginBottom: 3 }}>{formatDate(proposal.proposal_date)} &nbsp;·&nbsp; Classification: Customer</strong>
-              Shoothill Ltd · Registered in England &amp; Wales · Confidential, prepared for {proposal.organisation}
+              Shoothill Ltd · Registered in England &amp; Wales · Confidential{proposal.organisation ? `, prepared for ${proposal.organisation}` : ''}
             </div>
           </div>
           <ShootHillMark />
