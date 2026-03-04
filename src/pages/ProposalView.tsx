@@ -240,7 +240,6 @@ export default function ProposalView() {
             {(() => {
               const clientFields = [
                 { label: 'Organisation', value: proposal.organisation },
-                { label: 'Sector', value: proposal.sector },
                 { label: 'Staff', value: proposal.staff },
                 { label: 'Current tech stack', value: proposal.tech_stack },
               ].filter(s => s.value && s.value.trim() !== '');
