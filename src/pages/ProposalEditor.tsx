@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Save, Plus, Trash2, Eye, Upload, FileText, X } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Eye, Upload, FileText, X, BookmarkPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
@@ -51,6 +51,7 @@ interface Product {
   description: string;
   is_upfront: boolean;
   is_ongoing: boolean;
+  service_type_id: string | null;
 }
 
 interface AgreementTemplate {
@@ -158,7 +159,7 @@ export default function ProposalEditor() {
     supabase.from("service_types" as any).select("id, name, sort_order, is_upfront, is_ongoing, partnership_overview_template, commercial_opportunity_template, strategic_focus_template, whats_needed_template, working_together_template").order("sort_order").then(({ data }) => {
       if (data) setServiceTypes(data as ServiceType[]);
     });
-    supabase.from("products" as any).select("id, name, default_price, description, is_upfront, is_ongoing").order("sort_order").then(({ data }) => {
+    supabase.from("products" as any).select("id, name, default_price, description, is_upfront, is_ongoing, service_type_id").order("sort_order").then(({ data }) => {
       if (data) setProducts(data as Product[]);
     });
     supabase.from("service_agreement_templates" as any)
@@ -283,6 +284,28 @@ export default function ProposalEditor() {
     const updated = [...form.retainer_options];
     updated[i] = { ...updated[i], [field]: value };
     updateField('retainer_options', updated);
+  };
+
+  const currentServiceTypeId = serviceTypes.find(st => st.name === form.sector)?.id ?? null;
+
+  const saveItemToLibrary = async (itemName: string, price: number, description: string, kind: 'upfront' | 'ongoing') => {
+    if (!itemName) return;
+    const nextOrder = products.length > 0 ? Math.max(...products.map(p => parseInt(String((p as any).sort_order ?? 0)))) + 1 : 1;
+    const { data, error } = await supabase.from("products" as any).insert({
+      name: itemName,
+      default_price: price,
+      description: description ?? '',
+      is_upfront: kind === 'upfront',
+      is_ongoing: kind === 'ongoing',
+      sort_order: nextOrder,
+      service_type_id: currentServiceTypeId,
+    }).select().single();
+    if (!error && data) {
+      setProducts(prev => [...prev, data as Product]);
+      toast.success(`"${itemName}" saved to solutions library`);
+    } else {
+      toast.error('Failed to save to library');
+    }
   };
 
   if (loading) return (
@@ -590,7 +613,7 @@ export default function ProposalEditor() {
                       className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
                     >
                       <option value="">Select…</option>
-                      {products.filter(p => p.is_upfront).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                      {products.filter(p => p.is_upfront && (!p.service_type_id || p.service_type_id === currentServiceTypeId)).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                     </select>
                   </div>
                   <CurrencyField label="Price (£)" value={item.price} onChange={v => {
@@ -625,6 +648,16 @@ export default function ProposalEditor() {
                     }}
                   />
                 </div>
+                {!item.type && item.name && !products.find(p => p.name === item.name) && (
+                  <button
+                    type="button"
+                    onClick={() => saveItemToLibrary(item.name, item.price, item.description ?? '', 'upfront')}
+                    className="flex items-center gap-1.5 text-xs text-primary hover:underline pt-1"
+                  >
+                    <BookmarkPlus className="w-3 h-3" />
+                    Save "{item.name}" to solutions library
+                  </button>
+                )}
               </div>
             ))}
             {form.upfront_items.length > 0 && (
@@ -723,7 +756,7 @@ export default function ProposalEditor() {
                       className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
                     >
                       <option value="">Select…</option>
-                      {products.filter(p => p.is_ongoing).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                      {products.filter(p => p.is_ongoing && (!p.service_type_id || p.service_type_id === currentServiceTypeId)).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                     </select>
                   </div>
                   <Field label="Name / Tier" value={r.name} onChange={v => updateRetainer(i, 'name', v)} />
@@ -760,6 +793,16 @@ export default function ProposalEditor() {
                   <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Features (one per line)</Label>
                   <Textarea value={r.features.join('\n')} onChange={e => updateRetainer(i, 'features', e.target.value.split('\n'))} rows={3} className="text-sm" />
                 </div>
+                {!r.type && r.name && !products.find(p => p.name === r.name) && (
+                  <button
+                    type="button"
+                    onClick={() => saveItemToLibrary(r.name, r.price, '', 'ongoing')}
+                    className="flex items-center gap-1.5 text-xs text-primary hover:underline pt-1"
+                  >
+                    <BookmarkPlus className="w-3 h-3" />
+                    Save "{r.name}" to solutions library
+                  </button>
+                )}
               </div>
             ))}
           </div>

@@ -64,6 +64,7 @@ interface Product {
   is_upfront: boolean;
   is_ongoing: boolean;
   sort_order: number;
+  service_type_id: string | null;
 }
 
 interface TemplatePhase {
@@ -131,6 +132,7 @@ export default function AdminDashboard() {
   // Products state
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
+  const [solutionsServiceTabId, setSolutionsServiceTabId] = useState<string | null>(null); // null = Universal tab
 
   // Services tab state - two-level navigation
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
@@ -256,7 +258,7 @@ export default function AdminDashboard() {
 
   const fetchProducts = async () => {
     setProductsLoading(true);
-    const { data } = await supabase.from("products" as any).select("id, name, default_price, description, is_upfront, is_ongoing, sort_order").order("sort_order");
+    const { data } = await supabase.from("products" as any).select("id, name, default_price, description, is_upfront, is_ongoing, sort_order, service_type_id").order("sort_order");
     setProducts((data as any[] || []) as Product[]);
     setProductsLoading(false);
   };
@@ -270,7 +272,7 @@ export default function AdminDashboard() {
     if (!p?.id) return;
     const { error } = await supabase.from("products" as any).update({
       name: p.name, default_price: p.default_price, description: p.description,
-      is_upfront: p.is_upfront, is_ongoing: p.is_ongoing,
+      is_upfront: p.is_upfront, is_ongoing: p.is_ongoing, service_type_id: p.service_type_id,
     }).eq("id", p.id);
     if (error) toast.error("Failed to save product");
   };
@@ -350,7 +352,7 @@ export default function AdminDashboard() {
     const name = newSolutionName.trim();
     if (!name) return;
     const nextOrder = products.length > 0 ? Math.max(...products.map(p => p.sort_order)) + 1 : 1;
-    const { data, error } = await supabase.from("products" as any).insert({ name, default_price: 0, sort_order: nextOrder }).select().single();
+    const { data, error } = await supabase.from("products" as any).insert({ name, default_price: 0, sort_order: nextOrder, service_type_id: solutionsServiceTabId }).select().single();
     if (!error && data) {
       setProducts(prev => [...prev, data as Product]);
       setNewSolutionName("");
@@ -772,102 +774,140 @@ export default function AdminDashboard() {
         )}
 
         {/* SOLUTIONS TAB */}
-        {activeTab === "solutions" && (
-          <>
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Solutions</h1>
-                <p className="text-sm text-muted-foreground">Products and services you sell. These appear as selectable items in the proposal editor.</p>
+        {activeTab === "solutions" && (() => {
+          const tabProducts = products.filter(p =>
+            solutionsServiceTabId === null
+              ? p.service_type_id === null
+              : p.service_type_id === solutionsServiceTabId
+          );
+          return (
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Solutions</h1>
+                  <p className="text-sm text-muted-foreground">Products and services you sell, organised by service type.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={newSolutionName}
+                    onChange={e => setNewSolutionName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') addSolution(); }}
+                    placeholder="New solution…"
+                    className="h-8 text-sm w-48"
+                  />
+                  <Button
+                    onClick={addSolution}
+                    disabled={!newSolutionName.trim()}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold uppercase tracking-wide h-8"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={newSolutionName}
-                  onChange={e => setNewSolutionName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') addSolution(); }}
-                  placeholder="New solution…"
-                  className="h-8 text-sm w-48"
-                />
-                <Button
-                  onClick={addSolution}
-                  disabled={!newSolutionName.trim()}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold uppercase tracking-wide h-8"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add
-                </Button>
-              </div>
-            </div>
-            {productsLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : products.length === 0 ? (
-              <div className="bg-card border border-border p-12 text-center">
-                <p className="text-muted-foreground">No solutions yet. Add one above.</p>
-              </div>
-            ) : (
-              <div className="bg-card border border-border divide-y divide-border">
-                {products.map((p, idx) => (
-                  <div key={`product-${idx}`} className="px-6 py-4 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <Input
-                        value={p.name}
-                        onChange={e => updateProductField(idx, 'name', e.target.value)}
-                        onBlur={() => saveProduct(idx)}
-                        className="h-8 text-sm font-semibold flex-1"
-                        placeholder="Solution name"
-                      />
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <span className="text-sm text-muted-foreground">£</span>
-                        <Input
-                          type="number"
-                          value={p.default_price}
-                          onChange={e => updateProductField(idx, 'default_price', Number(e.target.value) || 0)}
-                          onBlur={() => saveProduct(idx)}
-                          className="h-8 text-sm w-28"
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div className="flex items-center gap-4 flex-shrink-0">
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                          <input type="checkbox" checked={!!p.is_upfront} className="w-3.5 h-3.5"
-                            onChange={e => updateProductField(idx, 'is_upfront', e.target.checked)} />
-                          <span className="text-xs text-muted-foreground">Upfront</span>
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                          <input type="checkbox" checked={!!p.is_ongoing} className="w-3.5 h-3.5"
-                            onChange={e => updateProductField(idx, 'is_ongoing', e.target.checked)} />
-                          <span className="text-xs text-muted-foreground">Ongoing</span>
-                        </label>
-                      </div>
-                      <Button
-                        variant="ghost" size="sm"
-                        className="text-green-600 hover:text-green-700 hover:bg-green-50 h-8 w-8 p-0 flex-shrink-0"
-                        onClick={() => saveProduct(idx)}
-                        title="Save changes"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost" size="sm"
-                        className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
-                        onClick={() => deleteProduct(idx)}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                    <Input
-                      value={p.description || ''}
-                      onChange={e => updateProductField(idx, 'description', e.target.value)}
-                      onBlur={() => saveProduct(idx)}
-                      className="h-7 text-xs text-muted-foreground"
-                      placeholder="Description — auto-fills in proposal when this solution is selected"
-                    />
-                  </div>
+
+              {/* Service type tab bar */}
+              <div className="flex items-end gap-0 border-b border-border mb-4 overflow-x-auto">
+                {[{ id: null, name: 'Universal' }, ...serviceTypes.map(st => ({ id: st.id, name: st.name }))].map(tab => (
+                  <button
+                    key={tab.id ?? 'universal'}
+                    onClick={() => setSolutionsServiceTabId(tab.id)}
+                    className={`px-4 py-2 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors border-b-2 -mb-px ${
+                      solutionsServiceTabId === tab.id
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {tab.name}
+                    {tab.id !== null && (
+                      <span className="ml-1.5 text-[10px] font-normal normal-case tracking-normal text-muted-foreground/60">
+                        ({products.filter(p => p.service_type_id === tab.id).length})
+                      </span>
+                    )}
+                    {tab.id === null && (
+                      <span className="ml-1.5 text-[10px] font-normal normal-case tracking-normal text-muted-foreground/60">
+                        ({products.filter(p => p.service_type_id === null).length})
+                      </span>
+                    )}
+                  </button>
                 ))}
               </div>
-            )}
-          </>
-        )}
+
+              {productsLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : tabProducts.length === 0 ? (
+                <div className="bg-card border border-border p-12 text-center">
+                  <p className="text-muted-foreground">No solutions for this service yet. Add one above.</p>
+                </div>
+              ) : (
+                <div className="bg-card border border-border divide-y divide-border">
+                  {tabProducts.map((p) => {
+                    const idx = products.indexOf(p);
+                    return (
+                      <div key={`product-${p.id ?? idx}`} className="px-6 py-4 space-y-2">
+                        <div className="flex items-center gap-3">
+                          <Input
+                            value={p.name}
+                            onChange={e => updateProductField(idx, 'name', e.target.value)}
+                            onBlur={() => saveProduct(idx)}
+                            className="h-8 text-sm font-semibold flex-1"
+                            placeholder="Solution name"
+                          />
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className="text-sm text-muted-foreground">£</span>
+                            <Input
+                              type="number"
+                              value={p.default_price}
+                              onChange={e => updateProductField(idx, 'default_price', Number(e.target.value) || 0)}
+                              onBlur={() => saveProduct(idx)}
+                              className="h-8 text-sm w-28"
+                              placeholder="0.00"
+                            />
+                          </div>
+                          <div className="flex items-center gap-4 flex-shrink-0">
+                            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                              <input type="checkbox" checked={!!p.is_upfront} className="w-3.5 h-3.5"
+                                onChange={e => updateProductField(idx, 'is_upfront', e.target.checked)} />
+                              <span className="text-xs text-muted-foreground">Upfront</span>
+                            </label>
+                            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                              <input type="checkbox" checked={!!p.is_ongoing} className="w-3.5 h-3.5"
+                                onChange={e => updateProductField(idx, 'is_ongoing', e.target.checked)} />
+                              <span className="text-xs text-muted-foreground">Ongoing</span>
+                            </label>
+                          </div>
+                          <Button
+                            variant="ghost" size="sm"
+                            className="text-green-600 hover:text-green-700 hover:bg-green-50 h-8 w-8 p-0 flex-shrink-0"
+                            onClick={() => saveProduct(idx)}
+                            title="Save changes"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost" size="sm"
+                            className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
+                            onClick={() => deleteProduct(idx)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                        <Input
+                          value={p.description || ''}
+                          onChange={e => updateProductField(idx, 'description', e.target.value)}
+                          onBlur={() => saveProduct(idx)}
+                          className="h-7 text-xs text-muted-foreground"
+                          placeholder="Description — auto-fills in proposal when this solution is selected"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {/* SERVICES TAB */}
         {activeTab === "services" && (
