@@ -160,7 +160,9 @@ export default function ProposalView() {
       <div style={{ background: '#043D5D', minHeight: 360, position: 'relative', overflow: 'hidden', animation: 'fadeUp .6s ease both' }}>
         <div style={{ padding: isMobile ? '28px 20px' : '52px 56px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 32, position: 'relative', zIndex: 1, minHeight: 360 }}>
           <div>
-            <img style={{ height: 32, filter: 'brightness(0) invert(1)' }} src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg" alt="Shoothill" />
+            <a href="http://shoothill.com" target="_blank" rel="noopener noreferrer">
+              <img style={{ height: 56, filter: 'brightness(0) invert(1)' }} src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg" alt="Shoothill" />
+            </a>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.45)', letterSpacing: '.06em', marginTop: 6 }}>Award-winning, full-service digital technology experts</div>
           </div>
           <div>
@@ -891,11 +893,6 @@ export default function ProposalView() {
       <section id="contact" style={{ background: '#043D5D', padding: '52px 0 40px', position: 'relative', overflow: 'hidden' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 20px' : '0 56px', position: 'relative', zIndex: 1 }}>
           <div className="scroll-reveal" style={{ display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1 }}>
-
-            {/* Shoothill logo */}
-            <a href="http://shoothill.com" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginBottom: 32, width: 'fit-content' }}>
-              <img style={{ height: 52, filter: 'brightness(0) invert(1)' }} src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg" alt="Shoothill" />
-            </a>
 
             {/* Promo blurb */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', paddingBottom: 32, borderBottom: '1px solid rgba(255,255,255,.1)' }}>
