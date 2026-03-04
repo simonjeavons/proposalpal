@@ -148,6 +148,36 @@ async function appendCertificatePage(
   const white = rgb(1, 1, 1);
   const green = rgb(0/255, 155/255,  85/255);
 
+  // ── LOGO (fetch + rasterise SVG → PNG for header) ──────────────────────────
+  let logoImage: Awaited<ReturnType<typeof pdfDoc.embedPng>> | null = null;
+  try {
+    const svgRes = await fetch('https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg');
+    if (svgRes.ok) {
+      const svgText = await svgRes.text();
+      const canvas = document.createElement('canvas');
+      canvas.width = 300;
+      canvas.height = 80;
+      const ctx = canvas.getContext('2d')!;
+      const img = new Image();
+      const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+      const blobUrl = URL.createObjectURL(blob);
+      await new Promise<void>((resolve) => {
+        img.onload = () => {
+          ctx.filter = 'brightness(0) invert(1)'; // render as white
+          ctx.drawImage(img, 0, 0, 300, 80);
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = blobUrl;
+      });
+      URL.revokeObjectURL(blobUrl);
+      const pngDataUrl = canvas.toDataURL('image/png');
+      const pngBase64 = pngDataUrl.split(',')[1];
+      const pngBytes = Uint8Array.from(atob(pngBase64), c => c.charCodeAt(0));
+      logoImage = await pdfDoc.embedPng(pngBytes);
+    }
+  } catch { /* fall back to text */ }
+
   // ── HEADER ─────────────────────────────────────────────────────────────────
   page.drawRectangle({ x: 0, y: height - 70, width, height: 70, color: navy });
   page.drawText('Electronic Signature Certificate', {
@@ -156,6 +186,22 @@ async function appendCertificatePage(
   page.drawText('Shoothill Proposal Manager', {
     x: 36, y: height - 58, size: 9, font: helvetica, color: rgb(0.6, 0.7, 0.75),
   });
+  // Shoothill logo on right side of header
+  if (logoImage) {
+    const d = logoImage.scaleToFit(120, 26);
+    page.drawImage(logoImage, {
+      x: width - 36 - d.width,
+      y: height - 35 - d.height / 2,
+      width: d.width,
+      height: d.height,
+    });
+  } else {
+    page.drawText('SHOOTHILL', {
+      x: width - 36 - 62,
+      y: height - 44,
+      size: 12, font: helveticaBold, color: white,
+    });
+  }
   // Blue accent stripe
   page.drawRectangle({ x: 0, y: height - 73, width, height: 3, color: blue });
 
@@ -293,18 +339,27 @@ async function appendCertificatePage(
   page.drawLine({ start: { x: 36, y: y - 5 }, end: { x: width - 36, y: y - 5 }, thickness: 0.5, color: rgb(0.87, 0.91, 0.93) });
   y -= 18;
 
-  const auditItems = [
-    `Proposal prepared by Shoothill Limited for ${clientEntityName}`,
-    `Proposal sent to ${clientEntityName}`,
-    `Service agreement viewed by ${clientEntityName}`,
-    `Agreement signed by ${clientSignerName}${clientSignerTitle ? `, ${clientSignerTitle}` : ''} — ${dateStr}`,
-    `Signature certificate generated — Reference: ${referenceId}`,
+  // Two-column audit trail: action (left) | date/time (right)
+  // Items 1-3 have no specific timestamp (lifecycle events); 4-5 have the signing timestamp.
+  const auditItemsData: { action: string; ts: string | null }[] = [
+    { action: `Proposal prepared by Shoothill Limited for ${clientEntityName}`, ts: null },
+    { action: `Proposal sent to ${clientEntityName}`, ts: null },
+    { action: `Service agreement viewed by ${clientEntityName}`, ts: null },
+    { action: `Agreement signed by ${clientSignerName}${clientSignerTitle ? `, ${clientSignerTitle}` : ''}`, ts: dateStr },
+    { action: `Signature certificate generated — Reference: ${referenceId}`, ts: dateStr },
   ];
 
-  for (const item of auditItems) {
+  const auditTsX = 420; // x position for timestamp column
+  // Column headers
+  page.drawText('ACTION', { x: 50, y, size: 7, font: helveticaBold, color: light });
+  page.drawText('DATE / TIME', { x: auditTsX, y, size: 7, font: helveticaBold, color: light });
+  y -= 13;
+
+  for (const item of auditItemsData) {
     page.drawRectangle({ x: 36, y: y - 2, width: 8, height: 8, color: green });
-    const itemTrunc = item.length > 90 ? item.slice(0, 90) + '…' : item;
-    page.drawText(itemTrunc, { x: 50, y, size: 8, font: helvetica, color: mid });
+    const actionTrunc = item.action.length > 58 ? item.action.slice(0, 58) + '…' : item.action;
+    page.drawText(actionTrunc, { x: 50, y, size: 8, font: helvetica, color: mid });
+    page.drawText(item.ts ?? '—', { x: auditTsX, y, size: 8, font: helvetica, color: item.ts ? mid : light });
     y -= 14;
   }
 

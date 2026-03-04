@@ -124,6 +124,15 @@ export default function ProposalView() {
   const monthlyTotal = (selectedStandardOption ? optionTotal(selectedStandardOption) : 0) + extrasTotal;
   const firstYearTotal = Number(proposal.upfront_total) + (monthlyTotal * 12);
 
+  // Timeline helpers
+  const parseWeeks = (d: string) => Math.max(1, parseInt(d?.match(/(\d+)/)?.[1] ?? '1'));
+  const hasTimeline = proposal.phases.length > 0 && proposal.phases.some(p => p.wc_date);
+
+  // Dynamic section numbering (shifts if timeline shown)
+  const numPricing = hasTimeline ? '03' : '02';
+  const numTeam    = hasTimeline ? '04' : '03';
+  const numSteps   = hasTimeline ? '05' : '04';
+
   return (
     <div style={{ background: '#F4F7FA', color: '#1A2E3B', fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.7 }}>
       {/* COVER */}
@@ -367,11 +376,99 @@ export default function ProposalView() {
         </div>
       </section>}
 
+      {/* TIMELINE */}
+      {hasTimeline && (() => {
+        // Compute Gantt date range from phases that have wc_date
+        let startMs: number | null = null;
+        let endMs: number | null = null;
+        for (const p of proposal.phases) {
+          if (p.wc_date) {
+            const s = new Date(p.wc_date + 'T00:00:00').getTime();
+            const e = s + parseWeeks(p.duration) * 7 * 86400000;
+            if (startMs === null || s < startMs) startMs = s;
+            if (endMs === null || e > endMs) endMs = e;
+          }
+        }
+        const totalMs = (startMs !== null && endMs !== null) ? endMs - startMs : 0;
+        const totalWeeks = proposal.phases.reduce((s, p) => s + parseWeeks(p.duration), 0);
+
+        return (
+          <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
+            <div id="timeline" className="scroll-reveal" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
+              <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>02</div>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Project Schedule</h2>
+              </div>
+              <div style={{ padding: '28px 32px' }}>
+                <p style={{ fontSize: 12, color: '#AAAAAA', marginBottom: 28, margin: '0 0 28px' }}>Indicative schedule — exact dates confirmed at project kick-off.</p>
+                {/* Phase rows */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {proposal.phases.map((phase, i) => {
+                    const weeks = parseWeeks(phase.duration);
+                    const wcDate = phase.wc_date;
+                    const dateLabel = wcDate
+                      ? new Date(wcDate + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                      : null;
+
+                    // Gantt bar: position based on actual dates if available, else sequential
+                    let leftPct = 0;
+                    let widthPct: number;
+                    if (totalMs > 0 && startMs !== null && wcDate) {
+                      const phaseMs = new Date(wcDate + 'T00:00:00').getTime();
+                      leftPct = ((phaseMs - startMs) / totalMs) * 100;
+                      widthPct = (weeks * 7 * 86400000 / totalMs) * 100;
+                    } else {
+                      const prevWeeks = proposal.phases.slice(0, i).reduce((s, p) => s + parseWeeks(p.duration), 0);
+                      leftPct = (prevWeeks / totalWeeks) * 100;
+                      widthPct = (weeks / totalWeeks) * 100;
+                    }
+
+                    const barColor = i % 3 === 0 ? '#009FE3' : i % 3 === 1 ? '#043D5D' : '#3A6278';
+                    const isLast = i === proposal.phases.length - 1;
+
+                    return (
+                      <div key={i} className="scroll-reveal" style={{ display: 'grid', gridTemplateColumns: '100px 200px 1fr', gap: 0, alignItems: 'center', padding: '14px 0', borderBottom: isLast ? 'none' : '1px solid #F4F7FA', transitionDelay: `${i * 60}ms` }}>
+                        {/* Phase label */}
+                        <div style={{ paddingRight: 16 }}>
+                          <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 2 }}>{phase.label}</div>
+                        </div>
+                        {/* Title + date */}
+                        <div style={{ paddingRight: 24 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#043D5D', lineHeight: 1.2 }}>{phase.title}</div>
+                          {dateLabel
+                            ? <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 3 }}>W/C {dateLabel}</div>
+                            : <div style={{ fontSize: 10, color: '#DDE8EE', marginTop: 3 }}>Date TBC</div>
+                          }
+                        </div>
+                        {/* Gantt track + bar */}
+                        <div style={{ position: 'relative', height: 36 }}>
+                          {/* Track */}
+                          <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 8, background: '#F4F7FA', border: '1px solid #DDE8EE', transform: 'translateY(-50%)', borderRadius: 2 }} />
+                          {/* Bar */}
+                          <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: `${leftPct}%`, width: `${Math.max(widthPct, 4)}%`, height: 28, background: barColor, borderRadius: 2, display: 'flex', alignItems: 'center', paddingLeft: 8, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,.15)' }}>
+                            <span style={{ fontSize: 9, fontWeight: 700, color: 'white', whiteSpace: 'nowrap', letterSpacing: '.06em' }}>{phase.duration}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Total */}
+                <div style={{ marginTop: 24, paddingTop: 16, borderTop: '2px solid #043D5D', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#043D5D' }}>Total programme duration</span>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: '#009FE3', letterSpacing: '-.02em' }}>{totalWeeks} {totalWeeks === 1 ? 'week' : 'weeks'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* PRICING */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
         <div id="pricing" className="scroll-reveal" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
           <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>02</div>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>{numPricing}</div>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Investment &amp; Pricing</h2>
           </div>
           <div style={{ padding: '28px 32px' }}>
@@ -567,7 +664,7 @@ export default function ProposalView() {
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
         <div id="team" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
           <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>03</div>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>{numTeam}</div>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Who You'll Work With</h2>
           </div>
           <div style={{ padding: '28px 32px' }}>
@@ -609,7 +706,7 @@ export default function ProposalView() {
         {/* NEXT STEPS */}
         <div style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
           <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>04</div>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>{numSteps}</div>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>How We Get Started</h2>
           </div>
           <div style={{ padding: '28px 32px' }}>

@@ -16,6 +16,7 @@ export interface Phase {
   duration: string;
   tasks: string[];
   price: string;
+  wc_date?: string; // Week commencing date (ISO date string, e.g. "2026-03-16")
 }
 
 export interface RetainerOption {

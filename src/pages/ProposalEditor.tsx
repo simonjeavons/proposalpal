@@ -480,7 +480,7 @@ export default function ProposalEditor() {
                 <div key={i} className="flex gap-3 items-start bg-muted p-4 border border-border">
                   <div className="flex-1 space-y-2">
                     <Input placeholder="Challenge title" value={c.title} onChange={e => updateChallenge(i, 'title', e.target.value)} className="text-sm font-semibold" />
-                    <Input placeholder="Description" value={c.description} onChange={e => updateChallenge(i, 'description', e.target.value)} className="text-sm" />
+                    <Textarea placeholder="Description" value={c.description} onChange={e => updateChallenge(i, 'description', e.target.value)} rows={2} className="text-sm resize-y min-h-[4rem]" />
                   </div>
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={() => updateField('challenges', form.challenges.filter((_, j) => j !== i))}>
                     <Trash2 className="w-4 h-4" />
@@ -563,8 +563,17 @@ export default function ProposalEditor() {
                 <Grid>
                   <Field label="Label" value={p.label} onChange={v => updatePhase(i, 'label', v)} />
                   <Field label="Title" value={p.title} onChange={v => updatePhase(i, 'title', v)} />
-                  <Field label="Duration" value={p.duration} onChange={v => updatePhase(i, 'duration', v)} />
+                  <Field label="Duration (e.g. 2 wks)" value={p.duration} onChange={v => updatePhase(i, 'duration', v)} />
                   <Field label="Price (£, optional)" value={p.price} onChange={v => updatePhase(i, 'price', v)} />
+                  <div>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Week Commencing</Label>
+                    <Input
+                      type="date"
+                      value={p.wc_date ?? ''}
+                      onChange={e => updatePhase(i, 'wc_date', e.target.value)}
+                      className="text-sm h-9"
+                    />
+                  </div>
                 </Grid>
                 <div>
                   <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Tasks (one per line)</Label>
