@@ -17,6 +17,7 @@ interface Profile {
   full_name: string;
   job_title: string;
   phone_number: string;
+  office_phone: string;
   role: "admin" | "user";
   created_at: string;
 }
@@ -110,11 +111,12 @@ export default function AdminDashboard() {
   const [inviteFullName, setInviteFullName] = useState("");
   const [inviteJobTitle, setInviteJobTitle] = useState("");
   const [invitePhoneNumber, setInvitePhoneNumber] = useState("");
+  const [inviteOfficePhone, setInviteOfficePhone] = useState("01743 636300");
   const [invitePassword, setInvitePassword] = useState("");
   const [inviteRole, setInviteRole] = useState<"admin" | "user">("user");
   const [inviting, setInviting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ full_name: "", job_title: "", phone_number: "" });
+  const [editForm, setEditForm] = useState({ full_name: "", job_title: "", phone_number: "", office_phone: "" });
 
   // Team members state
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -492,7 +494,7 @@ export default function AdminDashboard() {
 
     const { data: { session } } = await supabase.auth.getSession();
     const res = await supabase.functions.invoke("create-user", {
-      body: { email: inviteEmail, password: invitePassword, full_name: inviteFullName, job_title: inviteJobTitle, phone_number: invitePhoneNumber, role: inviteRole },
+      body: { email: inviteEmail, password: invitePassword, full_name: inviteFullName, job_title: inviteJobTitle, phone_number: invitePhoneNumber, office_phone: inviteOfficePhone, role: inviteRole },
       headers: { Authorization: `Bearer ${session?.access_token}` },
     });
 
@@ -513,6 +515,7 @@ export default function AdminDashboard() {
     setInviteFullName("");
     setInviteJobTitle("");
     setInvitePhoneNumber("");
+    setInviteOfficePhone("01743 636300");
     setInvitePassword("");
     setInviteRole("user");
     setInviting(false);
@@ -521,7 +524,7 @@ export default function AdminDashboard() {
 
   const startEdit = (profile: Profile) => {
     setEditingId(profile.id);
-    setEditForm({ full_name: profile.full_name || "", job_title: profile.job_title || "", phone_number: profile.phone_number || "" });
+    setEditForm({ full_name: profile.full_name || "", job_title: profile.job_title || "", phone_number: profile.phone_number || "", office_phone: profile.office_phone || "" });
   };
 
   const saveEdit = async (id: string) => {
@@ -1436,12 +1439,21 @@ export default function AdminDashboard() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Phone Number</Label>
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mobile / Direct</Label>
                   <Input
                     type="tel"
                     value={invitePhoneNumber}
                     onChange={(e) => setInvitePhoneNumber(e.target.value)}
-                    placeholder="01743 636 300"
+                    placeholder="07700 900000"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Office Phone</Label>
+                  <Input
+                    type="tel"
+                    value={inviteOfficePhone}
+                    onChange={(e) => setInviteOfficePhone(e.target.value)}
+                    placeholder="01743 636300"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1542,10 +1554,20 @@ export default function AdminDashboard() {
                           value={editForm.phone_number}
                           onChange={(e) => setEditForm(f => ({ ...f, phone_number: e.target.value }))}
                           className="h-7 text-xs py-0"
-                          placeholder="Phone number"
+                          placeholder="Mobile / direct"
                         />
                       ) : (
                         <span className="text-xs text-muted-foreground truncate">{profile.phone_number || <span className="opacity-40">—</span>}</span>
+                      )}
+                      {isEditing ? (
+                        <Input
+                          value={editForm.office_phone}
+                          onChange={(e) => setEditForm(f => ({ ...f, office_phone: e.target.value }))}
+                          className="h-7 text-xs py-0"
+                          placeholder="Office phone"
+                        />
+                      ) : (
+                        <span className="text-xs text-muted-foreground truncate">{profile.office_phone || <span className="opacity-40">—</span>}</span>
                       )}
                       <span className="text-sm text-muted-foreground truncate">{profile.email}</span>
                       <div>

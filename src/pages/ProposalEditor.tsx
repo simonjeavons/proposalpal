@@ -17,6 +17,7 @@ interface UserProfile {
   email: string;
   job_title: string;
   phone_number: string;
+  office_phone: string;
   team_member_id: string | null;
 }
 
@@ -152,7 +153,7 @@ export default function ProposalEditor() {
   });
 
   useEffect(() => {
-    supabase.from("profiles").select("id, full_name, email, job_title, phone_number, team_member_id").order("full_name").then(({ data }) => {
+    supabase.from("profiles").select("id, full_name, email, job_title, phone_number, office_phone, team_member_id").order("full_name").then(({ data }) => {
       if (data) setUsers(data as UserProfile[]);
     });
     (supabase as any).from("team_members").select("id, full_name, job_title, bio, photo_url, linkedin_url, is_active, sort_order").eq("is_active", true).order("sort_order").then(({ data }: { data: TeamMember[] | null }) => {
@@ -266,7 +267,7 @@ export default function ProposalEditor() {
       prepared_by_user_id: user.id,
       prepared_by: user.job_title ? `${user.full_name}, ${user.job_title}` : user.full_name,
       contact_email: user.email,
-      contact_phone: user.phone_number,
+      contact_phone: user.office_phone || user.phone_number,
     }));
   };
 
@@ -914,11 +915,11 @@ export default function ProposalEditor() {
         </Section>
 
         {/* Contact */}
-        <Section title="Contact Details">
+        <Section title="Shoothill Contact Details">
           <p className="text-xs text-muted-foreground mb-4">Shoothill contact details shown at the bottom of the proposal. Auto-populated from the selected user.</p>
           <Grid>
             <Field label="Email" value={form.contact_email} onChange={v => updateField('contact_email', v)} type="email" />
-            <Field label="Phone" value={form.contact_phone} onChange={v => updateField('contact_phone', v)} />
+            <Field label="Office Phone" value={form.contact_phone} onChange={v => updateField('contact_phone', v)} />
             <Field label="Mobile" value={form.contact_mobile} onChange={v => updateField('contact_mobile', v)} />
           </Grid>
         </Section>
