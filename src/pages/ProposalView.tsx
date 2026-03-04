@@ -144,10 +144,11 @@ export default function ProposalView() {
   // Dynamic section numbering (shifts if partnership overview and/or timeline shown)
   const hasPartnership = !!(proposal as any).partnership_overview;
   const po = hasPartnership ? 1 : 0; // partnership offset
-  const numUnderstanding = po === 1 ? '02' : '01';
-  const numPricing = String(2 + po + (hasTimeline ? 1 : 0)).padStart(2, '0');
-  const numTeam    = String(3 + po + (hasTimeline ? 1 : 0)).padStart(2, '0');
-  const numSteps   = String(4 + po + (hasTimeline ? 1 : 0)).padStart(2, '0');
+  const numUnderstanding = String(1 + po).padStart(2, '0');
+  const numTimeline      = String(2 + po).padStart(2, '0');
+  const numPricing       = String(2 + po + (hasTimeline ? 1 : 0)).padStart(2, '0');
+  const numTeam          = String(3 + po + (hasTimeline ? 1 : 0)).padStart(2, '0');
+  const numSteps         = String(4 + po + (hasTimeline ? 1 : 0)).padStart(2, '0');
 
   return (
     <div style={{ background: '#F4F7FA', color: '#1A2E3B', fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.7 }}>
@@ -263,9 +264,12 @@ export default function ProposalView() {
       {/* CLIENT CHALLENGE */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
         <div id="challenge" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
-          <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>{numUnderstanding}</div>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Understanding {proposal.client_name}</h2>
+          <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const, marginTop: 3 }}>{numUnderstanding}</div>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 6 }}>Client Understanding</div>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Understanding {proposal.client_name}</h2>
+            </div>
           </div>
           <div style={{ padding: '28px 32px' }}>
             {(() => {
@@ -439,9 +443,12 @@ export default function ProposalView() {
         return (
           <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
             <div id="timeline" className="scroll-reveal" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
-              <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
-                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>02</div>
-                <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Project Timeline</h2>
+              <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const, marginTop: 3 }}>{numTimeline}</div>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 6 }}>Delivery Schedule</div>
+                  <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Project Timeline</h2>
+                </div>
               </div>
               <div style={{ padding: '28px 32px' }}>
                 <p style={{ fontSize: 12, color: '#AAAAAA', marginBottom: 28, margin: '0 0 28px' }}>Indicative schedule — exact dates confirmed at project kick-off.</p>
@@ -511,9 +518,12 @@ export default function ProposalView() {
       {/* PRICING */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
         <div id="pricing" className="scroll-reveal" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
-          <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>{numPricing}</div>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Investment &amp; Pricing</h2>
+          <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const, marginTop: 3 }}>{numPricing}</div>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 6 }}>Your Investment</div>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Investment &amp; Pricing</h2>
+            </div>
           </div>
           <div style={{ padding: isMobile ? '16px 16px' : '28px 32px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -706,9 +716,12 @@ export default function ProposalView() {
       {/* TEAM */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
         <div id="team" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
-          <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>{numTeam}</div>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Who You'll Work With</h2>
+          <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const, marginTop: 3 }}>{numTeam}</div>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 6 }}>Project Team</div>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Who You'll Work With</h2>
+            </div>
           </div>
           <div style={{ padding: '28px 32px' }}>
             <p style={{ color: '#3A6278', marginBottom: 22 }}>Our senior leadership team is personally involved in every engagement. Once your project begins, you'll be introduced to a dedicated Shoothill project manager who guides you through onboarding and delivery.</p>
@@ -748,9 +761,12 @@ export default function ProposalView() {
 
         {/* NEXT STEPS */}
         <div style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
-          <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>{numSteps}</div>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>How We Get Started</h2>
+          <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const, marginTop: 3 }}>{numSteps}</div>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 6 }}>Next Steps</div>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>How We Get Started</h2>
+            </div>
           </div>
           <div style={{ padding: '28px 32px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14 }}>
