@@ -207,7 +207,7 @@ export default function ProposalView() {
               { num: '2006', text: 'Founded, growing from a two-person startup to 25+ experts' },
               { num: '500+', text: 'Projects delivered with honesty & expertise' },
               { num: '4', text: 'UK offices: Shrewsbury, Telford, Chester and London' },
-              { num: '200+', text: 'Years combined technical experience' },
+              { num: '90%+', text: 'Client retention rate' },
             ].map((s, i) => (
               <div key={s.num} className="scale-reveal" style={{ background: '#043D5D', padding: '28px 22px', transitionDelay: `${i * 80}ms` }}>
                 <strong style={{ display: 'block', fontSize: 36, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>{s.num}</strong>
