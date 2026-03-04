@@ -20,6 +20,16 @@ const ShootHillMark = () => (
   </svg>
 );
 
+function useWindowWidth() {
+  const [width, setWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1200));
+  useEffect(() => {
+    const handler = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return width;
+}
+
 const formatDate = (dateStr: string) => {
   const d = new Date(dateStr);
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -33,6 +43,9 @@ export default function ProposalView() {
   const [selectedStandard, setSelectedStandard] = useState(-1);
   const [checkedExtras, setCheckedExtras] = useState<Set<number>>(new Set());
   const [teamCards, setTeamCards] = useState<TeamMember[]>([]);
+  const w = useWindowWidth();
+  const isMobile = w < 640;
+  const isTablet = w < 960;
 
   useEffect(() => {
     const fetchProposal = async () => {
@@ -137,7 +150,7 @@ export default function ProposalView() {
     <div style={{ background: '#F4F7FA', color: '#1A2E3B', fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.7 }}>
       {/* COVER */}
       <div style={{ background: '#043D5D', minHeight: 360, position: 'relative', overflow: 'hidden', animation: 'fadeUp .6s ease both' }}>
-        <div style={{ padding: '52px 56px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 32, position: 'relative', zIndex: 1, minHeight: 360 }}>
+        <div style={{ padding: isMobile ? '28px 20px' : '52px 56px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 32, position: 'relative', zIndex: 1, minHeight: 360 }}>
           <div>
             <img style={{ height: 32, filter: 'brightness(0) invert(1)' }} src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg" alt="Shoothill" />
             <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.45)', letterSpacing: '.06em', marginTop: 6 }}>Award-winning, full-service digital technology experts</div>
@@ -155,7 +168,7 @@ export default function ProposalView() {
       </div>
 
       {/* TOPBAR */}
-      <nav style={{ background: '#043D5D', padding: '0 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 200, borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+      <nav style={{ background: '#043D5D', padding: isMobile ? '0 12px' : '0 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 200, borderBottom: '1px solid rgba(255,255,255,.08)' }}>
         <img style={{ height: 24, padding: '13px 0', display: 'block', filter: 'brightness(0) invert(1)' }} src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg" alt="Shoothill" />
         <div style={{ display: 'flex', overflowX: 'auto' }}>
           {['About', 'Challenge', 'Journey', 'Pricing', 'Team', 'Clients', 'Contact'].map(link => (
@@ -169,7 +182,7 @@ export default function ProposalView() {
 
       {/* ABOUT */}
       <section id="about" style={{ background: 'white', borderBottom: '1px solid #DDE8EE' }}>
-        <div className="scroll-reveal" style={{ maxWidth: 1100, margin: '0 auto', padding: '52px 48px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 72, alignItems: 'center' }}>
+        <div className="scroll-reveal" style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '32px 20px' : '52px 48px', display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1fr 1fr', gap: isTablet ? 32 : 72, alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <span style={{ width: 24, height: 2, background: '#009FE3', display: 'block' }} />About Shoothill
@@ -203,7 +216,7 @@ export default function ProposalView() {
 
       {/* SIMON QUOTE */}
       <section style={{ background: '#F4F7FA', borderBottom: '1px solid #DDE8EE' }}>
-        <div className="scroll-reveal" style={{ maxWidth: 1100, margin: '0 auto', padding: '56px 48px', display: 'grid', gridTemplateColumns: '1fr 280px', gap: 64, alignItems: 'center' }}>
+        <div className="scroll-reveal" style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '32px 20px' : '56px 48px', display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1fr 280px', gap: isTablet ? 24 : 64, alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: 80, fontWeight: 900, color: '#009FE3', opacity: .2, lineHeight: .8, marginBottom: 6, fontFamily: 'Georgia, serif' }}>"</div>
             <div style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', lineHeight: 1.55, letterSpacing: '-.01em', marginBottom: 20 }}>
@@ -221,7 +234,7 @@ export default function ProposalView() {
 
       {/* YOUR BUSINESS AND OUR PARTNERSHIP */}
       {(proposal as any).partnership_overview && (
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
           <div className="scroll-reveal" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
             <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE' }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -239,7 +252,7 @@ export default function ProposalView() {
       )}
 
       {/* CLIENT CHALLENGE */}
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
         <div id="challenge" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
           <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>01</div>
@@ -253,7 +266,7 @@ export default function ProposalView() {
                 { label: 'Current tech stack', value: proposal.tech_stack },
               ].filter(s => s.value && s.value.trim() !== '');
               return clientFields.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 22 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 22 }}>
                   {clientFields.map(s => (
                     <div key={s.label} style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '16px 20px' }}>
                       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 3 }}>{s.label}</div>
@@ -289,7 +302,7 @@ export default function ProposalView() {
         ].filter(s => (proposal as any)[s.key]?.trim());
         if (marketingSections.length === 0) return null;
         return (
-          <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28 }}>
               {marketingSections.map(({ key, label }, msIdx) => (
                 <div key={key} className="scroll-reveal" style={{ background: 'white', border: '1px solid #DDE8EE', transitionDelay: `${msIdx * 80}ms` }}>
@@ -310,69 +323,91 @@ export default function ProposalView() {
       })()}
 
       {/* JOURNEY */}
-      {proposal.phases.length > 0 && <section id="journey" style={{ background: '#043D5D', padding: '60px 0', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
-          <div style={{ marginBottom: 48 }}>
+      {proposal.phases.length > 0 && <section id="journey" style={{ background: '#043D5D', padding: isMobile ? '32px 0' : '60px 0', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
+          <div style={{ marginBottom: isMobile ? 28 : 48 }}>
             <h2 style={{ fontSize: 'clamp(20px, 2.5vw, 32px)', fontWeight: 800, color: 'white', letterSpacing: '-.025em', marginBottom: 8 }}>Your Transformation Journey</h2>
             <p style={{ fontSize: 14, color: 'rgba(255,255,255,.5)', maxWidth: 540 }}>A structured, transparent programme. Each phase builds on the last, with clear deliverables and sign-off before the next begins.</p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(proposal.phases.length, 4)}, 1fr)`, gap: 0, position: 'relative' }}>
-            {/* Rail */}
-            <div style={{ gridColumn: '1 / -1', gridRow: 2, alignSelf: 'center', height: 4, background: 'linear-gradient(90deg, #009FE3, rgba(0,159,227,.45))', zIndex: 0, pointerEvents: 'none' as const }} />
-            {proposal.phases.map((phase, i) => {
-              const isAbove = i % 2 === 0;
-              return (
-                <div key={i} style={{ display: 'contents' }}>
-                  {/* Card slot above */}
-                  {isAbove ? (
-                    <div style={{ gridRow: 1, gridColumn: i + 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', zIndex: 1 }}>
-                      <div className="scroll-reveal" style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', padding: '18px 16px', width: '90%', transitionDelay: `${i * 100}ms` }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 5 }}>{phase.label}</div>
-                        <h3 style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 5, lineHeight: 1.3 }}>{phase.title}</h3>
-                        {!proposal.hide_phase_durations && phase.duration && <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, background: '#009FE3', color: 'white', padding: '2px 8px', marginBottom: 10 }}>{phase.duration}</div>}
-                        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3, padding: 0, margin: 0 }}>
-                          {phase.tasks.filter(t => t.trim()).map((t, j) => (
-                            <li key={j} style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', display: 'flex', gap: 6 }}>
-                              <span style={{ color: '#009FE3', flexShrink: 0, fontWeight: 700 }}>›</span>{t}
-                            </li>
-                          ))}
-                        </ul>
-                        {phase.price ? <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.1)', fontSize: 12, fontWeight: 800, color: '#009FE3' }}>{phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`}</div> : null}
-                      </div>
-                      <div style={{ width: 2, height: 36, background: 'rgba(0,159,227,.5)', flexShrink: 0 }} />
-                    </div>
-                  ) : (
-                    <div style={{ gridRow: 1, gridColumn: i + 1, zIndex: 1 }} />
-                  )}
-                  {/* Node */}
-                  <div style={{ gridRow: 2, gridColumn: i + 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
-                    <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'white', border: '4px solid #009FE3', boxShadow: '0 0 0 5px rgba(0,159,227,.2)' }} />
+
+          {isMobile ? (
+            /* Mobile: simple stacked cards with left accent */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {proposal.phases.map((phase, i) => (
+                <div key={i} className="scroll-reveal" style={{ background: 'rgba(255,255,255,.08)', borderLeft: '3px solid #009FE3', border: '1px solid rgba(255,255,255,.15)', borderLeftWidth: 3, padding: '16px 16px', transitionDelay: `${i * 80}ms` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: '#009FE3' }}>{phase.label}</div>
+                    {!proposal.hide_phase_durations && phase.duration && <div style={{ fontSize: 9, fontWeight: 700, background: '#009FE3', color: 'white', padding: '1px 6px' }}>{phase.duration}</div>}
                   </div>
-                  {/* Card slot below */}
-                  {!isAbove ? (
-                    <div style={{ gridRow: 3, gridColumn: i + 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', zIndex: 1 }}>
-                      <div style={{ width: 2, height: 36, background: 'rgba(0,159,227,.5)', flexShrink: 0 }} />
-                      <div className="scroll-reveal" style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', padding: '18px 16px', width: '90%', transitionDelay: `${i * 100}ms` }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 5 }}>{phase.label}</div>
-                        <h3 style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 5, lineHeight: 1.3 }}>{phase.title}</h3>
-                        {!proposal.hide_phase_durations && phase.duration && <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, background: '#009FE3', color: 'white', padding: '2px 8px', marginBottom: 10 }}>{phase.duration}</div>}
-                        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3, padding: 0, margin: 0 }}>
-                          {phase.tasks.filter(t => t.trim()).map((t, j) => (
-                            <li key={j} style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', display: 'flex', gap: 6 }}>
-                              <span style={{ color: '#009FE3', flexShrink: 0, fontWeight: 700 }}>›</span>{t}
-                            </li>
-                          ))}
-                        </ul>
-                        {phase.price ? <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.1)', fontSize: 12, fontWeight: 800, color: '#009FE3' }}>{phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`}</div> : null}
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ gridRow: 3, gridColumn: i + 1, zIndex: 1 }} />
-                  )}
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 8, lineHeight: 1.3 }}>{phase.title}</h3>
+                  <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, padding: 0, margin: 0 }}>
+                    {phase.tasks.filter(t => t.trim()).map((t, j) => (
+                      <li key={j} style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', display: 'flex', gap: 6 }}>
+                        <span style={{ color: '#009FE3', flexShrink: 0, fontWeight: 700 }}>›</span>{t}
+                      </li>
+                    ))}
+                  </ul>
+                  {phase.price ? <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.1)', fontSize: 12, fontWeight: 800, color: '#009FE3' }}>{phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`}</div> : null}
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          ) : (
+            /* Desktop/tablet: alternating above/below timeline */
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(proposal.phases.length, 4)}, 1fr)`, gap: 0, position: 'relative' }}>
+              {/* Rail */}
+              <div style={{ gridColumn: '1 / -1', gridRow: 2, alignSelf: 'center', height: 4, background: 'linear-gradient(90deg, #009FE3, rgba(0,159,227,.45))', zIndex: 0, pointerEvents: 'none' as const }} />
+              {proposal.phases.map((phase, i) => {
+                const isAbove = i % 2 === 0;
+                return (
+                  <div key={i} style={{ display: 'contents' }}>
+                    {isAbove ? (
+                      <div style={{ gridRow: 1, gridColumn: i + 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', zIndex: 1 }}>
+                        <div className="scroll-reveal" style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', padding: '18px 16px', width: '90%', transitionDelay: `${i * 100}ms` }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 5 }}>{phase.label}</div>
+                          <h3 style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 5, lineHeight: 1.3 }}>{phase.title}</h3>
+                          {!proposal.hide_phase_durations && phase.duration && <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, background: '#009FE3', color: 'white', padding: '2px 8px', marginBottom: 10 }}>{phase.duration}</div>}
+                          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3, padding: 0, margin: 0 }}>
+                            {phase.tasks.filter(t => t.trim()).map((t, j) => (
+                              <li key={j} style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', display: 'flex', gap: 6 }}>
+                                <span style={{ color: '#009FE3', flexShrink: 0, fontWeight: 700 }}>›</span>{t}
+                              </li>
+                            ))}
+                          </ul>
+                          {phase.price ? <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.1)', fontSize: 12, fontWeight: 800, color: '#009FE3' }}>{phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`}</div> : null}
+                        </div>
+                        <div style={{ width: 2, height: 36, background: 'rgba(0,159,227,.5)', flexShrink: 0 }} />
+                      </div>
+                    ) : (
+                      <div style={{ gridRow: 1, gridColumn: i + 1, zIndex: 1 }} />
+                    )}
+                    <div style={{ gridRow: 2, gridColumn: i + 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
+                      <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'white', border: '4px solid #009FE3', boxShadow: '0 0 0 5px rgba(0,159,227,.2)' }} />
+                    </div>
+                    {!isAbove ? (
+                      <div style={{ gridRow: 3, gridColumn: i + 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', zIndex: 1 }}>
+                        <div style={{ width: 2, height: 36, background: 'rgba(0,159,227,.5)', flexShrink: 0 }} />
+                        <div className="scroll-reveal" style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', padding: '18px 16px', width: '90%', transitionDelay: `${i * 100}ms` }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 5 }}>{phase.label}</div>
+                          <h3 style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 5, lineHeight: 1.3 }}>{phase.title}</h3>
+                          {!proposal.hide_phase_durations && phase.duration && <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, background: '#009FE3', color: 'white', padding: '2px 8px', marginBottom: 10 }}>{phase.duration}</div>}
+                          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3, padding: 0, margin: 0 }}>
+                            {phase.tasks.filter(t => t.trim()).map((t, j) => (
+                              <li key={j} style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', display: 'flex', gap: 6 }}>
+                                <span style={{ color: '#009FE3', flexShrink: 0, fontWeight: 700 }}>›</span>{t}
+                              </li>
+                            ))}
+                          </ul>
+                          {phase.price ? <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.1)', fontSize: 12, fontWeight: 800, color: '#009FE3' }}>{phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`}</div> : null}
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ gridRow: 3, gridColumn: i + 1, zIndex: 1 }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>}
 
@@ -393,7 +428,7 @@ export default function ProposalView() {
         const totalWeeks = proposal.phases.reduce((s, p) => s + parseWeeks(p.duration), 0);
 
         return (
-          <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
             <div id="timeline" className="scroll-reveal" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
               <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
                 <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>02</div>
@@ -427,7 +462,7 @@ export default function ProposalView() {
                     const isLast = i === proposal.phases.length - 1;
 
                     return (
-                      <div key={i} className="scroll-reveal" style={{ display: 'grid', gridTemplateColumns: '100px 200px 1fr', gap: 0, alignItems: 'center', padding: '14px 0', borderBottom: isLast ? 'none' : '1px solid #F4F7FA', transitionDelay: `${i * 60}ms` }}>
+                      <div key={i} className="scroll-reveal" style={{ display: 'grid', gridTemplateColumns: isMobile ? '60px 1fr' : isTablet ? '80px 150px 1fr' : '100px 200px 1fr', gap: 0, alignItems: 'center', padding: '14px 0', borderBottom: isLast ? 'none' : '1px solid #F4F7FA', transitionDelay: `${i * 60}ms` }}>
                         {/* Phase label */}
                         <div style={{ paddingRight: 16 }}>
                           <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 2 }}>{phase.label}</div>
@@ -440,8 +475,8 @@ export default function ProposalView() {
                             : <div style={{ fontSize: 10, color: '#DDE8EE', marginTop: 3 }}>Date TBC</div>
                           }
                         </div>
-                        {/* Gantt track + bar */}
-                        <div style={{ position: 'relative', height: 36 }}>
+                        {/* Gantt track + bar — hidden on mobile */}
+                        <div style={{ position: 'relative', height: 36, display: isMobile ? 'none' : undefined }}>
                           {/* Track */}
                           <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 8, background: '#F4F7FA', border: '1px solid #DDE8EE', transform: 'translateY(-50%)', borderRadius: 2 }} />
                           {/* Bar */}
@@ -465,13 +500,13 @@ export default function ProposalView() {
       })()}
 
       {/* PRICING */}
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
         <div id="pricing" className="scroll-reveal" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
           <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>{numPricing}</div>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Investment &amp; Pricing</h2>
           </div>
-          <div style={{ padding: '28px 32px' }}>
+          <div style={{ padding: isMobile ? '16px 16px' : '28px 32px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
               {/* Upfront */}
               <div>
@@ -509,8 +544,7 @@ export default function ProposalView() {
               {standardOptions.length > 0 && (
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 2 }}>Part 2: Ongoing support / options</div>
-                  <p style={{ color: '#3A6278', fontSize: 13, marginBottom: 18, marginTop: 16 }}>Choose the level of ongoing Shoothill support that suits your team. Select below:</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${standardOptions.length}, 1fr)`, gap: 2, background: '#DDE8EE' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTablet && standardOptions.length > 2 ? 'repeat(2, 1fr)' : `repeat(${standardOptions.length}, 1fr)`, gap: 2, background: '#DDE8EE' }}>
                     {standardOptions.map((r, i) => (
                       <div
                         key={i}
@@ -608,7 +642,7 @@ export default function ProposalView() {
               )}
 
               {/* Grand total */}
-              <div style={{ background: '#043D5D', padding: '24px 28px', display: 'grid', gridTemplateColumns: '1fr auto', gap: 24, alignItems: 'center' }}>
+              <div style={{ background: '#043D5D', padding: isMobile ? '18px 16px' : '24px 28px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: isMobile ? 12 : 24, alignItems: 'center' }}>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.45)', marginBottom: 6 }}>Investment summary</div>
                   <div style={{ fontSize: 13, color: 'rgba(255,255,255,.5)' }}>
@@ -632,7 +666,7 @@ export default function ProposalView() {
         const bandCols = 1 + (monthlyTotal > 0 ? 1 : 0) + (proposal.payment_terms ? 1 : 0) + 1;
         return (
           <div style={{ background: 'white', borderTop: '1px solid #DDE8EE', borderBottom: '1px solid #DDE8EE' }}>
-            <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 48px', display: 'grid', gridTemplateColumns: `repeat(${bandCols}, 1fr)` }}>
+            <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '20px 16px' : '28px 48px', display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : `repeat(${bandCols}, 1fr)` }}>
               <div style={{ padding: '0 24px', borderRight: '1px solid #DDE8EE' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>One-time project</div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 2 }}>£{Number(proposal.upfront_total).toLocaleString('en-GB')}</div>
@@ -661,7 +695,7 @@ export default function ProposalView() {
       })()}
 
       {/* TEAM */}
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
         <div id="team" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
           <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>{numTeam}</div>
@@ -669,7 +703,7 @@ export default function ProposalView() {
           </div>
           <div style={{ padding: '28px 32px' }}>
             <p style={{ color: '#3A6278', marginBottom: 22 }}>Our senior leadership team is personally involved in every engagement. Once your project begins, you'll be introduced to a dedicated Shoothill project manager who guides you through onboarding and delivery.</p>
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(2, Math.min(4, teamCards.length))}, 1fr)`, gap: 2, background: '#DDE8EE' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : isTablet ? 'repeat(2, 1fr)' : `repeat(${Math.max(2, Math.min(4, teamCards.length))}, 1fr)`, gap: 2, background: '#DDE8EE' }}>
               {teamCards.map((member, i) => (
                 <div key={member.id} className="scale-reveal" style={{ background: 'white', overflow: 'hidden', transitionDelay: `${i * 80}ms`, display: 'flex', flexDirection: 'column' }}>
                   <div style={{ width: '100%', aspectRatio: '1', overflow: 'hidden', background: '#043D5D', flexShrink: 0 }}>
@@ -710,7 +744,7 @@ export default function ProposalView() {
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>How We Get Started</h2>
           </div>
           <div style={{ padding: '28px 32px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14 }}>
               {[
                 { n: 1, title: 'Choose your package', desc: 'Review the pricing above and click to choose your preferred package.' },
                 { n: 2, title: 'Sign your service agreement', desc: 'Sign to accept your Shoothill service agreement. No work begins and no payment is due until you\'ve signed.' },
@@ -734,7 +768,7 @@ export default function ProposalView() {
               <button
                 className="cta-pulse"
                 onClick={() => navigate(`/p/${slug}/accept?standard=${selectedStandard}&extras=${[...checkedExtras].join(',')}`)}
-                style={{ background: '#009FE3', color: 'white', fontSize: 13, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' as const, padding: '13px 28px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                style={{ background: '#009FE3', color: 'white', fontSize: 13, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' as const, padding: '13px 20px', border: 'none', cursor: 'pointer' }}
               >
                 Accept your Shoothill service agreement →
               </button>
@@ -745,12 +779,12 @@ export default function ProposalView() {
 
       {/* TESTIMONIALS */}
       <section id="testimonials" style={{ background: '#F4F7FA', borderBottom: '1px solid #DDE8EE' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '52px 48px' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '32px 20px' : '52px 48px' }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <span style={{ width: 24, height: 2, background: '#009FE3', display: 'block' }} />What Our Clients Say
           </div>
           <h2 style={{ fontSize: 'clamp(18px, 2.4vw, 26px)', fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>Trusted by businesses across the UK</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, background: '#DDE8EE', marginTop: 28 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: 2, background: '#DDE8EE', marginTop: 28 }}>
             {[
               { quote: 'Blending design, software development and engineering — very few businesses would be able to tackle this challenge. Shoothill took it in their stride.', name: 'Edd Rayner', co: 'Operations Manager, FastAmps' },
               { quote: 'Shoothill provided the tools we needed to maximise our efficiency. They became a source of aid in helping us scale over the long term by consistently delivering digital solutions.', name: 'Nigel Kilby', co: 'Commercial Development Director, HD Sharman Ltd' },
@@ -776,12 +810,12 @@ export default function ProposalView() {
 
       {/* CLIENT LOGOS */}
       <section id="clients" style={{ background: 'white', borderBottom: '1px solid #DDE8EE' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: 48 }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? 20 : 48 }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <span style={{ width: 24, height: 2, background: '#009FE3', display: 'block' }} />Clients We've Worked With
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em', marginBottom: 28 }}>Trusted by global brands and growing businesses alike</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 2, background: '#DDE8EE' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(6, 1fr)', gap: 2, background: '#DDE8EE' }}>
             {[
               { src: 'https://shoothill.com/wp-content/uploads/2024/09/microsoft.jpg', alt: 'Microsoft' },
               { src: 'https://shoothill.com/wp-content/uploads/2024/09/fujitsu.jpg', alt: 'Fujitsu' },
@@ -800,13 +834,13 @@ export default function ProposalView() {
 
       {/* OFFICES */}
       <section style={{ background: '#043D5D', padding: '52px 0' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 48px' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: 'rgba(0,159,227,.8)', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <span style={{ width: 24, height: 2, background: 'rgba(0,159,227,.8)', display: 'block' }} />Our Locations
           </div>
           <h2 style={{ fontSize: 'clamp(20px, 2.5vw, 30px)', fontWeight: 800, color: 'white', letterSpacing: '-.025em', marginBottom: 8 }}>Delivering great results across the UK</h2>
           <p style={{ fontSize: 14, color: 'rgba(255,255,255,.5)', marginBottom: 32, maxWidth: 560 }}>Our expanding presence reflects our commitment to being close to our clients, so we can respond quickly and in person.</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2, background: 'rgba(255,255,255,.08)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : isTablet ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 2, background: 'rgba(255,255,255,.08)' }}>
             {[
               { badge: 'HQ', name: 'Shrewsbury', addr: 'Willow House East\nShrewsbury Business Park\nSY2 6LG', tel: '01743 636 300' },
               { badge: 'Midlands', name: 'Telford', addr: '3rd Floor, The Quad\nStation Quarter, Ironmasters Way\nTF3 4NT', tel: '01952 264 126' },
@@ -826,7 +860,7 @@ export default function ProposalView() {
 
       {/* CONTACT */}
       <section id="contact" style={{ background: '#043D5D', padding: '64px 0', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 56px', position: 'relative', zIndex: 1 }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 20px' : '0 56px', position: 'relative', zIndex: 1 }}>
           <div className="scroll-reveal" style={{ display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1 }}>
             <img style={{ height: 28, marginBottom: 20, filter: 'brightness(0) invert(1)', width: 'fit-content' }} src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg" alt="Shoothill" />
             <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.4)', letterSpacing: '.06em', marginBottom: 36 }}>Award-winning, full-service digital technology experts</div>
