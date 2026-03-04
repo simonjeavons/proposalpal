@@ -43,6 +43,7 @@ export default function ProposalView() {
   const [selectedStandard, setSelectedStandard] = useState(-1);
   const [checkedExtras, setCheckedExtras] = useState<Set<number>>(new Set());
   const [teamCards, setTeamCards] = useState<TeamMember[]>([]);
+  const [showStickyBar, setShowStickyBar] = useState(false);
   const w = useWindowWidth();
   const isMobile = w < 640;
   const isTablet = w < 960;
@@ -113,6 +114,13 @@ export default function ProposalView() {
     }, 60);
     return () => { clearTimeout(timer); obs.disconnect(); };
   }, [proposal, teamCards]);
+
+  // Sticky CTA bar — show after scrolling past cover
+  useEffect(() => {
+    const onScroll = () => setShowStickyBar(window.scrollY > 400);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen" style={{ background: '#F4F7FA' }}>
@@ -189,17 +197,6 @@ export default function ProposalView() {
               >{link}</a>
             ))}
           </div>
-          {!isMobile && (
-            <button
-              onClick={() => window.print()}
-              style={{ marginLeft: 8, padding: '7px 14px', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.2)', color: 'rgba(255,255,255,.8)', fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0, letterSpacing: '.04em', display: 'flex', alignItems: 'center', gap: 6 }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,.18)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,.1)'; }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-              Save as PDF
-            </button>
-          )}
         </div>
       </nav>
 
@@ -804,19 +801,6 @@ export default function ProposalView() {
                 </div>
               ))}
             </div>
-            <div style={{ background: '#043D5D', padding: '26px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginTop: 28 }}>
-              <div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: 'white', marginBottom: 3 }}>Ready to move forward?</h3>
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', margin: 0 }}>{ownerName || ownerPhone ? `Contact${ownerName ? ` ${ownerName}` : ''}${ownerPhone ? ` on ${ownerPhone}` : ''} if you have any questions.` : 'Get in touch if you have any questions.'}</p>
-              </div>
-              <button
-                className="cta-pulse no-print"
-                onClick={() => navigate(`/p/${slug}/accept?standard=${selectedStandard}&extras=${[...checkedExtras].join(',')}`)}
-                style={{ background: '#009FE3', color: 'white', fontSize: 13, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' as const, padding: '13px 20px', border: 'none', cursor: 'pointer' }}
-              >
-                Accept your Shoothill service agreement →
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -936,6 +920,39 @@ export default function ProposalView() {
           <ShootHillMark />
         </div>
       </section>
+
+      {/* STICKY CTA BAR */}
+      {showStickyBar && proposal && (
+        <div className="no-print" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#043D5D', borderTop: '2px solid #009FE3', padding: isMobile ? '12px 16px' : '14px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, zIndex: 300, boxShadow: '0 -4px 24px rgba(0,0,0,.3)', flexWrap: 'wrap' }}>
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'white', margin: 0 }}>Ready to move forward?</p>
+            {(ownerName || ownerPhone) && (
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,.45)', margin: 0 }}>
+                {ownerName ? `Contact ${ownerName}` : 'Get in touch'}{ownerPhone ? ` on ${ownerPhone}` : ''} if you have any questions.
+              </p>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+            <button
+              onClick={() => window.print()}
+              style={{ padding: '9px 16px', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.25)', color: 'rgba(255,255,255,.85)', fontSize: 12, fontWeight: 600, cursor: 'pointer', letterSpacing: '.04em', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Save as PDF
+            </button>
+            <button
+              className="cta-pulse"
+              onClick={() => navigate(`/p/${slug}/accept?standard=${selectedStandard}&extras=${[...checkedExtras].join(',')}`)}
+              style={{ background: '#009FE3', color: 'white', fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' as const, padding: '9px 18px', border: 'none', cursor: 'pointer' }}
+            >
+              Sign agreement →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom padding so sticky bar doesn't overlap footer content */}
+      {showStickyBar && <div style={{ height: 68 }} />}
     </div>
   );
 }
