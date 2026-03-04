@@ -899,9 +899,12 @@ export default function ProposalView() {
               <strong style={{ display: 'block', color: 'rgba(255,255,255,.35)', marginBottom: 3 }}>{formatDate(proposal.proposal_date)} &nbsp;·&nbsp; Classification: Customer</strong>
               Shoothill Ltd · Registered in England &amp; Wales · Confidential{proposal.organisation ? `, prepared for ${proposal.organisation}` : ''}
             </div>
-            <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,.08)', fontSize: 11, color: 'rgba(255,255,255,.3)', lineHeight: 1.6 }}>
-              This proposal was created using the Shoothill Proposal Manager, built by the Shoothill software development team.{' '}
-              <a href="mailto:webenquiry@shoothill.com" style={{ color: 'rgba(255,255,255,.5)', textDecoration: 'underline' }}>Contact us</a> if you'd like to use it in your business.
+            <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,.08)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+              <img src="https://arh-group.co.uk/wp-content/uploads/2025/07/ShoothillMadeThisWork-darktbg.svg" alt="Shoothill Made This Work" style={{ height: 28, flexShrink: 0 }} />
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', lineHeight: 1.6 }}>
+                This proposal was created using the Shoothill Proposal Manager, built by the Shoothill software development team.{' '}
+                <a href="mailto:webenquiry@shoothill.com" style={{ color: 'rgba(255,255,255,.5)', textDecoration: 'underline' }}>Contact us</a> if you'd like to use it in your business.
+              </span>
             </div>
           </div>
           <ShootHillMark />
