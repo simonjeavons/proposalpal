@@ -892,6 +892,11 @@ export default function ProposalView() {
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 20px' : '0 56px', position: 'relative', zIndex: 1 }}>
           <div className="scroll-reveal" style={{ display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1 }}>
 
+            {/* Shoothill logo */}
+            <a href="http://shoothill.com" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginBottom: 32, width: 'fit-content' }}>
+              <img style={{ height: 52, filter: 'brightness(0) invert(1)' }} src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg" alt="Shoothill" />
+            </a>
+
             {/* Promo blurb */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', paddingBottom: 32, borderBottom: '1px solid rgba(255,255,255,.1)' }}>
               <img src="https://arh-group.co.uk/wp-content/uploads/2025/07/ShoothillMadeThisWork-darktbg.svg" alt="Shoothill Made This Work" style={{ height: 36, flexShrink: 0 }} />
@@ -902,12 +907,18 @@ export default function ProposalView() {
             </div>
 
             {/* Legal footer */}
-            <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 4 }}>
               <p style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', margin: 0 }}>
                 {formatDate(proposal.proposal_date)} &nbsp;·&nbsp; Classification: Customer{proposal.organisation ? ` · Prepared for ${proposal.organisation}` : ''}
               </p>
               <p style={{ fontSize: 11, color: 'rgba(255,255,255,.22)', margin: 0 }}>
-                Shoothill<sup>®</sup> is a registered trademark owned by Shoothill Ltd. Shoothill Ltd is a company registered in England &amp; Wales (company no. 5885234). Registered office: Willow House East, Shrewsbury Business Park, Shrewsbury SY2&nbsp;6LG.
+                Shoothill<sup>®</sup> is a registered trademark owned by Shoothill Ltd.
+              </p>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,.22)', margin: 0 }}>
+                Shoothill Ltd is a company registered in England &amp; Wales (company no. 5885234).
+              </p>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,.22)', margin: 0 }}>
+                Registered office: Willow House East, Shrewsbury Business Park, Shrewsbury SY2&nbsp;6LG.
               </p>
             </div>
 
