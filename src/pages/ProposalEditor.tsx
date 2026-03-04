@@ -111,6 +111,8 @@ export default function ProposalEditor() {
 
   const [contractFileUrl, setContractFileUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
@@ -208,6 +210,7 @@ export default function ProposalEditor() {
           });
           setSlug(data.slug);
           setContractFileUrl((data as any).contract_file_url || null);
+          setClientLogoUrl((data as any).client_logo_url || null);
         }
         setLoading(false);
       });
@@ -221,6 +224,7 @@ export default function ProposalEditor() {
       ...form,
       upfront_total: form.upfront_items.reduce((sum, item) => sum + item.price, 0),
       contract_file_url: contractFileUrl,
+      client_logo_url: clientLogoUrl,
       prepared_by_user_id: form.prepared_by_user_id || null,
       lead_team_member_id: preparedUser?.team_member_id || null,
     } as any;
@@ -252,6 +256,25 @@ export default function ProposalEditor() {
       await supabase.storage.from('contracts').remove([contractFileUrl]);
     }
     setContractFileUrl(null);
+  };
+
+  const uploadClientLogo = async (file: File) => {
+    setUploadingLogo(true);
+    const path = `logos/${id || 'new'}-${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from('proposal-assets').upload(path, file, { upsert: true });
+    if (error) { toast.error("Logo upload failed"); setUploadingLogo(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from('proposal-assets').getPublicUrl(path);
+    setClientLogoUrl(publicUrl);
+    toast.success("Logo uploaded");
+    setUploadingLogo(false);
+  };
+
+  const removeClientLogo = async () => {
+    if (clientLogoUrl) {
+      const path = clientLogoUrl.split('/proposal-assets/')[1];
+      if (path) await supabase.storage.from('proposal-assets').remove([path]);
+    }
+    setClientLogoUrl(null);
   };
 
   const updateField = (field: keyof FormData, value: any) => setForm(prev => ({ ...prev, [field]: value }));
@@ -423,6 +446,33 @@ export default function ProposalEditor() {
             <Field label="Staff" value={form.staff} onChange={v => updateField('staff', v)} />
             <div className="col-span-2">
               <Field label="Current Tech Stack" value={form.tech_stack} onChange={v => updateField('tech_stack', v)} />
+            </div>
+            {/* Client Logo */}
+            <div className="col-span-2">
+              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Client Logo <span className="font-normal normal-case">(displayed in proposal header)</span></Label>
+              {clientLogoUrl ? (
+                <div className="flex items-center gap-3 bg-muted p-3 border border-border">
+                  <img src={clientLogoUrl} alt="Client logo" className="h-10 object-contain max-w-[160px]" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground">Logo uploaded</p>
+                  </div>
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={removeClientLogo} title="Remove logo">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-border cursor-pointer hover:border-primary transition-colors">
+                  <Upload className="w-5 h-5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">{uploadingLogo ? 'Uploading…' : 'Upload client logo — PNG, JPG or SVG'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadClientLogo(f); e.target.value = ''; }}
+                    disabled={uploadingLogo}
+                  />
+                </label>
+              )}
             </div>
           </div>
         </Section>

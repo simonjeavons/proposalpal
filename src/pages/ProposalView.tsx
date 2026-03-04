@@ -141,10 +141,13 @@ export default function ProposalView() {
   const parseWeeks = (d: string) => Math.max(1, parseInt(d?.match(/(\d+)/)?.[1] ?? '1'));
   const hasTimeline = proposal.phases.length > 0 && proposal.phases.some(p => p.wc_date);
 
-  // Dynamic section numbering (shifts if timeline shown)
-  const numPricing = hasTimeline ? '03' : '02';
-  const numTeam    = hasTimeline ? '04' : '03';
-  const numSteps   = hasTimeline ? '05' : '04';
+  // Dynamic section numbering (shifts if partnership overview and/or timeline shown)
+  const hasPartnership = !!(proposal as any).partnership_overview;
+  const po = hasPartnership ? 1 : 0; // partnership offset
+  const numUnderstanding = po === 1 ? '02' : '01';
+  const numPricing = String(2 + po + (hasTimeline ? 1 : 0)).padStart(2, '0');
+  const numTeam    = String(3 + po + (hasTimeline ? 1 : 0)).padStart(2, '0');
+  const numSteps   = String(4 + po + (hasTimeline ? 1 : 0)).padStart(2, '0');
 
   return (
     <div style={{ background: '#F4F7FA', color: '#1A2E3B', fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.7 }}>
@@ -236,11 +239,17 @@ export default function ProposalView() {
       {(proposal as any).partnership_overview && (
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
           <div className="scroll-reveal" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
-            <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <span style={{ width: 24, height: 2, background: '#009FE3', display: 'block' }} />Your Business &amp; Our Partnership
+            <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const, marginTop: 3 }}>01</div>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 8 }}>Your Business &amp; Our Partnership</div>
+                  <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>How we work together</h2>
+                </div>
               </div>
-              <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>How we work together</h2>
+              {(proposal as any).client_logo_url && (
+                <img src={(proposal as any).client_logo_url} style={{ height: 44, maxWidth: 160, objectFit: 'contain', flexShrink: 0 }} alt="Client logo" />
+              )}
             </div>
             <div style={{ padding: '28px 32px' }}>
               {((proposal as any).partnership_overview as string).split('\n').filter(Boolean).map((para: string, i: number) => (
@@ -255,7 +264,7 @@ export default function ProposalView() {
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
         <div id="challenge" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
           <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>01</div>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>{numUnderstanding}</div>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Understanding {proposal.client_name}</h2>
           </div>
           <div style={{ padding: '28px 32px' }}>
@@ -576,9 +585,9 @@ export default function ProposalView() {
                         <div style={{ fontSize: 24, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>
                           £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>/ month{r.term_months ? ` for ${r.term_months} months` : ''}</span>
                         </div>
-                        {r.features.length > 0 && (
+                        {r.features.filter(f => f.trim()).length > 0 && (
                           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12, paddingTop: 12, borderTop: '1px solid #DDE8EE', padding: 0 }}>
-                            {r.features.map((f, j) => (
+                            {r.features.filter(f => f.trim()).map((f, j) => (
                               <li key={j} style={{ fontSize: 12, color: '#3A6278', display: 'flex', gap: 7, alignItems: 'flex-start' }}>
                                 <span style={{ color: '#009FE3', fontWeight: 700, flexShrink: 0 }}>✓</span>{f}
                               </li>
@@ -626,8 +635,8 @@ export default function ProposalView() {
                               {r.recommended && <div style={{ fontSize: 9, fontWeight: 800, color: '#92400E', background: '#FDE68A', padding: '1px 6px', letterSpacing: '.08em', textTransform: 'uppercase' as const }}>★ Recommended</div>}
                             </div>
                             <div style={{ fontSize: 14, fontWeight: 700, color: '#043D5D' }}>{r.name || r.type}</div>
-                            {r.features.length > 0 && (
-                              <div style={{ fontSize: 12, color: '#3A6278', marginTop: 4 }}>{r.features.join(' · ')}</div>
+                            {r.features.filter(f => f.trim()).length > 0 && (
+                              <div style={{ fontSize: 12, color: '#3A6278', marginTop: 4 }}>{r.features.filter(f => f.trim()).join(' · ')}</div>
                             )}
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
