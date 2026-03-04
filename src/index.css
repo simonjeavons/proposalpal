@@ -146,3 +146,45 @@
   box-shadow: 0 6px 24px rgba(4,61,93,0.10);
   transform: translateY(-2px);
 }
+
+/* ── Print / Save as PDF ─────────────────────────────── */
+@media print {
+  /* Preserve all background colours and images */
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Kill animations & transitions so nothing stays invisible */
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Force scroll-reveal elements fully visible regardless of scroll position */
+  .scroll-reveal, .scale-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* Hide UI chrome that makes no sense on paper */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Un-stick the nav so it doesn't repeat on every page */
+  nav {
+    position: static !important;
+  }
+
+  /* Avoid splitting cards and section boxes across pages */
+  .print-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Give some breathing room at the page edges */
+  @page {
+    margin: 12mm 10mm;
+  }
+}

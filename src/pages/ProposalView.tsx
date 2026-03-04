@@ -178,15 +178,28 @@ export default function ProposalView() {
       </div>
 
       {/* TOPBAR */}
-      <nav style={{ background: '#043D5D', padding: isMobile ? '0 12px' : '0 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 200, borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+      <nav className="no-print" style={{ background: '#043D5D', padding: isMobile ? '0 12px' : '0 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 200, borderBottom: '1px solid rgba(255,255,255,.08)' }}>
         <img style={{ height: 24, padding: '13px 0', display: 'block', filter: 'brightness(0) invert(1)' }} src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg" alt="Shoothill" />
-        <div style={{ display: 'flex', overflowX: 'auto' }}>
-          {['About', 'Challenge', 'Journey', 'Pricing', 'Team', 'Clients', 'Contact'].map(link => (
-            <a key={link} href={`#${link.toLowerCase()}`} style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.5)', textDecoration: 'none', padding: '15px 14px', borderBottom: '2px solid transparent', transition: 'color .2s', whiteSpace: 'nowrap' }}
-              onMouseEnter={e => { (e.target as HTMLElement).style.color = 'white'; }}
-              onMouseLeave={e => { (e.target as HTMLElement).style.color = 'rgba(255,255,255,.5)'; }}
-            >{link}</a>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ display: 'flex', overflowX: 'auto' }}>
+            {['About', 'Challenge', 'Journey', 'Pricing', 'Team', 'Clients', 'Contact'].map(link => (
+              <a key={link} href={`#${link.toLowerCase()}`} style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.5)', textDecoration: 'none', padding: '15px 14px', borderBottom: '2px solid transparent', transition: 'color .2s', whiteSpace: 'nowrap' }}
+                onMouseEnter={e => { (e.target as HTMLElement).style.color = 'white'; }}
+                onMouseLeave={e => { (e.target as HTMLElement).style.color = 'rgba(255,255,255,.5)'; }}
+              >{link}</a>
+            ))}
+          </div>
+          {!isMobile && (
+            <button
+              onClick={() => window.print()}
+              style={{ marginLeft: 8, padding: '7px 14px', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.2)', color: 'rgba(255,255,255,.8)', fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0, letterSpacing: '.04em', display: 'flex', alignItems: 'center', gap: 6 }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,.18)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,.1)'; }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Save as PDF
+            </button>
+          )}
         </div>
       </nav>
 
@@ -797,7 +810,7 @@ export default function ProposalView() {
                 <p style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', margin: 0 }}>{ownerName || ownerPhone ? `Contact${ownerName ? ` ${ownerName}` : ''}${ownerPhone ? ` on ${ownerPhone}` : ''} if you have any questions.` : 'Get in touch if you have any questions.'}</p>
               </div>
               <button
-                className="cta-pulse"
+                className="cta-pulse no-print"
                 onClick={() => navigate(`/p/${slug}/accept?standard=${selectedStandard}&extras=${[...checkedExtras].join(',')}`)}
                 style={{ background: '#009FE3', color: 'white', fontSize: 13, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' as const, padding: '13px 20px', border: 'none', cursor: 'pointer' }}
               >
