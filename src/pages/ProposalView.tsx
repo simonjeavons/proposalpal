@@ -397,7 +397,7 @@ export default function ProposalView() {
             <div id="timeline" className="scroll-reveal" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
               <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
                 <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const }}>02</div>
-                <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Project Schedule</h2>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Project Timeline</h2>
               </div>
               <div style={{ padding: '28px 32px' }}>
                 <p style={{ fontSize: 12, color: '#AAAAAA', marginBottom: 28, margin: '0 0 28px' }}>Indicative schedule — exact dates confirmed at project kick-off.</p>
@@ -446,7 +446,7 @@ export default function ProposalView() {
                           <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 8, background: '#F4F7FA', border: '1px solid #DDE8EE', transform: 'translateY(-50%)', borderRadius: 2 }} />
                           {/* Bar */}
                           <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: `${leftPct}%`, width: `${Math.max(widthPct, 4)}%`, height: 28, background: barColor, borderRadius: 2, display: 'flex', alignItems: 'center', paddingLeft: 8, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,.15)' }}>
-                            {!proposal.hide_phase_durations && <span style={{ fontSize: 9, fontWeight: 700, color: 'white', whiteSpace: 'nowrap', letterSpacing: '.06em' }}>{phase.duration}</span>}
+                            <span style={{ fontSize: 9, fontWeight: 700, color: 'white', whiteSpace: 'nowrap', letterSpacing: '.06em' }}>{phase.duration}</span>
                           </div>
                         </div>
                       </div>
@@ -671,8 +671,8 @@ export default function ProposalView() {
             <p style={{ color: '#3A6278', marginBottom: 22 }}>Our senior leadership team is personally involved in every engagement. Once your project begins, you'll be introduced to a dedicated Shoothill project manager who guides you through onboarding and delivery.</p>
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(2, Math.min(4, teamCards.length))}, 1fr)`, gap: 2, background: '#DDE8EE' }}>
               {teamCards.map((member, i) => (
-                <div key={member.id} className="scale-reveal" style={{ background: 'white', overflow: 'hidden', transitionDelay: `${i * 80}ms` }}>
-                  <div style={{ width: '100%', aspectRatio: '1', overflow: 'hidden', background: '#043D5D' }}>
+                <div key={member.id} className="scale-reveal" style={{ background: 'white', overflow: 'hidden', transitionDelay: `${i * 80}ms`, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ width: '100%', aspectRatio: '1', overflow: 'hidden', background: '#043D5D', flexShrink: 0 }}>
                     {member.photo_url ? (
                       <img style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block' }} src={member.photo_url} alt={member.full_name} />
                     ) : (
@@ -681,12 +681,12 @@ export default function ProposalView() {
                       </div>
                     )}
                   </div>
-                  <div style={{ padding: '18px 18px 20px' }}>
+                  <div style={{ padding: '18px 18px 20px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#043D5D', marginBottom: 1 }}>{member.full_name}</div>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 8 }}>{member.job_title}</div>
-                    <div style={{ fontSize: 12, color: '#3A6278', lineHeight: 1.6 }}>{member.bio}</div>
+                    <div style={{ fontSize: 12, color: '#3A6278', lineHeight: 1.6, flex: 1 }}>{member.bio}</div>
                     {member.linkedin_url && (
-                      <a href={member.linkedin_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 10, fontSize: 10, fontWeight: 600, color: '#009FE3', textDecoration: 'none', letterSpacing: '.05em' }}>
+                      <a href={member.linkedin_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 12, fontSize: 10, fontWeight: 600, color: '#009FE3', textDecoration: 'none', letterSpacing: '.05em', alignSelf: 'flex-start' }}>
                         LinkedIn →
                       </a>
                     )}
