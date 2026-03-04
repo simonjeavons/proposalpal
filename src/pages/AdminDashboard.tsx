@@ -99,6 +99,9 @@ export default function AdminDashboard() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [proposalsLoading, setProposalsLoading] = useState(true);
   const [signedContracts, setSignedContracts] = useState<Record<string, string>>({}); // proposal_id -> signed_contract_url
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterSector, setFilterSector] = useState<string>('all');
+  const [filterUser, setFilterUser] = useState<string>('all');
 
   // Users state
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -696,82 +699,162 @@ export default function AdminDashboard() {
 
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Proposals Tab */}
-        {activeTab === "proposals" && (
-          <>
-            <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Proposals</h1>
-            <p className="text-sm text-muted-foreground mb-6">Create, manage and share client proposals.</p>
+        {activeTab === "proposals" && (() => {
+          const fmtGbp = (n: number) => n === 0 ? '—' : `£${n.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+          const monthlyTotal = (p: Proposal) => ((p.retainer_options || []) as any[]).reduce((s: number, r: any) => s + (r.price ?? 0) * (r.quantity ?? 1), 0);
+          const uniqueSectors = [...new Set(proposals.map(p => p.sector).filter(Boolean))] as string[];
+          const uniqueUsers = [...new Set(proposals.map(p => p.prepared_by).filter(Boolean))] as string[];
+          const filtered = proposals.filter(p => {
+            if (filterStatus !== 'all' && p.status !== filterStatus) return false;
+            if (filterSector !== 'all' && p.sector !== filterSector) return false;
+            if (filterUser !== 'all' && p.prepared_by !== filterUser) return false;
+            return true;
+          });
+          const grandUpfront = filtered.reduce((s, p) => s + (p.upfront_total || 0), 0);
+          const grandMonthly = filtered.reduce((s, p) => s + monthlyTotal(p), 0);
+          const selectCls = "h-8 rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground";
 
-            {proposalsLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : proposals.length === 0 ? (
-              <div className="bg-card border border-border p-12 text-center">
-                <p className="text-muted-foreground mb-4">No proposals yet. Create your first one.</p>
-                <Link to="/admin/proposals/new">
-                  <Button className="bg-primary text-primary-foreground gap-2">
-                    <Plus className="w-4 h-4" /> Create Proposal
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <div className="bg-card border border-border divide-y divide-border">
-                {proposals.map(p => (
-                  <div key={p.id} className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-muted/50 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-1">
-                        <h3 className="text-sm font-bold text-foreground truncate">{p.client_name || 'Untitled'}</h3>
-                        <Badge className={`${getStatusColor(p.status)} text-[10px] font-bold uppercase tracking-wider`}>{p.status}</Badge>
+          return (
+            <>
+              <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Proposals</h1>
+              <p className="text-sm text-muted-foreground mb-5">Create, manage and share client proposals.</p>
+
+              {/* Filter bar */}
+              {!proposalsLoading && proposals.length > 0 && (
+                <div className="flex flex-wrap items-center gap-3 mb-4">
+                  <select className={selectCls} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                    <option value="all">All statuses</option>
+                    <option value="draft">Draft</option>
+                    <option value="sent">Sent</option>
+                    <option value="accepted">Accepted</option>
+                  </select>
+                  {uniqueSectors.length > 0 && (
+                    <select className={selectCls} value={filterSector} onChange={e => setFilterSector(e.target.value)}>
+                      <option value="all">All services</option>
+                      {uniqueSectors.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  )}
+                  {uniqueUsers.length > 1 && (
+                    <select className={selectCls} value={filterUser} onChange={e => setFilterUser(e.target.value)}>
+                      <option value="all">All team members</option>
+                      {uniqueUsers.map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                  )}
+                  {(filterStatus !== 'all' || filterSector !== 'all' || filterUser !== 'all') && (
+                    <button
+                      className="text-xs text-muted-foreground hover:text-foreground underline"
+                      onClick={() => { setFilterStatus('all'); setFilterSector('all'); setFilterUser('all'); }}
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {proposalsLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : proposals.length === 0 ? (
+                <div className="bg-card border border-border p-12 text-center">
+                  <p className="text-muted-foreground mb-4">No proposals yet. Create your first one.</p>
+                  <Link to="/admin/proposals/new">
+                    <Button className="bg-primary text-primary-foreground gap-2">
+                      <Plus className="w-4 h-4" /> Create Proposal
+                    </Button>
+                  </Link>
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="bg-card border border-border p-12 text-center">
+                  <p className="text-muted-foreground">No proposals match the current filters.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="bg-card border border-border divide-y divide-border">
+                    {filtered.map(p => {
+                      const mo = monthlyTotal(p);
+                      return (
+                        <div key={p.id} className="px-6 py-4 flex items-center gap-4 hover:bg-muted/50 transition-colors">
+                          {/* Main info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 mb-1">
+                              <h3 className="text-sm font-bold text-foreground truncate">{p.client_name || 'Untitled'}</h3>
+                              <Badge className={`${getStatusColor(p.status)} text-[10px] font-bold uppercase tracking-wider`}>{p.status}</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">{p.programme_title || 'Untitled project'} · {new Date(p.created_at).toLocaleDateString('en-GB')}</p>
+                            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                              {p.sector && <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{p.sector}</span>}
+                              {p.prepared_by && <span className="text-[11px] text-muted-foreground">{p.prepared_by}</span>}
+                            </div>
+                          </div>
+                          {/* Financials */}
+                          <div className="hidden sm:flex flex-col items-end gap-0.5 shrink-0 min-w-[120px] text-right">
+                            <div className="text-sm font-bold text-foreground">{fmtGbp(p.upfront_total || 0)} <span className="text-[10px] font-normal text-muted-foreground">upfront</span></div>
+                            {mo > 0 && <div className="text-xs text-muted-foreground">{fmtGbp(mo)}<span className="text-[10px]">/mo</span></div>}
+                          </div>
+                          {/* Actions */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Link to={`/p/${p.slug}`} target="_blank">
+                              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Preview">
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </Link>
+                            <Button
+                              variant="ghost" size="sm"
+                              className="text-muted-foreground hover:text-primary"
+                              title="Copy link"
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${window.location.origin}/p/${p.slug}`);
+                                toast.success("Link copied!");
+                              }}
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </Button>
+                            <Link to={`/admin/proposals/${p.id}`}>
+                              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Edit">
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                            </Link>
+                            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Duplicate" onClick={() => duplicateProposal(p)}>
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" title="Delete" onClick={() => deleteProposal(p.id)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                            {signedContracts[p.id] && (
+                              <a href={`/contracts/${signedContracts[p.id]}`} target="_blank" rel="noopener noreferrer" title="Download signed contract">
+                                <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
+                                  <Download className="w-4 h-4" />
+                                </Button>
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Grand totals */}
+                  <div className="bg-muted/60 border border-border border-t-0 px-6 py-3 flex items-center justify-between gap-4 flex-wrap">
+                    <span className="text-xs text-muted-foreground">{filtered.length} proposal{filtered.length !== 1 ? 's' : ''}</span>
+                    <div className="flex items-center gap-6">
+                      <div className="text-right">
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Total upfront</div>
+                        <div className="text-sm font-bold text-foreground">{fmtGbp(grandUpfront)}</div>
                       </div>
-                      <p className="text-xs text-muted-foreground">{p.programme_title || 'Untitled project'} · {new Date(p.created_at).toLocaleDateString('en-GB')}</p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Link to={`/p/${p.slug}`} target="_blank">
-                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Preview">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </Link>
-                      <Button
-                        variant="ghost" size="sm"
-                        className="text-muted-foreground hover:text-primary"
-                        title="Copy link"
-                        onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/p/${p.slug}`);
-                          toast.success("Link copied!");
-                        }}
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </Button>
-                      <Link to={`/admin/proposals/${p.id}`}>
-                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Edit">
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                      </Link>
-                      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Duplicate" onClick={() => duplicateProposal(p)}>
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" title="Delete" onClick={() => deleteProposal(p.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                      {signedContracts[p.id] && (
-                        <a
-                          href={`/contracts/${signedContracts[p.id]}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Download signed contract"
-                        >
-                          <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
-                            <Download className="w-4 h-4" />
-                          </Button>
-                        </a>
+                      {grandMonthly > 0 && (
+                        <div className="text-right">
+                          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Total monthly</div>
+                          <div className="text-sm font-bold text-foreground">{fmtGbp(grandMonthly)}</div>
+                        </div>
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+                </>
+              )}
+            </>
+          );
+        })()}
 
         {/* SOLUTIONS TAB */}
         {activeTab === "solutions" && (() => {
