@@ -138,7 +138,7 @@ export default function ProposalEditor() {
     upfront_items: [],
     upfront_notes: '',
     retainer_options: [...DEFAULT_RETAINER_OPTIONS],
-    contact_name: 'Josh Welch',
+    contact_name: '',
     contact_email: 'josh.welch@shoothill.com',
     contact_phone: '01743 636 300',
     contact_mobile: '07904 810 378',
