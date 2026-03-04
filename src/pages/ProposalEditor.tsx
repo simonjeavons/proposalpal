@@ -367,7 +367,6 @@ export default function ProposalEditor() {
                 ))}
               </select>
             </div>
-            <Field label="Client Name" value={form.client_name} onChange={v => updateField('client_name', v)} />
             <Field label="Project Title" value={form.programme_title} onChange={v => updateField('programme_title', v)} />
             <div>
               <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Prepared By</Label>
@@ -389,101 +388,16 @@ export default function ProposalEditor() {
           </Grid>
         </Section>
 
-        {/* Project Team */}
-        <Section title="Project Team">
-          <p className="text-xs text-muted-foreground mb-4">The left card is always the proposal creator. Select up to three additional team members shown in the proposal.</p>
-          <div className="grid grid-cols-4 gap-3">
-            {/* Card 0: Lead — always the prepared_by user's team member */}
-            {(() => {
-              const preparedUser = users.find(u => u.id === form.prepared_by_user_id);
-              const leadMember = preparedUser?.team_member_id
-                ? teamMembers.find(tm => tm.id === preparedUser.team_member_id) ?? null
-                : null;
-              return (
-                <div className="border border-primary/30 bg-primary/5 overflow-hidden">
-                  <div className="w-full aspect-square bg-muted overflow-hidden">
-                    {leadMember?.photo_url ? (
-                      <img src={leadMember.photo_url} alt={leadMember.full_name} className="w-full h-full object-cover object-top" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs text-center p-2">
-                        {form.prepared_by_user_id ? 'No photo linked' : 'Select prepared by →'}
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-2.5">
-                    <div className="text-xs font-bold text-foreground truncate">
-                      {leadMember?.full_name ?? (form.prepared_by ? form.prepared_by.split(',')[0] : '—')}
-                    </div>
-                    <div className="text-xs text-primary uppercase tracking-wide truncate mt-0.5">
-                      {leadMember?.job_title ?? ''}
-                    </div>
-                    <div className="mt-1 text-xs text-muted-foreground bg-primary/10 px-1.5 py-0.5 inline-block">Lead</div>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Cards 1-3: selectable additional team members */}
-            {[0, 1, 2].map(slot => {
-              const selectedId = form.team_member_ids[slot] ?? '';
-              const selectedMember = teamMembers.find(tm => tm.id === selectedId);
-              // Already-selected IDs (other slots) to avoid duplicates in dropdown
-              const usedIds = new Set(form.team_member_ids.filter((_, i) => i !== slot));
-              const preparedUser = users.find(u => u.id === form.prepared_by_user_id);
-              if (preparedUser?.team_member_id) usedIds.add(preparedUser.team_member_id);
-
-              return (
-                <div key={slot} className="border border-border overflow-hidden">
-                  <div className="w-full aspect-square bg-muted overflow-hidden relative">
-                    {selectedMember?.photo_url ? (
-                      <img src={selectedMember.photo_url} alt={selectedMember.full_name} className="w-full h-full object-cover object-top" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                        <span className="text-3xl font-thin opacity-30">+</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-2.5">
-                    {selectedMember && (
-                      <>
-                        <div className="text-xs font-bold text-foreground truncate mb-0.5">{selectedMember.full_name}</div>
-                        <div className="text-xs text-primary uppercase tracking-wide truncate mb-1.5">{selectedMember.job_title}</div>
-                      </>
-                    )}
-                    <select
-                      value={selectedId}
-                      onChange={e => {
-                        const updated = [...form.team_member_ids];
-                        while (updated.length <= slot) updated.push('');
-                        updated[slot] = e.target.value;
-                        // trim trailing empties
-                        while (updated.length > 0 && !updated[updated.length - 1]) updated.pop();
-                        updateField('team_member_ids', updated);
-                      }}
-                      className="w-full h-7 rounded border border-input bg-background px-2 text-xs"
-                    >
-                      <option value="">— select member —</option>
-                      {teamMembers.filter(tm => !usedIds.has(tm.id) || tm.id === selectedId).map(tm => (
-                        <option key={tm.id} value={tm.id}>{tm.full_name}, {tm.job_title}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Section>
-
         {/* Client Details */}
         <Section title="Client Details">
-          <div className="grid grid-cols-3 gap-4">
-            <Field label="Organisation" value={form.organisation} onChange={v => updateField('organisation', v)} />
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Client Name" value={form.client_name} onChange={v => updateField('client_name', v)} />
+            <Field label="Contact Name" value={form.contact_name} onChange={v => updateField('contact_name', v)} />
+            <Field label="Contact Email" value={form.contact_email} onChange={v => updateField('contact_email', v)} type="email" />
             <Field label="Staff" value={form.staff} onChange={v => updateField('staff', v)} />
-            <Field label="Tech Stack" value={form.tech_stack} onChange={v => updateField('tech_stack', v)} />
-          </div>
-          <div className="mt-4">
-            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Challenge Introduction</Label>
-            <Textarea value={form.challenge_intro} onChange={e => updateField('challenge_intro', e.target.value)} rows={3} className="text-sm" />
+            <div className="col-span-2">
+              <Field label="Current Tech Stack" value={form.tech_stack} onChange={v => updateField('tech_stack', v)} />
+            </div>
           </div>
         </Section>
 
@@ -533,18 +447,24 @@ export default function ProposalEditor() {
             </Button>
           </div>
         }>
-          <div className="space-y-3">
-            {form.challenges.map((c, i) => (
-              <div key={i} className="flex gap-3 items-start bg-muted p-4 border border-border">
-                <div className="flex-1 space-y-2">
-                  <Input placeholder="Challenge title" value={c.title} onChange={e => updateChallenge(i, 'title', e.target.value)} className="text-sm font-semibold" />
-                  <Input placeholder="Description" value={c.description} onChange={e => updateChallenge(i, 'description', e.target.value)} className="text-sm" />
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Challenge Introduction</Label>
+              <Textarea value={form.challenge_intro} onChange={e => updateField('challenge_intro', e.target.value)} rows={3} className="text-sm" placeholder="Introduce the challenges the client is facing…" />
+            </div>
+            <div className="space-y-3">
+              {form.challenges.map((c, i) => (
+                <div key={i} className="flex gap-3 items-start bg-muted p-4 border border-border">
+                  <div className="flex-1 space-y-2">
+                    <Input placeholder="Challenge title" value={c.title} onChange={e => updateChallenge(i, 'title', e.target.value)} className="text-sm font-semibold" />
+                    <Input placeholder="Description" value={c.description} onChange={e => updateChallenge(i, 'description', e.target.value)} className="text-sm" />
+                  </div>
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={() => updateField('challenges', form.challenges.filter((_, j) => j !== i))}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={() => updateField('challenges', form.challenges.filter((_, j) => j !== i))}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </Section>
 
@@ -845,13 +765,97 @@ export default function ProposalEditor() {
           </div>
         </Section>
 
+        {/* Project Team */}
+        <Section title="Project Team">
+          <p className="text-xs text-muted-foreground mb-4">The left card is always the proposal creator. Select up to three additional team members shown in the proposal.</p>
+          <div className="grid grid-cols-4 gap-3">
+            {/* Card 0: Lead — always the prepared_by user's team member */}
+            {(() => {
+              const preparedUser = users.find(u => u.id === form.prepared_by_user_id);
+              const leadMember = preparedUser?.team_member_id
+                ? teamMembers.find(tm => tm.id === preparedUser.team_member_id) ?? null
+                : null;
+              return (
+                <div className="border border-primary/30 bg-primary/5 overflow-hidden">
+                  <div className="w-full aspect-square bg-muted overflow-hidden">
+                    {leadMember?.photo_url ? (
+                      <img src={leadMember.photo_url} alt={leadMember.full_name} className="w-full h-full object-cover object-top" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs text-center p-2">
+                        {form.prepared_by_user_id ? 'No photo linked' : 'Select prepared by →'}
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2.5">
+                    <div className="text-xs font-bold text-foreground truncate">
+                      {leadMember?.full_name ?? (form.prepared_by ? form.prepared_by.split(',')[0] : '—')}
+                    </div>
+                    <div className="text-xs text-primary uppercase tracking-wide truncate mt-0.5">
+                      {leadMember?.job_title ?? ''}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground bg-primary/10 px-1.5 py-0.5 inline-block">Lead</div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Cards 1-3: selectable additional team members */}
+            {[0, 1, 2].map(slot => {
+              const selectedId = form.team_member_ids[slot] ?? '';
+              const selectedMember = teamMembers.find(tm => tm.id === selectedId);
+              // Already-selected IDs (other slots) to avoid duplicates in dropdown
+              const usedIds = new Set(form.team_member_ids.filter((_, i) => i !== slot));
+              const preparedUser = users.find(u => u.id === form.prepared_by_user_id);
+              if (preparedUser?.team_member_id) usedIds.add(preparedUser.team_member_id);
+
+              return (
+                <div key={slot} className="border border-border overflow-hidden">
+                  <div className="w-full aspect-square bg-muted overflow-hidden relative">
+                    {selectedMember?.photo_url ? (
+                      <img src={selectedMember.photo_url} alt={selectedMember.full_name} className="w-full h-full object-cover object-top" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                        <span className="text-3xl font-thin opacity-30">+</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2.5">
+                    {selectedMember && (
+                      <>
+                        <div className="text-xs font-bold text-foreground truncate mb-0.5">{selectedMember.full_name}</div>
+                        <div className="text-xs text-primary uppercase tracking-wide truncate mb-1.5">{selectedMember.job_title}</div>
+                      </>
+                    )}
+                    <select
+                      value={selectedId}
+                      onChange={e => {
+                        const updated = [...form.team_member_ids];
+                        while (updated.length <= slot) updated.push('');
+                        updated[slot] = e.target.value;
+                        // trim trailing empties
+                        while (updated.length > 0 && !updated[updated.length - 1]) updated.pop();
+                        updateField('team_member_ids', updated);
+                      }}
+                      className="w-full h-7 rounded border border-input bg-background px-2 text-xs"
+                    >
+                      <option value="">— select member —</option>
+                      {teamMembers.filter(tm => !usedIds.has(tm.id) || tm.id === selectedId).map(tm => (
+                        <option key={tm.id} value={tm.id}>{tm.full_name}, {tm.job_title}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+
         {/* Contact */}
         <Section title="Contact Details">
-          <p className="text-xs text-muted-foreground mb-4">Auto-populated from the selected user. You can override these values.</p>
+          <p className="text-xs text-muted-foreground mb-4">Contact phone details shown at the bottom of the proposal. Auto-populated from the selected user.</p>
           <Grid>
-            <Field label="Contact Name" value={form.contact_name} onChange={v => updateField('contact_name', v)} />
-            <Field label="Email" value={form.contact_email} onChange={v => updateField('contact_email', v)} />
             <Field label="Phone" value={form.contact_phone} onChange={v => updateField('contact_phone', v)} />
+            <Field label="Mobile" value={form.contact_mobile} onChange={v => updateField('contact_mobile', v)} />
           </Grid>
         </Section>
 

@@ -818,15 +818,23 @@ export default function AdminDashboard() {
                       <div className="flex items-center gap-4 flex-shrink-0">
                         <label className="flex items-center gap-1.5 cursor-pointer select-none">
                           <input type="checkbox" checked={!!p.is_upfront} className="w-3.5 h-3.5"
-                            onChange={e => { updateProductField(idx, 'is_upfront', e.target.checked); saveProduct(idx); }} />
+                            onChange={e => updateProductField(idx, 'is_upfront', e.target.checked)} />
                           <span className="text-xs text-muted-foreground">Upfront</span>
                         </label>
                         <label className="flex items-center gap-1.5 cursor-pointer select-none">
                           <input type="checkbox" checked={!!p.is_ongoing} className="w-3.5 h-3.5"
-                            onChange={e => { updateProductField(idx, 'is_ongoing', e.target.checked); saveProduct(idx); }} />
+                            onChange={e => updateProductField(idx, 'is_ongoing', e.target.checked)} />
                           <span className="text-xs text-muted-foreground">Ongoing</span>
                         </label>
                       </div>
+                      <Button
+                        variant="ghost" size="sm"
+                        className="text-green-600 hover:text-green-700 hover:bg-green-50 h-8 w-8 p-0 flex-shrink-0"
+                        onClick={() => saveProduct(idx)}
+                        title="Save changes"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                      </Button>
                       <Button
                         variant="ghost" size="sm"
                         className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
