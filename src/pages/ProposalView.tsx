@@ -159,7 +159,7 @@ export default function ProposalView() {
             <h1 style={{ fontSize: 'clamp(28px, 4vw, 52px)', fontWeight: 800, color: 'white', letterSpacing: '-.03em', lineHeight: 1.08, marginBottom: 10 }}>{proposal.client_name}</h1>
             {proposal.programme_title && <div style={{ fontSize: 16, fontWeight: 600, color: '#009FE3', marginBottom: 28 }}>{proposal.programme_title}</div>}
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)' }}>
-              {proposal.prepared_by && <strong style={{ display: 'block', color: 'rgba(255,255,255,.7)', fontSize: 13, marginBottom: 2 }}>Prepared by {proposal.prepared_by}</strong>}
+              {proposal.prepared_by && <strong style={{ display: 'block', color: 'rgba(255,255,255,.7)', fontSize: 13, marginBottom: 2 }}>Prepared by {proposal.prepared_by}{proposal.contact_name ? `, for ${proposal.contact_name}` : ''}</strong>}
               {formatDate(proposal.proposal_date)} &nbsp;·&nbsp; Classification: Customer &nbsp;·&nbsp; Valid until {formatDate(proposal.valid_until)}
             </div>
           </div>
