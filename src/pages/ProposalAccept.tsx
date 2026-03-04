@@ -195,7 +195,7 @@ async function appendCertificatePage(
   y -= 20;
   // "Completed" status badge
   page.drawRectangle({ x: c1, y: y - 3, width: 76, height: 15, color: rgb(0.88, 0.98, 0.92) });
-  page.drawText('✓  COMPLETED', { x: c1 + 5, y: y + 1, size: 7.5, font: helveticaBold, color: green });
+  page.drawText('COMPLETED', { x: c1 + 5, y: y + 1, size: 7.5, font: helveticaBold, color: green });
 
   // ── SIGNATURES HEADING ─────────────────────────────────────────────────────
   y = height - 97 - detailsH - 24;
@@ -302,8 +302,7 @@ async function appendCertificatePage(
   ];
 
   for (const item of auditItems) {
-    page.drawRectangle({ x: 36, y: y - 2, width: 8, height: 8, color: rgb(0.88, 0.98, 0.92) });
-    page.drawText('✓', { x: 37.5, y: y - 1, size: 6, font: helveticaBold, color: green });
+    page.drawRectangle({ x: 36, y: y - 2, width: 8, height: 8, color: green });
     const itemTrunc = item.length > 90 ? item.slice(0, 90) + '…' : item;
     page.drawText(itemTrunc, { x: 50, y, size: 8, font: helvetica, color: mid });
     y -= 14;
