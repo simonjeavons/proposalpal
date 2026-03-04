@@ -508,7 +508,7 @@ export default function ProposalView() {
               {/* Standard ongoing options */}
               {standardOptions.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 2 }}>Part 2: Ongoing support (choose your level)</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 2 }}>Part 2: Ongoing support / options</div>
                   <p style={{ color: '#3A6278', fontSize: 13, marginBottom: 18, marginTop: 16 }}>Choose the level of ongoing Shoothill support that suits your team. Select below:</p>
                   <div style={{ display: 'grid', gridTemplateColumns: `repeat(${standardOptions.length}, 1fr)`, gap: 2, background: '#DDE8EE' }}>
                     {standardOptions.map((r, i) => (
