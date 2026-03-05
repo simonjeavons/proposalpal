@@ -230,6 +230,7 @@ export default function AdhocSign() {
           contactName: contract.contact_name,
           contactEmail: contract.contact_email,
           templateSections,
+          ongoingOptions: contract.ongoing_options,
         })).toBlob();
 
         if (cancelled) return;
@@ -305,6 +306,7 @@ export default function AdhocSign() {
         contactName: contract.contact_name,
         contactEmail: contract.contact_email,
         templateSections,
+        ongoingOptions: contract.ongoing_options,
         clientSignerName: signerName,
         clientSignerTitle: signerTitle,
         clientSignatureUri: signatureData,

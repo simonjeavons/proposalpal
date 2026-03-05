@@ -33,6 +33,13 @@ export interface ServiceAgreementPDFProps {
   clientSignerTitle?: string;
   clientSignatureUri?: string;
   signingDate?: string;
+  // Ad-hoc ongoing options — when provided, replaces selectedStandard/selectedExtras with per-year breakdown
+  ongoingOptions?: Array<{
+    name: string;
+    yearlyCosts: number[];
+    term: number;
+    frequency: 'weekly' | 'monthly' | 'annual';
+  }>;
 }
 
 const NAVY = '#043D5D';
@@ -234,6 +241,7 @@ export function ServiceAgreementPDF({
   clientSignerTitle,
   clientSignatureUri,
   signingDate,
+  ongoingOptions,
 }: ServiceAgreementPDFProps) {
   const entityName = organisation || clientName;
 
@@ -322,8 +330,69 @@ export function ServiceAgreementPDF({
           </View>
         )}
 
-        {/* Monthly — shown if any ongoing items are present */}
-        {(selectedStandard || selectedExtras.length > 0) && (
+        {/* Ad-hoc ongoing options — per-year cost breakdown */}
+        {ongoingOptions && ongoingOptions.length > 0 && (() => {
+          const getTotal = (opt: { yearlyCosts: number[]; term: number; frequency: string }) => {
+            const numYears = Math.ceil(Math.max(opt.term, 1) / 12);
+            const costs = Array.from({ length: numYears }, (_, y) =>
+              opt.yearlyCosts[y] ?? (opt.yearlyCosts[opt.yearlyCosts.length - 1] ?? 0)
+            );
+            if (opt.frequency === 'annual') return costs.reduce((s, c) => s + c, 0);
+            return costs.reduce((s, c, idx) => {
+              const months = idx === numYears - 1 ? (opt.term % 12 || 12) : 12;
+              const periods = opt.frequency === 'monthly' ? months : Math.round(months * 52 / 12);
+              return s + c * periods;
+            }, 0);
+          };
+          return (
+            <>
+              <View style={{ height: 6 }} />
+              {ongoingOptions.map((opt, i) => {
+                const numYears = Math.ceil(Math.max(opt.term, 1) / 12);
+                const costs = Array.from({ length: numYears }, (_, y) =>
+                  opt.yearlyCosts[y] ?? (opt.yearlyCosts[opt.yearlyCosts.length - 1] ?? 0)
+                );
+                const freqLabel = opt.frequency === 'annual' ? '/yr' : opt.frequency === 'weekly' ? '/wk' : '/mo';
+                const label = opt.name || `Ongoing Option ${i + 1}`;
+                return (
+                  <View key={i}>
+                    {numYears > 1 ? (
+                      <>
+                        <View style={styles.tableRow}>
+                          <Text style={[styles.tableDesc, { fontFamily: 'Helvetica-Bold' }]}>{label} ({opt.term} months)</Text>
+                          <Text style={styles.tableAmt} />
+                        </View>
+                        {costs.map((cost, y) => (
+                          <View key={y} style={styles.tableRow}>
+                            <Text style={[styles.tableDesc, { paddingLeft: 14 }]}>Year {y + 1}</Text>
+                            <Text style={styles.tableAmt}>{fmt(cost)} + VAT{freqLabel}</Text>
+                          </View>
+                        ))}
+                      </>
+                    ) : (
+                      <View style={styles.tableRow}>
+                        <Text style={styles.tableDesc}>{label} ({opt.term} months)</Text>
+                        <Text style={styles.tableAmt}>{fmt(costs[0])} + VAT{freqLabel}</Text>
+                      </View>
+                    )}
+                    <View style={styles.tableRowBold}>
+                      <Text style={styles.tableDescBold}>{label} Total</Text>
+                      <Text style={styles.tableAmtBold}>{fmt(getTotal(opt))} + VAT</Text>
+                    </View>
+                  </View>
+                );
+              })}
+              <View style={{ height: 4 }} />
+              <View style={styles.tableRowBold}>
+                <Text style={styles.tableDescBold}>Grand Total</Text>
+                <Text style={styles.tableAmtBold}>{fmt(firstYearTotal)} + VAT</Text>
+              </View>
+            </>
+          );
+        })()}
+
+        {/* Proposal ongoing options (retainer) — shown when no ongoingOptions prop */}
+        {(!ongoingOptions || ongoingOptions.length === 0) && (selectedStandard || selectedExtras.length > 0) && (
           <>
             <View style={{ height: 6 }} />
             {selectedStandard && (
@@ -344,7 +413,7 @@ export function ServiceAgreementPDF({
             </View>
             <View style={{ height: 4 }} />
             <View style={styles.tableRowBold}>
-              <Text style={styles.tableDescBold}>First Year Total</Text>
+              <Text style={styles.tableDescBold}>Grand Total</Text>
               <Text style={styles.tableAmtBold}>{fmt(firstYearTotal)} + VAT</Text>
             </View>
           </>
