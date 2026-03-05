@@ -407,7 +407,18 @@ export default function AdhocSign() {
       })
       .eq('id', contract.id);
 
-    if (!error) setSubmitted(true);
+    if (!error) {
+      // Fire-and-forget email notification
+      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-proposal`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '',
+        },
+        body: JSON.stringify({ type: 'adhoc-signed', contractId: contract.id }),
+      }).catch(() => { /* fire-and-forget */ });
+      setSubmitted(true);
+    }
     setSubmitState('idle');
   };
 
