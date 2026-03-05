@@ -574,10 +574,10 @@ export default function AdhocSign() {
                     <span style={{ fontWeight: 700, color: '#043D5D' }}>{formatCurrency(item.price)}</span>
                   </div>
                 ))}
-                {/* Upfront subtotal */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', marginBottom: 8, fontSize: 13 }}>
-                  <span style={{ fontWeight: 700, color: '#043D5D' }}>One-Time Total</span>
-                  <span style={{ fontWeight: 700, color: '#043D5D' }}>{formatCurrency(upfrontTotal)}</span>
+                {/* Upfront subtotal — matches PDF "One-Time Project Total" row */}
+                <div style={{ borderTop: '1px solid #DDE8EE', marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>One-Time Project Total</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>{formatCurrency(upfrontTotal)} + VAT</span>
                 </div>
               </div>
             )}
