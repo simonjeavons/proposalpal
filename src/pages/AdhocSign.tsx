@@ -101,6 +101,10 @@ export default function AdhocSign() {
   const [loading, setLoading] = useState(true);
   const [submitted, setSubmitted] = useState(false);
 
+  // PDF preview
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [generatedPdfUrl, setGeneratedPdfUrl] = useState<string | null>(null);
+
   // Signing form
   const [signerName, setSignerName] = useState('');
   const [signerTitle, setSignerTitle] = useState('');
@@ -142,6 +146,68 @@ export default function AdhocSign() {
         setLoading(false);
       });
   }, [slug]);
+
+  // Generate PDF preview once contract + sections are loaded
+  useEffect(() => {
+    if (!contract) return;
+    let cancelled = false;
+    setPdfGenerating(true);
+
+    (async () => {
+      try {
+        const upfrontTotal = contract.upfront_items.reduce((s, i) => s + i.price, 0);
+        const monthlyTotal = contract.monthly_fee || 0;
+        const firstYearTotal = upfrontTotal + monthlyTotal * 12;
+        const selectedStandard = monthlyTotal > 0 ? {
+          type: 'Retainer',
+          name: contract.retainer_name || 'Monthly Retainer',
+          price: monthlyTotal,
+          quantity: 1,
+          hours: '',
+          features: [],
+          option_type: 'standard' as const,
+          recommended: false,
+        } : null;
+
+        const [{ pdf }, { ServiceAgreementPDF }] = await Promise.all([
+          import('@react-pdf/renderer'),
+          import('../components/ServiceAgreementPDF'),
+        ]);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const blob = await pdf(React.createElement(ServiceAgreementPDF as any, {
+          clientName: contract.client_name,
+          organisation: contract.organisation,
+          programmeTitle: contract.programme_title,
+          agreementDate: formatDate(contract.agreement_date) || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+          phases: contract.phases,
+          upfrontItems: contract.upfront_items,
+          selectedStandard,
+          selectedExtras: [],
+          upfrontTotal,
+          monthlyTotal,
+          firstYearTotal,
+          paymentTerms: contract.payment_terms,
+          contactName: contract.contact_name,
+          contactEmail: contract.contact_email,
+          templateSections,
+        })).toBlob();
+
+        if (cancelled) return;
+        const url = URL.createObjectURL(blob);
+        setGeneratedPdfUrl(url);
+      } catch (err) {
+        console.error('PDF preview generation failed:', err);
+      } finally {
+        if (!cancelled) setPdfGenerating(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      setGeneratedPdfUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
+    };
+  }, [contract, templateSections]);
 
   const handleSubmit = async () => {
     if (!contract || !signerName || !signatureData || !agreed) return;
@@ -437,10 +503,35 @@ export default function AdhocSign() {
           </div>
         </div>
 
-        {/* 04 — Sign */}
+        {/* 04 — Service Agreement PDF */}
         <div style={{ background: 'white', border: '1px solid #DDE8EE', marginBottom: 24 }}>
           <div style={{ padding: '18px 28px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', textTransform: 'uppercase' as const }}>04</div>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Service Agreement</h2>
+          </div>
+          <div style={{ padding: '24px 28px' }}>
+            {pdfGenerating ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '24px 0', color: '#3A6278' }}>
+                <div style={{ width: 24, height: 24, border: '3px solid #009FE3', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', flexShrink: 0 }} />
+                <span style={{ fontSize: 14 }}>Generating your service agreement…</span>
+              </div>
+            ) : generatedPdfUrl ? (
+              <>
+                <iframe src={`${generatedPdfUrl}#toolbar=1&navpanes=0`} title="Service Agreement" width="100%" style={{ height: 600, border: '1px solid #DDE8EE', display: 'block' }} />
+                <a href={generatedPdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 12, fontSize: 12, color: '#009FE3', fontWeight: 600 }}>
+                  Open in new tab ↗
+                </a>
+              </>
+            ) : (
+              <p style={{ fontSize: 13, color: '#AAAAAA', padding: '16px 0' }}>No template selected — agreement clauses will be minimal.</p>
+            )}
+          </div>
+        </div>
+
+        {/* 05 — Sign */}
+        <div style={{ background: 'white', border: '1px solid #DDE8EE', marginBottom: 24 }}>
+          <div style={{ padding: '18px 28px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', textTransform: 'uppercase' as const }}>05</div>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Sign Agreement</h2>
           </div>
           <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
