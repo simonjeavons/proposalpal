@@ -155,8 +155,8 @@ export default function AdminDashboard() {
   const [adhocView, setAdhocView] = useState<'templates' | 'adhoc' | 'signed'>('templates');
   const [savingAdhoc, setSavingAdhoc] = useState(false);
   const [adhocLink, setAdhocLink] = useState<string | null>(null);
-  const [signedContracts, setSignedContracts] = useState<any[]>([]);
-  const [signedContractsLoading, setSignedContractsLoading] = useState(false);
+  const [adhocSignedContracts, setAdhocSignedContracts] = useState<any[]>([]);
+  const [adhocSignedContractsLoading, setAdhocSignedContractsLoading] = useState(false);
   const [adhocForm, setAdhocForm] = useState({
     clientName: '',
     organisation: '',
@@ -361,15 +361,15 @@ export default function AdminDashboard() {
     }));
   };
 
-  const fetchSignedContracts = async () => {
-    setSignedContractsLoading(true);
+  const fetchAdhocSignedContracts = async () => {
+    setAdhocSignedContractsLoading(true);
     const { data } = await supabase
       .from('adhoc_contracts' as any)
       .select('id, slug, client_name, organisation, programme_title, contact_name, signer_name, signer_title, signed_at, signed_contract_url, agreement_date')
       .eq('status', 'signed')
       .order('signed_at', { ascending: false });
-    setSignedContracts(data || []);
-    setSignedContractsLoading(false);
+    setAdhocSignedContracts(data || []);
+    setAdhocSignedContractsLoading(false);
   };
 
   const saveAdhocContract = async () => {
@@ -1389,7 +1389,7 @@ export default function AdminDashboard() {
                   className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${adhocView === 'adhoc' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
                 >Ad-Hoc Generator</button>
                 <button
-                  onClick={() => { setAdhocView('signed'); fetchSignedContracts(); }}
+                  onClick={() => { setAdhocView('signed'); fetchAdhocSignedContracts(); }}
                   className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${adhocView === 'signed' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
                 >Signed Contracts</button>
               </div>
@@ -1696,11 +1696,11 @@ export default function AdminDashboard() {
             {/* ── SIGNED CONTRACTS VIEW ── */}
             {adhocView === 'signed' && (
               <div>
-                {signedContractsLoading ? (
+                {adhocSignedContractsLoading ? (
                   <div className="flex items-center justify-center py-20">
                     <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                   </div>
-                ) : signedContracts.length === 0 ? (
+                ) : adhocSignedContracts.length === 0 ? (
                   <div className="bg-card border border-border p-12 text-center">
                     <p className="text-muted-foreground">No signed ad-hoc contracts yet.</p>
                   </div>
@@ -1718,7 +1718,7 @@ export default function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {signedContracts.map((c: any, i: number) => (
+                        {adhocSignedContracts.map((c: any, i: number) => (
                           <tr key={c.id} className={`border-b border-border last:border-0 ${i % 2 === 0 ? '' : 'bg-muted/20'}`}>
                             <td className="px-4 py-3">
                               <div className="font-semibold text-foreground">{c.client_name}</div>
