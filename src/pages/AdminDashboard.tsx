@@ -152,9 +152,11 @@ export default function AdminDashboard() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
 
   // Ad-hoc contract generator state
-  const [adhocView, setAdhocView] = useState<'templates' | 'adhoc'>('templates');
+  const [adhocView, setAdhocView] = useState<'templates' | 'adhoc' | 'signed'>('templates');
   const [savingAdhoc, setSavingAdhoc] = useState(false);
   const [adhocLink, setAdhocLink] = useState<string | null>(null);
+  const [signedContracts, setSignedContracts] = useState<any[]>([]);
+  const [signedContractsLoading, setSignedContractsLoading] = useState(false);
   const [adhocForm, setAdhocForm] = useState({
     clientName: '',
     organisation: '',
@@ -357,6 +359,17 @@ export default function AdminDashboard() {
       sections[idx] = { ...sections[idx], [field]: value };
       return { ...t, sections };
     }));
+  };
+
+  const fetchSignedContracts = async () => {
+    setSignedContractsLoading(true);
+    const { data } = await supabase
+      .from('adhoc_contracts' as any)
+      .select('id, slug, client_name, organisation, programme_title, contact_name, signer_name, signer_title, signed_at, signed_contract_url, agreement_date')
+      .eq('status', 'signed')
+      .order('signed_at', { ascending: false });
+    setSignedContracts(data || []);
+    setSignedContractsLoading(false);
   };
 
   const saveAdhocContract = async () => {
@@ -1375,6 +1388,10 @@ export default function AdminDashboard() {
                   onClick={() => setAdhocView('adhoc')}
                   className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${adhocView === 'adhoc' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
                 >Ad-Hoc Generator</button>
+                <button
+                  onClick={() => { setAdhocView('signed'); fetchSignedContracts(); }}
+                  className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${adhocView === 'signed' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                >Signed Contracts</button>
               </div>
             </div>
 
@@ -1493,13 +1510,28 @@ export default function AdminDashboard() {
                       <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Agreement Date</Label>
                       <Input type="date" value={adhocForm.agreementDate} onChange={e => setAdhocForm(f => ({ ...f, agreementDate: e.target.value }))} className="h-8 text-sm" />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Shoothill Contact Name</Label>
-                      <Input value={adhocForm.contactName} onChange={e => setAdhocForm(f => ({ ...f, contactName: e.target.value }))} className="h-8 text-sm" placeholder="e.g. Simon Jeavons" />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Contact Email</Label>
-                      <Input type="email" value={adhocForm.contactEmail} onChange={e => setAdhocForm(f => ({ ...f, contactEmail: e.target.value }))} className="h-8 text-sm" placeholder="e.g. simon@shoothill.com" />
+                    <div className="col-span-2 space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Shoothill Contact</Label>
+                      <select
+                        value={adhocForm.contactName}
+                        onChange={e => {
+                          const profile = profiles.find(p => p.full_name === e.target.value);
+                          setAdhocForm(f => ({
+                            ...f,
+                            contactName: profile?.full_name ?? e.target.value,
+                            contactEmail: profile?.email ?? f.contactEmail,
+                          }));
+                        }}
+                        className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm w-full"
+                      >
+                        <option value="">— Select a contact —</option>
+                        {profiles.map(p => (
+                          <option key={p.id} value={p.full_name}>{p.full_name}{p.job_title ? ` — ${p.job_title}` : ''}</option>
+                        ))}
+                      </select>
+                      {adhocForm.contactEmail && (
+                        <p className="text-xs text-muted-foreground mt-1">{adhocForm.contactEmail}</p>
+                      )}
                     </div>
                     <div className="col-span-2 space-y-1">
                       <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Payment Terms</Label>
@@ -1656,6 +1688,69 @@ export default function AdminDashboard() {
                       </a>
                     </div>
                     <p className="text-xs text-muted-foreground">Share this link with your client for signing. Generate a new contract if you need to make changes.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── SIGNED CONTRACTS VIEW ── */}
+            {adhocView === 'signed' && (
+              <div>
+                {signedContractsLoading ? (
+                  <div className="flex items-center justify-center py-20">
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : signedContracts.length === 0 ? (
+                  <div className="bg-card border border-border p-12 text-center">
+                    <p className="text-muted-foreground">No signed ad-hoc contracts yet.</p>
+                  </div>
+                ) : (
+                  <div className="bg-card border border-border overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/50">
+                          <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Client</th>
+                          <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Programme</th>
+                          <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Signed By</th>
+                          <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Shoothill Contact</th>
+                          <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Signed At</th>
+                          <th className="px-4 py-2.5"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {signedContracts.map((c: any, i: number) => (
+                          <tr key={c.id} className={`border-b border-border last:border-0 ${i % 2 === 0 ? '' : 'bg-muted/20'}`}>
+                            <td className="px-4 py-3">
+                              <div className="font-semibold text-foreground">{c.client_name}</div>
+                              {c.organisation && <div className="text-xs text-muted-foreground">{c.organisation}</div>}
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">{c.programme_title || '—'}</td>
+                            <td className="px-4 py-3">
+                              <div className="font-medium text-foreground">{c.signer_name || '—'}</div>
+                              {c.signer_title && <div className="text-xs text-muted-foreground">{c.signer_title}</div>}
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">{c.contact_name || '—'}</td>
+                            <td className="px-4 py-3 text-muted-foreground text-xs">
+                              {c.signed_at ? new Date(c.signed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {c.signed_contract_url ? (
+                                <a
+                                  href={supabase.storage.from('contracts').getPublicUrl(c.signed_contract_url).data.publicUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                                >
+                                  <Download className="w-3.5 h-3.5" /> Download
+                                </a>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">No PDF</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
