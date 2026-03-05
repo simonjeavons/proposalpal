@@ -567,7 +567,7 @@ export default function AdhocSign() {
             {/* Total: upfront + all ongoing annual totals */}
             {(upfrontTotal > 0 || totalAnnualOngoing > 0) && (
               <div style={{ borderTop: '2px solid #043D5D', paddingTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#043D5D' }}>Total Ongoing</span>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#043D5D' }}>Grand Total</span>
                 <span style={{ fontSize: 20, fontWeight: 800, color: '#009FE3' }}>{formatCurrency(firstYearTotal)}</span>
               </div>
             )}
