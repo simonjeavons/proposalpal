@@ -155,6 +155,7 @@ export default function AdminDashboard() {
   const [adhocView, setAdhocView] = useState<'templates' | 'adhoc' | 'all'>('templates');
   const [savingAdhoc, setSavingAdhoc] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
+  const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [adhocLink, setAdhocLink] = useState<string | null>(null);
   const [allAgreements, setAllAgreements] = useState<any[]>([]);
   const [allAgreementsLoading, setAllAgreementsLoading] = useState(false);
@@ -390,6 +391,7 @@ export default function AdminDashboard() {
     // 4. Normalise into one list
     const adhocRows = (adhocData as any[] || []).map((c: any) => ({
       _key: `adhoc-${c.id}`,
+      id: c.id,
       source: 'adhoc',
       status: c.status,
       slug: c.slug,
@@ -428,28 +430,96 @@ export default function AdminDashboard() {
     setAllAgreementsLoading(false);
   };
 
+  const adhocFormPayload = (status: 'draft' | 'pending') => ({
+    status,
+    client_name: adhocForm.clientName,
+    organisation: adhocForm.organisation,
+    programme_title: adhocForm.programmeTitle,
+    agreement_date: adhocForm.agreementDate,
+    contact_name: adhocForm.contactName,
+    contact_email: adhocForm.contactEmail,
+    payment_terms: adhocForm.paymentTerms,
+    template_id: adhocForm.templateId || null,
+    phases: adhocForm.phases,
+    upfront_items: adhocForm.upfrontItems,
+    ongoing_options: adhocForm.ongoingOptions,
+  });
+
+  const resetAdhocForm = () => {
+    setAdhocForm({
+      clientName: '', organisation: '', programmeTitle: '',
+      agreementDate: new Date().toISOString().split('T')[0],
+      contactName: '', contactEmail: '',
+      paymentTerms: '50% on commencement / 50% on delivery',
+      templateId: '', phases: [], upfrontItems: [], ongoingOptions: [],
+    });
+    setEditingDraftId(null);
+    setAdhocLink(null);
+  };
+
+  const loadDraftForEditing = async (id: string) => {
+    const { data, error } = await supabase
+      .from('adhoc_contracts' as any)
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error || !data) { toast.error('Could not load contract'); return; }
+    const d = data as any;
+    setAdhocForm({
+      clientName: d.client_name || '',
+      organisation: d.organisation || '',
+      programmeTitle: d.programme_title || '',
+      agreementDate: d.agreement_date || new Date().toISOString().split('T')[0],
+      contactName: d.contact_name || '',
+      contactEmail: d.contact_email || '',
+      paymentTerms: d.payment_terms || '50% on commencement / 50% on delivery',
+      templateId: d.template_id || '',
+      phases: Array.isArray(d.phases) ? d.phases : [],
+      upfrontItems: Array.isArray(d.upfront_items) ? d.upfront_items : [],
+      ongoingOptions: Array.isArray(d.ongoing_options)
+        ? d.ongoing_options.map((o: any) => ({
+            ...o,
+            yearlyCosts: o.yearlyCosts ?? (o.cost != null ? [o.cost] : [0]),
+          }))
+        : [],
+    });
+    setEditingDraftId(id);
+    setAdhocLink(null);
+    setAdhocView('adhoc');
+  };
+
+  const deleteAdhocContract = async (id: string, status: string) => {
+    const label = status === 'draft' ? 'draft' : 'contract';
+    if (!window.confirm(`Delete this ${label}? This cannot be undone.`)) return;
+    const { error } = await supabase
+      .from('adhoc_contracts' as any)
+      .delete()
+      .eq('id', id);
+    if (error) { toast.error('Failed to delete'); return; }
+    toast.success('Deleted');
+    setAllAgreements(prev => prev.filter((c: any) => c.id !== id));
+    if (editingDraftId === id) resetAdhocForm();
+  };
+
   const saveDraftAdhocContract = async () => {
     if (!adhocForm.clientName.trim()) { toast.error('Enter a client name first'); return; }
     setSavingDraft(true);
-    const { error } = await supabase
-      .from('adhoc_contracts' as any)
-      .insert({
-        status: 'draft',
-        client_name: adhocForm.clientName,
-        organisation: adhocForm.organisation,
-        programme_title: adhocForm.programmeTitle,
-        agreement_date: adhocForm.agreementDate,
-        contact_name: adhocForm.contactName,
-        contact_email: adhocForm.contactEmail,
-        payment_terms: adhocForm.paymentTerms,
-        template_id: adhocForm.templateId || null,
-        phases: adhocForm.phases,
-        upfront_items: adhocForm.upfrontItems,
-        ongoing_options: adhocForm.ongoingOptions,
-      });
-    setSavingDraft(false);
-    if (error) { toast.error('Failed to save draft'); return; }
-    toast.success('Draft saved — find it in All Agreements');
+    if (editingDraftId) {
+      const { error } = await supabase
+        .from('adhoc_contracts' as any)
+        .update(adhocFormPayload('draft'))
+        .eq('id', editingDraftId);
+      setSavingDraft(false);
+      if (error) { toast.error('Failed to update draft'); return; }
+      toast.success('Draft updated');
+    } else {
+      const { error } = await supabase
+        .from('adhoc_contracts' as any)
+        .insert(adhocFormPayload('draft'));
+      setSavingDraft(false);
+      if (error) { toast.error('Failed to save draft'); return; }
+      toast.success('Draft saved — find it in All Agreements');
+    }
   };
 
   // Term is always in months. yearlyCosts[i] = cost for year i.
@@ -469,28 +539,29 @@ export default function AdminDashboard() {
   const saveAdhocContract = async () => {
     if (!adhocForm.clientName.trim()) { toast.error('Enter a client name first'); return; }
     setSavingAdhoc(true);
-    const { data, error } = await supabase
-      .from('adhoc_contracts' as any)
-      .insert({
-        status: 'pending',
-        client_name: adhocForm.clientName,
-        organisation: adhocForm.organisation,
-        programme_title: adhocForm.programmeTitle,
-        agreement_date: adhocForm.agreementDate,
-        contact_name: adhocForm.contactName,
-        contact_email: adhocForm.contactEmail,
-        payment_terms: adhocForm.paymentTerms,
-        template_id: adhocForm.templateId || null,
-        phases: adhocForm.phases,
-        upfront_items: adhocForm.upfrontItems,
-        ongoing_options: adhocForm.ongoingOptions,
-      })
-      .select('slug')
-      .single();
-    setSavingAdhoc(false);
-    if (error) { toast.error('Failed to create contract'); return; }
-    setAdhocLink(`${window.location.origin}/ac/${(data as any).slug}/sign`);
-    toast.success('Contract created — share the signing link below');
+    if (editingDraftId) {
+      const { data, error } = await supabase
+        .from('adhoc_contracts' as any)
+        .update(adhocFormPayload('pending'))
+        .eq('id', editingDraftId)
+        .select('slug')
+        .single();
+      setSavingAdhoc(false);
+      if (error) { toast.error('Failed to generate signing link'); return; }
+      setEditingDraftId(null);
+      setAdhocLink(`${window.location.origin}/ac/${(data as any).slug}/sign`);
+      toast.success('Contract finalised — share the signing link below');
+    } else {
+      const { data, error } = await supabase
+        .from('adhoc_contracts' as any)
+        .insert(adhocFormPayload('pending'))
+        .select('slug')
+        .single();
+      setSavingAdhoc(false);
+      if (error) { toast.error('Failed to create contract'); return; }
+      setAdhocLink(`${window.location.origin}/ac/${(data as any).slug}/sign`);
+      toast.success('Contract created — share the signing link below');
+    }
   };
 
   const addServiceType = async () => {
@@ -1584,6 +1655,19 @@ export default function AdminDashboard() {
             {adhocView === 'adhoc' && (
               <div className="space-y-6 max-w-3xl">
 
+                {/* Editing draft banner */}
+                {editingDraftId && (
+                  <div className="flex items-center justify-between bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-700 rounded-md px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Pencil className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">Editing draft contract</span>
+                    </div>
+                    <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={resetAdhocForm}>
+                      <Plus className="w-3.5 h-3.5" /> Start New
+                    </Button>
+                  </div>
+                )}
+
                 {/* Client Details */}
                 <div className="bg-card border border-border p-5">
                   <h2 className="text-xs font-bold uppercase tracking-wider text-foreground mb-4">Client Details</h2>
@@ -1966,7 +2050,22 @@ export default function AdminDashboard() {
                                       <LinkIcon className="w-3.5 h-3.5" /> Copy Link
                                     </button>
                                   )}
-                                  {c.status === 'draft' && <span className="text-xs text-muted-foreground">Draft</span>}
+                                  {c.source === 'adhoc' && (c.status === 'draft' || c.status === 'pending') && (
+                                    <>
+                                      <button
+                                        onClick={() => loadDraftForEditing(c.id)}
+                                        className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                                      >
+                                        <Pencil className="w-3.5 h-3.5" /> Edit
+                                      </button>
+                                      <button
+                                        onClick={() => deleteAdhocContract(c.id, c.status)}
+                                        className="inline-flex items-center gap-1 text-xs font-semibold text-destructive hover:underline"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" /> Delete
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </td>
                             </tr>
