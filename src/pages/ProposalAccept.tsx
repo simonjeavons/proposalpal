@@ -670,7 +670,7 @@ export default function ProposalAccept() {
         <h1 style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', marginBottom: 16 }}>Let's Get Started</h1>
         <p style={{ fontSize: 15, fontWeight: 600, color: '#043D5D', marginBottom: 12 }}>Your approval is confirmed.</p>
         <p style={{ fontSize: 14, color: '#3A6278', lineHeight: 1.8, marginBottom: 8 }}>
-          Your project is now in motion. Our team is preparing your delivery plan, and {proposal.contact_name} will be in touch shortly to schedule your kickoff meeting.
+          Your project is now in motion. Our team is preparing your delivery plan, and {proposal.prepared_by ? proposal.prepared_by.split(',')[0].trim() : 'your Shoothill contact'} will be in touch shortly to schedule your kickoff meeting.
         </p>
         <p style={{ fontSize: 14, color: '#3A6278', lineHeight: 1.8, marginBottom: 32 }}>
           We're excited to be part of your next chapter. Welcome aboard.
