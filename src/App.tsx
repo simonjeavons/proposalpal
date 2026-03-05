@@ -9,6 +9,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ProposalEditor from "./pages/ProposalEditor";
 import ProposalView from "./pages/ProposalView";
 import ProposalAccept from "./pages/ProposalAccept";
+import AdhocSign from "./pages/AdhocSign";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/admin/proposals/:id" element={<ProtectedRoute><ProposalEditor /></ProtectedRoute>} />
             <Route path="/p/:slug" element={<ProposalView />} />
             <Route path="/p/:slug/accept" element={<ProposalAccept />} />
+            <Route path="/ac/:slug/sign" element={<AdhocSign />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

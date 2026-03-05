@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import type { Proposal } from "@/types/proposal";
+import type { Proposal, Phase, UpfrontItem } from "@/types/proposal";
 import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Target, Download, GitBranch, ShoppingBag, Scale, UserCircle2, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -150,6 +150,25 @@ export default function AdminDashboard() {
   const [agreementTemplates, setAgreementTemplates] = useState<AgreementTemplate[]>([]);
   const [agreementsLoading, setAgreementsLoading] = useState(true);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+
+  // Ad-hoc contract generator state
+  const [adhocView, setAdhocView] = useState<'templates' | 'adhoc'>('templates');
+  const [savingAdhoc, setSavingAdhoc] = useState(false);
+  const [adhocLink, setAdhocLink] = useState<string | null>(null);
+  const [adhocForm, setAdhocForm] = useState({
+    clientName: '',
+    organisation: '',
+    programmeTitle: '',
+    agreementDate: new Date().toISOString().split('T')[0],
+    contactName: '',
+    contactEmail: '',
+    paymentTerms: '50% on commencement / 50% on delivery',
+    templateId: '',
+    phases: [] as Phase[],
+    upfrontItems: [] as UpfrontItem[],
+    retainerName: '',
+    monthlyFee: 0,
+  });
 
   const fetchServiceTypes = async () => {
     const { data: types } = await supabase.from("service_types" as any).select("id, name, sort_order, is_upfront, is_ongoing, partnership_overview_template, commercial_opportunity_template, strategic_focus_template, whats_needed_template, working_together_template").order("sort_order");
@@ -338,6 +357,33 @@ export default function AdminDashboard() {
       sections[idx] = { ...sections[idx], [field]: value };
       return { ...t, sections };
     }));
+  };
+
+  const saveAdhocContract = async () => {
+    if (!adhocForm.clientName.trim()) { toast.error('Enter a client name first'); return; }
+    setSavingAdhoc(true);
+    const { data, error } = await supabase
+      .from('adhoc_contracts' as any)
+      .insert({
+        client_name: adhocForm.clientName,
+        organisation: adhocForm.organisation,
+        programme_title: adhocForm.programmeTitle,
+        agreement_date: adhocForm.agreementDate,
+        contact_name: adhocForm.contactName,
+        contact_email: adhocForm.contactEmail,
+        payment_terms: adhocForm.paymentTerms,
+        template_id: adhocForm.templateId || null,
+        phases: adhocForm.phases,
+        upfront_items: adhocForm.upfrontItems,
+        monthly_fee: adhocForm.monthlyFee,
+        retainer_name: adhocForm.retainerName,
+      })
+      .select('slug')
+      .single();
+    setSavingAdhoc(false);
+    if (error) { toast.error('Failed to create contract'); return; }
+    setAdhocLink(`${window.location.origin}/ac/${(data as any).slug}/sign`);
+    toast.success('Contract created — share the signing link below');
   };
 
   const addServiceType = async () => {
@@ -1314,100 +1360,306 @@ export default function AdminDashboard() {
         {/* Agreements Tab */}
         {activeTab === "agreements" && (
           <>
+            {/* Header + view toggle */}
             <div className="flex items-start justify-between mb-6">
               <div>
                 <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Agreements</h1>
-                <p className="text-sm text-muted-foreground">Manage service agreement templates. Select a template to edit its clauses and schedules.</p>
+                <p className="text-sm text-muted-foreground">Manage service agreement templates or generate a standalone ad-hoc contract.</p>
+              </div>
+              <div className="flex gap-1 border border-border rounded-md overflow-hidden">
+                <button
+                  onClick={() => setAdhocView('templates')}
+                  className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${adhocView === 'templates' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                >Templates</button>
+                <button
+                  onClick={() => setAdhocView('adhoc')}
+                  className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${adhocView === 'adhoc' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                >Ad-Hoc Generator</button>
               </div>
             </div>
 
-            <div className="mb-6">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 block">Template</Label>
-              <select
-                value={selectedTemplateId}
-                onChange={e => setSelectedTemplateId(e.target.value)}
-                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm w-96"
-              >
-                <option value="">Select a template to edit…</option>
-                {agreementTemplates.map(t => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-            </div>
+            {/* ── TEMPLATES VIEW ── */}
+            {adhocView === 'templates' && (<>
+              <div className="mb-6">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 block">Template</Label>
+                <select
+                  value={selectedTemplateId}
+                  onChange={e => setSelectedTemplateId(e.target.value)}
+                  className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm w-96"
+                >
+                  <option value="">Select a template to edit…</option>
+                  {agreementTemplates.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
 
-            {agreementsLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : !selectedTemplateId ? (
-              <div className="bg-card border border-border p-12 text-center">
-                <p className="text-muted-foreground">Select a template above to edit its clauses and schedules.</p>
-              </div>
-            ) : (() => {
-              const tmpl = agreementTemplates.find(t => t.id === selectedTemplateId);
-              if (!tmpl) return null;
-              return (
-                <div className="space-y-4">
-                  <div className="bg-card border border-border p-4 space-y-3">
+              {agreementsLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : !selectedTemplateId ? (
+                <div className="bg-card border border-border p-12 text-center">
+                  <p className="text-muted-foreground">Select a template above to edit its clauses and schedules.</p>
+                </div>
+              ) : (() => {
+                const tmpl = agreementTemplates.find(t => t.id === selectedTemplateId);
+                if (!tmpl) return null;
+                return (
+                  <div className="space-y-4">
+                    <div className="bg-card border border-border p-4 space-y-3">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Template Name</Label>
+                        <Input
+                          value={tmpl.name}
+                          onChange={e => setAgreementTemplates(prev => prev.map(t => t.id === selectedTemplateId ? { ...t, name: e.target.value } : t))}
+                          onBlur={e => updateAgreementMeta(selectedTemplateId, e.target.value, tmpl.description)}
+                          className="h-8 text-sm font-semibold"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
+                        <Input
+                          value={tmpl.description || ''}
+                          onChange={e => setAgreementTemplates(prev => prev.map(t => t.id === selectedTemplateId ? { ...t, description: e.target.value } : t))}
+                          onBlur={e => updateAgreementMeta(selectedTemplateId, tmpl.name, e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {tmpl.sections.map((section, idx) => (
+                      <div key={idx} className="bg-card border border-border p-4 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={section.heading}
+                            onChange={e => updateSectionField(selectedTemplateId, idx, 'heading', e.target.value)}
+                            onBlur={() => updateAgreementSections(selectedTemplateId, tmpl.sections)}
+                            className="h-8 text-sm font-semibold flex-1"
+                            placeholder="Section heading"
+                          />
+                          <Button
+                            variant="ghost" size="sm"
+                            className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
+                            onClick={() => deleteSection(selectedTemplateId, idx)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                        <Textarea
+                          value={section.body}
+                          onChange={e => updateSectionField(selectedTemplateId, idx, 'body', e.target.value)}
+                          onBlur={() => updateAgreementSections(selectedTemplateId, tmpl.sections)}
+                          rows={8}
+                          className="text-sm font-mono text-xs"
+                          placeholder="Section body text"
+                        />
+                      </div>
+                    ))}
+
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 text-xs font-bold uppercase tracking-wide"
+                      onClick={() => addSection(selectedTemplateId)}
+                    >
+                      <Plus className="w-4 h-4" /> Add Section
+                    </Button>
+                  </div>
+                );
+              })()}
+            </>)}
+
+            {/* ── AD-HOC GENERATOR VIEW ── */}
+            {adhocView === 'adhoc' && (
+              <div className="space-y-6 max-w-3xl">
+
+                {/* Client Details */}
+                <div className="bg-card border border-border p-5">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-foreground mb-4">Client Details</h2>
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Template Name</Label>
-                      <Input
-                        value={tmpl.name}
-                        onChange={e => setAgreementTemplates(prev => prev.map(t => t.id === selectedTemplateId ? { ...t, name: e.target.value } : t))}
-                        onBlur={e => updateAgreementMeta(selectedTemplateId, e.target.value, tmpl.description)}
-                        className="h-8 text-sm font-semibold"
-                      />
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Client Name <span className="text-destructive">*</span></Label>
+                      <Input value={adhocForm.clientName} onChange={e => setAdhocForm(f => ({ ...f, clientName: e.target.value }))} className="h-8 text-sm" placeholder="e.g. Acme Corp" />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
-                      <Input
-                        value={tmpl.description || ''}
-                        onChange={e => setAgreementTemplates(prev => prev.map(t => t.id === selectedTemplateId ? { ...t, description: e.target.value } : t))}
-                        onBlur={e => updateAgreementMeta(selectedTemplateId, tmpl.name, e.target.value)}
-                        className="h-8 text-sm"
-                      />
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Organisation</Label>
+                      <Input value={adhocForm.organisation} onChange={e => setAdhocForm(f => ({ ...f, organisation: e.target.value }))} className="h-8 text-sm" placeholder="e.g. Acme Corporation Ltd" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Programme Title</Label>
+                      <Input value={adhocForm.programmeTitle} onChange={e => setAdhocForm(f => ({ ...f, programmeTitle: e.target.value }))} className="h-8 text-sm" placeholder="e.g. IT Support Agreement" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Agreement Date</Label>
+                      <Input type="date" value={adhocForm.agreementDate} onChange={e => setAdhocForm(f => ({ ...f, agreementDate: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Shoothill Contact Name</Label>
+                      <Input value={adhocForm.contactName} onChange={e => setAdhocForm(f => ({ ...f, contactName: e.target.value }))} className="h-8 text-sm" placeholder="e.g. Simon Jeavons" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Contact Email</Label>
+                      <Input type="email" value={adhocForm.contactEmail} onChange={e => setAdhocForm(f => ({ ...f, contactEmail: e.target.value }))} className="h-8 text-sm" placeholder="e.g. simon@shoothill.com" />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Payment Terms</Label>
+                      <Input value={adhocForm.paymentTerms} onChange={e => setAdhocForm(f => ({ ...f, paymentTerms: e.target.value }))} className="h-8 text-sm" />
                     </div>
                   </div>
-
-                  {tmpl.sections.map((section, idx) => (
-                    <div key={idx} className="bg-card border border-border p-4 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={section.heading}
-                          onChange={e => updateSectionField(selectedTemplateId, idx, 'heading', e.target.value)}
-                          onBlur={() => updateAgreementSections(selectedTemplateId, tmpl.sections)}
-                          className="h-8 text-sm font-semibold flex-1"
-                          placeholder="Section heading"
-                        />
-                        <Button
-                          variant="ghost" size="sm"
-                          className="text-muted-foreground hover:text-destructive h-8 w-8 p-0 flex-shrink-0"
-                          onClick={() => deleteSection(selectedTemplateId, idx)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                      <Textarea
-                        value={section.body}
-                        onChange={e => updateSectionField(selectedTemplateId, idx, 'body', e.target.value)}
-                        onBlur={() => updateAgreementSections(selectedTemplateId, tmpl.sections)}
-                        rows={8}
-                        className="text-sm font-mono text-xs"
-                        placeholder="Section body text"
-                      />
-                    </div>
-                  ))}
-
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2 text-xs font-bold uppercase tracking-wide"
-                    onClick={() => addSection(selectedTemplateId)}
-                  >
-                    <Plus className="w-4 h-4" /> Add Section
-                  </Button>
                 </div>
-              );
-            })()}
+
+                {/* Agreement Template */}
+                <div className="bg-card border border-border p-5">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-foreground mb-3">Agreement Template</h2>
+                  <select
+                    value={adhocForm.templateId}
+                    onChange={e => setAdhocForm(f => ({ ...f, templateId: e.target.value }))}
+                    className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm w-full"
+                  >
+                    <option value="">— Select a template (optional) —</option>
+                    {agreementTemplates.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground mt-2">The template's clauses will be included in the contract. Leave blank for clauses-only.</p>
+                </div>
+
+                {/* Phases of Work */}
+                <div className="bg-card border border-border p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Phases of Work</h2>
+                    <Button variant="ghost" size="sm" className="gap-1 text-primary text-xs h-7"
+                      onClick={() => setAdhocForm(f => ({ ...f, phases: [...f.phases, { label: `Phase ${f.phases.length + 1}`, title: '', duration: '', tasks: [], price: '' }] }))}>
+                      <Plus className="w-3.5 h-3.5" /> Add Phase
+                    </Button>
+                  </div>
+                  {adhocForm.phases.length === 0 && (
+                    <p className="text-sm text-muted-foreground italic">No phases added yet.</p>
+                  )}
+                  <div className="space-y-3">
+                    {adhocForm.phases.map((p, i) => (
+                      <div key={i} className="bg-muted border border-border p-3 space-y-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-bold text-primary uppercase tracking-wider">{p.label || `Phase ${i + 1}`}</span>
+                          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive h-6 w-6 p-0"
+                            onClick={() => setAdhocForm(f => ({ ...f, phases: f.phases.filter((_, j) => j !== i) }))}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Label</Label>
+                            <Input value={p.label} onChange={e => { const ps = [...adhocForm.phases]; ps[i] = { ...ps[i], label: e.target.value }; setAdhocForm(f => ({ ...f, phases: ps })); }} className="h-7 text-xs" placeholder="Phase 1" />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Title</Label>
+                            <Input value={p.title} onChange={e => { const ps = [...adhocForm.phases]; ps[i] = { ...ps[i], title: e.target.value }; setAdhocForm(f => ({ ...f, phases: ps })); }} className="h-7 text-xs" placeholder="Discovery & Planning" />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Duration</Label>
+                            <Input value={p.duration} onChange={e => { const ps = [...adhocForm.phases]; ps[i] = { ...ps[i], duration: e.target.value }; setAdhocForm(f => ({ ...f, phases: ps })); }} className="h-7 text-xs" placeholder="2 wks" />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Price (£, optional)</Label>
+                            <Input value={p.price} onChange={e => { const ps = [...adhocForm.phases]; ps[i] = { ...ps[i], price: e.target.value }; setAdhocForm(f => ({ ...f, phases: ps })); }} className="h-7 text-xs" placeholder="£5,000" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Upfront Pricing */}
+                <div className="bg-card border border-border p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Upfront Pricing</h2>
+                    <Button variant="ghost" size="sm" className="gap-1 text-primary text-xs h-7"
+                      onClick={() => setAdhocForm(f => ({ ...f, upfrontItems: [...f.upfrontItems, { type: '', name: '', price: 0 }] }))}>
+                      <Plus className="w-3.5 h-3.5" /> Add Item
+                    </Button>
+                  </div>
+                  {adhocForm.upfrontItems.length === 0 && (
+                    <p className="text-sm text-muted-foreground italic">No items added yet.</p>
+                  )}
+                  <div className="space-y-3">
+                    {adhocForm.upfrontItems.map((item, i) => (
+                      <div key={i} className="bg-muted border border-border p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-semibold text-foreground">{item.name || 'Untitled item'}</span>
+                          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive h-6 w-6 p-0"
+                            onClick={() => setAdhocForm(f => ({ ...f, upfrontItems: f.upfrontItems.filter((_, j) => j !== i) }))}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
+                            <Input value={item.name} onChange={e => { const items = [...adhocForm.upfrontItems]; items[i] = { ...items[i], name: e.target.value }; setAdhocForm(f => ({ ...f, upfrontItems: items })); }} className="h-7 text-xs" placeholder="e.g. Initial setup fee" />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Price (£)</Label>
+                            <Input type="number" min="0" value={item.price || ''} onChange={e => { const items = [...adhocForm.upfrontItems]; items[i] = { ...items[i], price: Number(e.target.value) || 0 }; setAdhocForm(f => ({ ...f, upfrontItems: items })); }} className="h-7 text-xs" placeholder="0" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {adhocForm.upfrontItems.length > 0 && (
+                    <div className="flex justify-between items-center mt-3 pt-3 border-t border-border">
+                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Upfront Total</span>
+                      <span className="text-sm font-bold text-foreground">£{adhocForm.upfrontItems.reduce((s, i) => s + i.price, 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Monthly Retainer */}
+                <div className="bg-card border border-border p-5">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-foreground mb-1">Monthly Retainer <span className="text-muted-foreground font-normal normal-case tracking-normal">(optional)</span></h2>
+                  <p className="text-xs text-muted-foreground mb-4">Set to 0 to omit retainer from the contract.</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
+                      <Input value={adhocForm.retainerName} onChange={e => setAdhocForm(f => ({ ...f, retainerName: e.target.value }))} className="h-8 text-sm" placeholder="e.g. Monthly Support Retainer" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Monthly Fee (£)</Label>
+                      <Input type="number" min="0" value={adhocForm.monthlyFee || ''} onChange={e => setAdhocForm(f => ({ ...f, monthlyFee: Number(e.target.value) || 0 }))} className="h-8 text-sm" placeholder="0" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Save & Generate Link */}
+                <Button
+                  className="w-full h-10 text-sm font-bold uppercase tracking-wide"
+                  onClick={saveAdhocContract}
+                  disabled={savingAdhoc}
+                >
+                  {savingAdhoc ? (
+                    <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />Saving…</>
+                  ) : 'Save & Generate Signing Link'}
+                </Button>
+
+                {/* Generated link */}
+                {adhocLink && (
+                  <div className="bg-card border border-primary p-4 space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-primary">Signing Link Ready</p>
+                    <div className="flex items-center gap-2">
+                      <input readOnly value={adhocLink} className="flex-1 h-8 border border-border bg-muted px-3 text-xs font-mono rounded-md" />
+                      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 flex-shrink-0"
+                        onClick={() => { navigator.clipboard.writeText(adhocLink); toast.success('Copied!'); }}>
+                        <LinkIcon className="w-3.5 h-3.5" /> Copy
+                      </Button>
+                      <a href={adhocLink} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 flex-shrink-0">
+                          <ExternalLink className="w-3.5 h-3.5" /> Open
+                        </Button>
+                      </a>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Share this link with your client for signing. Generate a new contract if you need to make changes.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
 
