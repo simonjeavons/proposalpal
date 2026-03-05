@@ -339,7 +339,7 @@ export default function AdhocSign() {
           y -= 18;
         };
         line('Document', contract.programme_title || 'Service Agreement');
-        line('Client', contract.client_name);
+        line('Client', contract.organisation || contract.client_name);
         line('Reference', refId);
         line('Signed', signedAt.toISOString());
 
@@ -478,7 +478,7 @@ export default function AdhocSign() {
       {/* Header */}
       <div style={{ background: '#043D5D', padding: '20px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <img style={{ height: 24, filter: 'brightness(0) invert(1)' }} src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg" alt="Shoothill" />
-        <span style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', fontWeight: 600 }}>Service Agreement — {contract.client_name}</span>
+        <span style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', fontWeight: 600 }}>Service Agreement — {contract.organisation || contract.client_name}</span>
       </div>
 
       <div style={{ maxWidth: 800, margin: '0 auto', padding: '32px 24px' }}>
@@ -659,7 +659,7 @@ export default function AdhocSign() {
                 style={{ marginTop: 2, accentColor: '#009FE3', width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }}
               />
               <label htmlFor="agree-adhoc" style={{ fontSize: 13, color: '#3A6278', lineHeight: 1.6, cursor: 'pointer' }}>
-                I confirm I am authorised to sign on behalf of <strong>{contract.client_name}</strong> and agree to the terms of this service agreement.
+                I confirm I am authorised to sign on behalf of <strong>{contract.organisation || contract.client_name}</strong> and agree to the terms of this service agreement.
                 {templateSections.length > 0 && ' The full agreement including all schedules and terms forms part of this acceptance.'}
               </label>
             </div>
