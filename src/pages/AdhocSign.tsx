@@ -567,13 +567,18 @@ export default function AdhocSign() {
 
             {/* Upfront line items */}
             {contract.upfront_items.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
+              <div style={{ marginBottom: 0 }}>
                 {contract.upfront_items.map((item, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #F4F7FA', fontSize: 13 }}>
                     <span style={{ color: '#3A6278' }}>{item.name || item.type}</span>
                     <span style={{ fontWeight: 700, color: '#043D5D' }}>{formatCurrency(item.price)}</span>
                   </div>
                 ))}
+                {/* Upfront subtotal */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', marginBottom: 8, fontSize: 13 }}>
+                  <span style={{ fontWeight: 700, color: '#043D5D' }}>One-Time Total</span>
+                  <span style={{ fontWeight: 700, color: '#043D5D' }}>{formatCurrency(upfrontTotal)}</span>
+                </div>
               </div>
             )}
 
