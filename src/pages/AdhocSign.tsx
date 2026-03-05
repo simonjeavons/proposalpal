@@ -9,6 +9,13 @@ const formatDate = (s: string) => {
   return new Date(s + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 };
 
+interface OngoingOption {
+  name: string;
+  cost: number;
+  term: number;
+  frequency: 'weekly' | 'monthly' | 'annual';
+}
+
 interface AdhocContract {
   id: string;
   slug: string;
@@ -22,14 +29,18 @@ interface AdhocContract {
   payment_terms: string;
   phases: Phase[];
   upfront_items: UpfrontItem[];
-  monthly_fee: number;
-  retainer_name: string;
+  ongoing_options: OngoingOption[];
   template_id: string | null;
   signed_contract_url: string | null;
   signer_name: string | null;
   signer_title: string | null;
   signed_at: string | null;
 }
+
+const getOptionAnnualTotal = (opt: OngoingOption) => {
+  const multiplier = opt.frequency === 'annual' ? 1 : opt.frequency === 'weekly' ? 52 : 12;
+  return opt.term * opt.cost * multiplier;
+};
 
 interface TemplateSection { heading: string; body: string; }
 
@@ -126,6 +137,7 @@ export default function AdhocSign() {
           ...data,
           phases: Array.isArray((data as any).phases) ? (data as any).phases : [],
           upfront_items: Array.isArray((data as any).upfront_items) ? (data as any).upfront_items : [],
+          ongoing_options: Array.isArray((data as any).ongoing_options) ? (data as any).ongoing_options : [],
         } as AdhocContract;
         setContract(c);
 
@@ -156,18 +168,31 @@ export default function AdhocSign() {
     (async () => {
       try {
         const upfrontTotal = contract.upfront_items.reduce((s, i) => s + i.price, 0);
-        const monthlyTotal = contract.monthly_fee || 0;
-        const firstYearTotal = upfrontTotal + monthlyTotal * 12;
-        const selectedStandard = monthlyTotal > 0 ? {
+        const allAnnualTotals = contract.ongoing_options.map(getOptionAnnualTotal);
+        const totalAnnualOngoing = allAnnualTotals.reduce((s, t) => s + t, 0);
+        const monthlyTotal = totalAnnualOngoing / 12;
+        const firstYearTotal = upfrontTotal + totalAnnualOngoing;
+        const [firstOpt, ...extraOpts] = contract.ongoing_options;
+        const selectedStandard = firstOpt ? {
           type: 'Retainer',
-          name: contract.retainer_name || 'Monthly Retainer',
-          price: monthlyTotal,
-          quantity: 1,
-          hours: '',
+          name: firstOpt.name || 'Ongoing Option',
+          price: firstOpt.cost,
+          quantity: firstOpt.term,
+          hours: firstOpt.frequency,
           features: [],
           option_type: 'standard' as const,
           recommended: false,
         } : null;
+        const selectedExtras = extraOpts.map(opt => ({
+          type: 'Retainer',
+          name: opt.name || 'Ongoing Option',
+          price: opt.cost,
+          quantity: opt.term,
+          hours: opt.frequency,
+          features: [],
+          option_type: 'standard' as const,
+          recommended: false,
+        }));
 
         const [{ pdf }, { ServiceAgreementPDF }] = await Promise.all([
           import('@react-pdf/renderer'),
@@ -183,7 +208,7 @@ export default function AdhocSign() {
           phases: contract.phases,
           upfrontItems: contract.upfront_items,
           selectedStandard,
-          selectedExtras: [],
+          selectedExtras,
           upfrontTotal,
           monthlyTotal,
           firstYearTotal,
@@ -216,18 +241,31 @@ export default function AdhocSign() {
     const signedAt = new Date();
     const signingDateStr = signedAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
     const upfrontTotal = contract.upfront_items.reduce((s, i) => s + i.price, 0);
-    const monthlyTotal = contract.monthly_fee || 0;
-    const firstYearTotal = upfrontTotal + monthlyTotal * 12;
-    const selectedStandard = monthlyTotal > 0 ? {
+    const allAnnualTotals = contract.ongoing_options.map(getOptionAnnualTotal);
+    const totalAnnualOngoing = allAnnualTotals.reduce((s, t) => s + t, 0);
+    const monthlyTotal = totalAnnualOngoing / 12;
+    const firstYearTotal = upfrontTotal + totalAnnualOngoing;
+    const [firstOpt, ...extraOpts] = contract.ongoing_options;
+    const selectedStandard = firstOpt ? {
       type: 'Retainer',
-      name: contract.retainer_name || 'Monthly Retainer',
-      price: monthlyTotal,
-      quantity: 1,
-      hours: '',
+      name: firstOpt.name || 'Ongoing Option',
+      price: firstOpt.cost,
+      quantity: firstOpt.term,
+      hours: firstOpt.frequency,
       features: [],
       option_type: 'standard' as const,
       recommended: false,
     } : null;
+    const selectedExtras = extraOpts.map(opt => ({
+      type: 'Retainer',
+      name: opt.name || 'Ongoing Option',
+      price: opt.cost,
+      quantity: opt.term,
+      hours: opt.frequency,
+      features: [],
+      option_type: 'standard' as const,
+      recommended: false,
+    }));
 
     let signedContractUrl: string | null = null;
 
@@ -245,7 +283,7 @@ export default function AdhocSign() {
         phases: contract.phases,
         upfrontItems: contract.upfront_items,
         selectedStandard,
-        selectedExtras: [],
+        selectedExtras,
         upfrontTotal,
         monthlyTotal,
         firstYearTotal,
@@ -394,8 +432,9 @@ export default function AdhocSign() {
 
   // ── Pricing calculations ──
   const upfrontTotal = contract.upfront_items.reduce((s, i) => s + i.price, 0);
-  const monthlyTotal = contract.monthly_fee || 0;
-  const firstYearTotal = upfrontTotal + monthlyTotal * 12;
+  const allAnnualTotals = contract.ongoing_options.map(getOptionAnnualTotal);
+  const totalAnnualOngoing = allAnnualTotals.reduce((s, t) => s + t, 0);
+  const firstYearTotal = upfrontTotal + totalAnnualOngoing;
 
   const submitting = submitState !== 'idle';
   const canSubmit = !!signerName.trim() && !!signatureData && agreed && !submitting;
@@ -464,17 +503,29 @@ export default function AdhocSign() {
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Investment</h2>
           </div>
           <div style={{ padding: '24px 28px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: monthlyTotal > 0 ? '1fr 1fr' : '1fr', gap: 16, marginBottom: 20 }}>
+            {/* Summary cards: one-time + each ongoing option */}
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(1 + contract.ongoing_options.length, 3)}, 1fr)`, gap: 16, marginBottom: 20 }}>
               <div style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>One-Time</div>
                 <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(upfrontTotal)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT</span></div>
               </div>
-              {monthlyTotal > 0 && (
-                <div style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>Monthly — {contract.retainer_name || 'Retainer'}</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(monthlyTotal)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT / mo</span></div>
-                </div>
-              )}
+              {contract.ongoing_options.map((opt, i) => {
+                const annual = getOptionAnnualTotal(opt);
+                const freqLabel = opt.frequency === 'annual' ? 'yr' : opt.frequency === 'weekly' ? 'wk' : 'mo';
+                return (
+                  <div key={i} style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>
+                      {opt.name || `Ongoing Option ${i + 1}`}
+                    </div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>
+                      {formatCurrency(opt.cost)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT / {freqLabel}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: '#AAAAAA', marginTop: 4 }}>
+                      {opt.term} × {opt.frequency} · Annual: {formatCurrency(annual)}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Upfront line items */}
@@ -489,10 +540,10 @@ export default function AdhocSign() {
               </div>
             )}
 
-            {/* First year total */}
-            {monthlyTotal > 0 && (
+            {/* Total: upfront + all ongoing annual totals */}
+            {(upfrontTotal > 0 || totalAnnualOngoing > 0) && (
               <div style={{ borderTop: '2px solid #043D5D', paddingTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#043D5D' }}>Total Year 1</span>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#043D5D' }}>Total (Year 1)</span>
                 <span style={{ fontSize: 20, fontWeight: 800, color: '#009FE3' }}>{formatCurrency(firstYearTotal)}</span>
               </div>
             )}
