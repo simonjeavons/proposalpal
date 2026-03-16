@@ -27,7 +27,7 @@ export interface RetainerOption {
   quantity: number;
   price: number;
   features: string[];
-  option_type: 'standard' | 'optional_extra';
+  option_type: 'standard' | 'optional_extra' | 'core';
   recommended: boolean;
 }
 

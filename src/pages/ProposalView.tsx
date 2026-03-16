@@ -140,12 +140,14 @@ export default function ProposalView() {
     </div>
   );
 
+  const coreOptions = proposal.retainer_options.filter(r => r.option_type === 'core');
   const standardOptions = proposal.retainer_options.filter(r => r.option_type === 'standard');
   const optionalExtras = proposal.retainer_options.filter(r => r.option_type === 'optional_extra');
   const selectedStandardOption = standardOptions[selectedStandard] || null;
   const optionTotal = (r: { price: number; quantity?: number }) => (r.quantity ?? 1) * r.price;
+  const coreTotal = coreOptions.reduce((sum, r) => sum + optionTotal(r), 0);
   const extrasTotal = [...checkedExtras].reduce((sum, i) => sum + optionTotal(optionalExtras[i] ?? { price: 0 }), 0);
-  const monthlyTotal = (selectedStandardOption ? optionTotal(selectedStandardOption) : 0) + extrasTotal;
+  const monthlyTotal = coreTotal + (selectedStandardOption ? optionTotal(selectedStandardOption) : 0) + extrasTotal;
   const firstYearTotal = Number(proposal.upfront_total) + (monthlyTotal * 12);
 
   // Timeline helpers
@@ -577,6 +579,34 @@ export default function ProposalView() {
                   </div>
                 )}
               </div>
+
+              {/* Core ongoing options — always included, not selectable */}
+              {coreOptions.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 2 }}>Core — always included</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {coreOptions.map((r, i) => (
+                      <div key={i} style={{ background: '#F0FDF4', border: '2px solid #86EFAC', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <div style={{ width: 20, height: 20, borderRadius: 4, background: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: 'white', flexShrink: 0 }}>✓</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                            {r.type && <div style={{ fontSize: 10, fontWeight: 700, color: '#16A34A', letterSpacing: '.1em', textTransform: 'uppercase' as const }}>{r.type}</div>}
+                            <div style={{ fontSize: 9, fontWeight: 800, color: '#166534', background: '#DCFCE7', padding: '1px 6px', letterSpacing: '.08em', textTransform: 'uppercase' as const }}>Core</div>
+                          </div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#043D5D' }}>{r.name || r.type}</div>
+                          {r.features.filter(f => f.trim()).length > 0 && (
+                            <div style={{ fontSize: 12, color: '#3A6278', marginTop: 4 }}>{r.features.filter(f => f.trim()).join(' · ')}</div>
+                          )}
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          <div style={{ fontSize: 11, color: '#AAAAAA' }}>/ month{r.term_months ? ` · ${r.term_months} mo` : ''}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Standard ongoing options */}
               {standardOptions.length > 0 && (

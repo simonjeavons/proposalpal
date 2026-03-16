@@ -527,15 +527,17 @@ export default function ProposalAccept() {
     </div>
   );
 
+  const coreOptions = proposal.retainer_options.filter(r => r.option_type === 'core');
   const standardOptions = proposal.retainer_options.filter(r => r.option_type === 'standard');
   const optionalExtras = proposal.retainer_options.filter(r => r.option_type === 'optional_extra');
   const selectedStandard = standardOptions[standardIndex] || null;
   const selectedExtras = selectedExtrasIndices.map(i => optionalExtras[i]).filter(Boolean);
   const upfront = Number(proposal.upfront_total);
   const optionTotal = (r: { price: number; quantity?: number }) => (r.quantity ?? 1) * r.price;
+  const corePrice = coreOptions.reduce((sum, r) => sum + optionTotal(r), 0);
   const standardPrice = selectedStandard ? optionTotal(selectedStandard) : 0;
   const extrasPrice = selectedExtras.reduce((sum, r) => sum + optionTotal(r), 0);
-  const monthlyTotal = standardPrice + extrasPrice;
+  const monthlyTotal = corePrice + standardPrice + extrasPrice;
   const monthlyAnnual = monthlyTotal * 12;
   const firstYearTotal = upfront + monthlyAnnual;
 
@@ -569,14 +571,16 @@ export default function ProposalAccept() {
         pdfBytes = new Uint8Array(await response.arrayBuffer());
       } else {
         // Regenerate the PDF with both signatures embedded in the execution block
+        const coreOpts = proposal.retainer_options.filter(r => r.option_type === 'core');
         const stdOpts = proposal.retainer_options.filter(r => r.option_type === 'standard');
         const optExtras = proposal.retainer_options.filter(r => r.option_type === 'optional_extra');
         const selStandard = stdOpts[standardIndex] || null;
         const selExtras = selectedExtrasIndices.map(i => optExtras[i]).filter(Boolean);
         const upfrontAmt = Number(proposal.upfront_total);
+        const coreAmt = coreOpts.reduce((sum, r) => sum + (r.quantity ?? 1) * r.price, 0);
         const stdPrice = selStandard ? (selStandard.quantity ?? 1) * selStandard.price : 0;
         const extrasPrice = selExtras.reduce((sum, r) => sum + (r.quantity ?? 1) * r.price, 0);
-        const monthlyAmt = stdPrice + extrasPrice;
+        const monthlyAmt = coreAmt + stdPrice + extrasPrice;
         const firstYrTotal = upfrontAmt + monthlyAmt * 12;
 
         const signedProps = {

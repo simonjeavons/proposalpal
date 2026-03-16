@@ -762,8 +762,22 @@ export default function ProposalEditor() {
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-sm font-bold text-foreground truncate">{r.name || r.type || 'Untitled'}</span>
                   <div className="flex items-center gap-3 flex-shrink-0">
-                    {/* Standard / Optional Extra toggle */}
+                    {/* Core / Standard / Optional Extra toggle */}
                     <div className="flex items-center bg-background border border-border rounded overflow-hidden">
+                      <button
+                        onClick={() => {
+                          const updated = [...form.retainer_options];
+                          updated[i] = { ...updated[i], option_type: 'core' };
+                          updateField('retainer_options', updated);
+                        }}
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 transition-colors ${
+                          r.option_type === 'core'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        Core
+                      </button>
                       <button
                         onClick={() => {
                           const updated = [...form.retainer_options];
@@ -771,7 +785,7 @@ export default function ProposalEditor() {
                           updateField('retainer_options', updated);
                         }}
                         className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 transition-colors ${
-                          r.option_type !== 'optional_extra'
+                          r.option_type === 'standard'
                             ? 'bg-blue-100 text-blue-700'
                             : 'text-muted-foreground hover:text-foreground'
                         }`}
