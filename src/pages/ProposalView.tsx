@@ -65,6 +65,9 @@ export default function ProposalView() {
           team_member_ids: ((data as any).team_member_ids as string[]) || [],
         } as Proposal;
         setProposal(proposalData);
+        if (data.client_name) {
+          document.title = `Shoothill Proposal for ${data.client_name}`;
+        }
         const opts = ((data.retainer_options || []) as RetainerOption[]);
         const standards = opts.filter(r => r.option_type === 'standard');
         const defaultStdIdx = standards.findIndex(r => r.recommended);
