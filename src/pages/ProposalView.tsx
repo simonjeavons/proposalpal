@@ -48,6 +48,9 @@ export default function ProposalView() {
           retainer_options: (data.retainer_options || []) as unknown as RetainerOption[],
         } as Proposal);
         setSelectedRetainer(data.default_retainer_index || 1);
+        if (data.client_name) {
+          document.title = `Shoothill Proposal for ${data.client_name}`;
+        }
       }
       setLoading(false);
     };
