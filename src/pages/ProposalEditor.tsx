@@ -77,6 +77,9 @@ interface FormData {
   phases: Phase[];
   upfront_items: UpfrontItem[];
   upfront_notes: string;
+  upfront_section_title: string;
+  core_section_title: string;
+  ongoing_section_title: string;
   retainer_options: RetainerOption[];
   contact_name: string;
   contact_email: string;
@@ -137,6 +140,9 @@ export default function ProposalEditor() {
     phases: [],
     upfront_items: [],
     upfront_notes: '',
+    upfront_section_title: '',
+    core_section_title: '',
+    ongoing_section_title: '',
     retainer_options: [...DEFAULT_RETAINER_OPTIONS],
     contact_name: '',
     contact_email: 'josh.welch@shoothill.com',
@@ -192,6 +198,9 @@ export default function ProposalEditor() {
             phases: ((data.phases as any[]) || []).map(p => ({ ...p, price: String(p.price || '').replace(/^£/, '').replace(/,/g, '') })) as Phase[],
             upfront_items: ((data as any).upfront_items || []) as UpfrontItem[],
             upfront_notes: (data as any).upfront_notes || '',
+            upfront_section_title: (data as any).upfront_section_title || '',
+            core_section_title: (data as any).core_section_title || '',
+            ongoing_section_title: (data as any).ongoing_section_title || '',
             retainer_options: (data.retainer_options || []) as unknown as RetainerOption[],
             contact_name: data.contact_name,
             contact_email: data.contact_email,
@@ -653,6 +662,15 @@ export default function ProposalEditor() {
           </Button>
         }>
           <div className="space-y-3">
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Section Title</label>
+              <Input
+                placeholder="Part 1: One-time project delivery"
+                value={form.upfront_section_title}
+                onChange={e => updateField('upfront_section_title', e.target.value)}
+                className="text-sm"
+              />
+            </div>
             {form.upfront_items.length === 0 && (
               <p className="text-sm text-muted-foreground italic">No upfront items yet. Add items to build the one-time investment breakdown.</p>
             )}
@@ -757,6 +775,26 @@ export default function ProposalEditor() {
           </Button>
         }>
           <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Core section title</label>
+                <Input
+                  placeholder="Core — always included"
+                  value={form.core_section_title}
+                  onChange={e => updateField('core_section_title', e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Standard section title</label>
+                <Input
+                  placeholder="Part 2: Ongoing support / options"
+                  value={form.ongoing_section_title}
+                  onChange={e => updateField('ongoing_section_title', e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+            </div>
             {form.retainer_options.map((r, i) => (
               <div key={i} className="bg-muted p-4 border border-border space-y-3">
                 <div className="flex items-center justify-between gap-4">

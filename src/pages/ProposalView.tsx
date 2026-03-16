@@ -550,7 +550,7 @@ export default function ProposalView() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
               {/* Upfront */}
               <div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 16 }}>Part 1: One-time project delivery</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 16 }}>{(proposal as any).upfront_section_title || 'Part 1: One-time project delivery'}</div>
                 {/* Upfront items table */}
                 {(proposal.upfront_items || []).length > 0 && (
                   <div style={{ border: '1px solid #DDE8EE', overflow: 'hidden' }}>
@@ -583,7 +583,7 @@ export default function ProposalView() {
               {/* Core ongoing options — always included, not selectable */}
               {coreOptions.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 2 }}>Core — always included</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 2 }}>{(proposal as any).core_section_title || 'Core — always included'}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {coreOptions.map((r, i) => (
                       <div key={i} style={{ background: '#F0FDF4', border: '2px solid #86EFAC', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -611,7 +611,7 @@ export default function ProposalView() {
               {/* Standard ongoing options */}
               {standardOptions.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 2 }}>Part 2: Ongoing support / options</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 2 }}>{(proposal as any).ongoing_section_title || 'Part 2: Ongoing support / options'}</div>
                   <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTablet && standardOptions.length > 2 ? 'repeat(2, 1fr)' : `repeat(${standardOptions.length}, 1fr)`, gap: 2, background: '#DDE8EE' }}>
                     {standardOptions.map((r, i) => (
                       <div
