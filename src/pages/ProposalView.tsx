@@ -305,7 +305,7 @@ export default function ProposalView() {
                 </div>
               ) : null;
             })()}
-            {proposal.challenge_intro && <p style={{ color: '#3A6278', marginBottom: 18 }}>{proposal.challenge_intro}</p>}
+            {proposal.challenge_intro && <p style={{ color: '#3A6278', marginBottom: 18, whiteSpace: 'pre-line' }}>{proposal.challenge_intro}</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {proposal.challenges.map((c, i) => (
                 <div key={i} className="scroll-reveal print-bg-white" style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '14px 16px', borderLeft: '3px solid #DDE8EE', background: '#F4F7FA', transitionDelay: `${i * 60}ms` }}>
