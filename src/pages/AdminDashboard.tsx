@@ -703,6 +703,7 @@ export default function AdminDashboard() {
     fetchProducts();
     fetchAgreementTemplates();
     fetchTeamMembers();
+    fetchAllAgreements();
   }, []);
 
   // Fetch all agreements when switching to "all" view
@@ -886,19 +887,39 @@ export default function AdminDashboard() {
           const drafts = proposals.filter(p => p.status === 'draft').length;
           const sent = proposals.filter(p => p.status === 'sent').length;
           const accepted = proposals.filter(p => p.status === 'accepted').length;
+          const firstYearTotal = (p: Proposal) => {
+            const monthly = (p.retainer_options || []).reduce((rs: number, r: any) => rs + ((r.quantity ?? 1) * (r.discounted_price ?? r.price ?? 0)), 0);
+            return Number(p.upfront_total || 0) + monthly * 12;
+          };
           const totalUpfront = proposals.reduce((s, p) => s + Number(p.upfront_total || 0), 0);
           const totalMonthly = proposals.reduce((s, p) => {
             return s + (p.retainer_options || []).reduce((rs: number, r: any) => rs + ((r.quantity ?? 1) * (r.discounted_price ?? r.price ?? 0)), 0);
           }, 0);
+          const sentPipeline = proposals.filter(p => p.status === 'sent').reduce((s, p) => s + firstYearTotal(p), 0);
+          const winRate = sent + accepted > 0 ? Math.round((accepted / (sent + accepted)) * 100) : 0;
+          const avgDeal = total > 0 ? proposals.reduce((s, p) => s + firstYearTotal(p), 0) / total : 0;
+          const today = new Date();
+          const in7Days = new Date(today.getTime() + 7 * 86400000);
+          const expiringSoon = proposals.filter(p => p.status === 'sent' && p.valid_until && new Date(p.valid_until + 'T00:00:00') <= in7Days && new Date(p.valid_until + 'T00:00:00') >= today);
           const recent = [...proposals].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()).slice(0, 5);
+          const topByValue = [...proposals].sort((a, b) => firstYearTotal(b) - firstYearTotal(a)).slice(0, 5);
+          // Ad-hoc contract stats from allAgreements
+          const adhocContracts = allAgreements.filter((a: any) => a._source === 'adhoc');
+          const adhocPending = adhocContracts.filter((a: any) => a.status === 'pending').length;
+          const adhocSigned = adhocContracts.filter((a: any) => a.status === 'signed').length;
+          const adhocDraft = adhocContracts.filter((a: any) => a.status === 'draft').length;
+          // Activity by team member
+          const byUser: Record<string, number> = {};
+          proposals.forEach(p => { const name = p.prepared_by || 'Unknown'; byUser[name] = (byUser[name] || 0) + 1; });
+          const userRanking = Object.entries(byUser).sort((a, b) => b[1] - a[1]);
           const fmtGbp = (n: number) => n === 0 ? '£0' : `£${n.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
           return (
             <>
               <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Dashboard</h1>
               <p className="text-sm text-muted-foreground mb-6">Overview of your proposals and pipeline.</p>
 
-              {/* Stats cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              {/* Row 1: Status cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-card border border-border p-5 rounded-md">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Total Proposals</div>
                   <div className="text-3xl font-extrabold text-foreground">{total}</div>
@@ -917,21 +938,177 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Pipeline value */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              {/* Row 2: Key metrics */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-card border border-border p-5 rounded-md">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Total Upfront Value (all proposals)</div>
-                  <div className="text-2xl font-extrabold text-foreground">{fmtGbp(totalUpfront)}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Excl. VAT</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Win Rate</div>
+                  <div className="text-3xl font-extrabold text-foreground">{winRate}<span className="text-lg">%</span></div>
+                  <div className="text-xs text-muted-foreground mt-1">Accepted ÷ (Sent + Accepted)</div>
                 </div>
                 <div className="bg-card border border-border p-5 rounded-md">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Total Monthly Recurring (all proposals)</div>
-                  <div className="text-2xl font-extrabold text-foreground">{fmtGbp(totalMonthly)}<span className="text-sm font-medium text-muted-foreground"> /mo</span></div>
-                  <div className="text-xs text-muted-foreground mt-1">Excl. VAT</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Avg Deal Size</div>
+                  <div className="text-2xl font-extrabold text-foreground">{fmtGbp(avgDeal)}</div>
+                  <div className="text-xs text-muted-foreground mt-1">First-year value</div>
+                </div>
+                <div className="bg-card border border-border p-5 rounded-md">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Sent Pipeline</div>
+                  <div className="text-2xl font-extrabold text-blue-500">{fmtGbp(sentPipeline)}</div>
+                  <div className="text-xs text-muted-foreground mt-1">First-year value of sent proposals</div>
+                </div>
+                <div className="bg-card border border-border p-5 rounded-md">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Expiring Soon</div>
+                  <div className="text-3xl font-extrabold" style={{ color: expiringSoon.length > 0 ? '#EF4444' : '#22C55E' }}>{expiringSoon.length}</div>
+                  <div className="text-xs text-muted-foreground mt-1">Valid until within 7 days</div>
                 </div>
               </div>
 
-              {/* Recent activity */}
+              {/* Row 3: Pipeline value + Ad-hoc contracts */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-card border border-border p-5 rounded-md">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Total Upfront Value</div>
+                  <div className="text-2xl font-extrabold text-foreground">{fmtGbp(totalUpfront)}</div>
+                  <div className="text-xs text-muted-foreground mt-1">All proposals · Excl. VAT</div>
+                </div>
+                <div className="bg-card border border-border p-5 rounded-md">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Monthly Recurring</div>
+                  <div className="text-2xl font-extrabold text-foreground">{fmtGbp(totalMonthly)}<span className="text-sm font-medium text-muted-foreground"> /mo</span></div>
+                  <div className="text-xs text-muted-foreground mt-1">All proposals · Excl. VAT</div>
+                </div>
+                <div className="bg-card border border-border p-5 rounded-md">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Ad-Hoc Contracts</div>
+                  <div className="flex items-baseline gap-3 mt-1">
+                    <span className="text-sm font-bold text-amber-500">{adhocDraft} draft</span>
+                    <span className="text-sm font-bold text-blue-500">{adhocPending} pending</span>
+                    <span className="text-sm font-bold text-emerald-500">{adhocSigned} signed</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 4: Expiring soon (if any) */}
+              {expiringSoon.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-md mb-6">
+                  <div className="px-5 py-3 border-b border-red-200">
+                    <h2 className="text-sm font-bold text-red-700">⚠ Expiring Within 7 Days</h2>
+                  </div>
+                  <div className="divide-y divide-red-100">
+                    {expiringSoon.map(p => (
+                      <div key={p.id} className="px-5 py-3 flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-foreground truncate">{p.client_name}</div>
+                          <div className="text-xs text-muted-foreground truncate">{p.programme_title}</div>
+                        </div>
+                        <span className="text-xs font-bold text-red-600 flex-shrink-0">
+                          Expires {new Date(p.valid_until + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Row 5: Pipeline by service type */}
+              {(() => {
+                const byType: Record<string, { upfront: number; monthly: number; count: number }> = {};
+                proposals.forEach(p => {
+                  const key = p.sector || 'Unassigned';
+                  if (!byType[key]) byType[key] = { upfront: 0, monthly: 0, count: 0 };
+                  byType[key].upfront += Number(p.upfront_total || 0);
+                  byType[key].monthly += (p.retainer_options || []).reduce((rs: number, r: any) => rs + ((r.quantity ?? 1) * (r.discounted_price ?? r.price ?? 0)), 0);
+                  byType[key].count++;
+                });
+                const rows = Object.entries(byType).sort((a, b) => (b[1].upfront + b[1].monthly * 12) - (a[1].upfront + a[1].monthly * 12));
+                const grandUpfront = rows.reduce((s, [, v]) => s + v.upfront, 0);
+                const grandMonthly = rows.reduce((s, [, v]) => s + v.monthly, 0);
+                return rows.length > 0 ? (
+                  <div className="bg-card border border-border rounded-md mb-6">
+                    <div className="px-5 py-4 border-b border-border">
+                      <h2 className="text-sm font-bold text-foreground">Pipeline by Service Type</h2>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            <td className="px-5 py-2.5">Service</td>
+                            <td className="px-5 py-2.5 text-center">Proposals</td>
+                            <td className="px-5 py-2.5 text-right">Upfront</td>
+                            <td className="px-5 py-2.5 text-right">Monthly</td>
+                            <td className="px-5 py-2.5 text-right">First Year</td>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {rows.map(([name, v]) => (
+                            <tr key={name}>
+                              <td className="px-5 py-2.5 font-medium text-foreground">{name}</td>
+                              <td className="px-5 py-2.5 text-center text-muted-foreground">{v.count}</td>
+                              <td className="px-5 py-2.5 text-right text-foreground">{fmtGbp(v.upfront)}</td>
+                              <td className="px-5 py-2.5 text-right text-foreground">{fmtGbp(v.monthly)}<span className="text-muted-foreground text-xs"> /mo</span></td>
+                              <td className="px-5 py-2.5 text-right font-bold text-foreground">{fmtGbp(v.upfront + v.monthly * 12)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 border-foreground/20 font-bold">
+                            <td className="px-5 py-2.5 text-foreground">Total</td>
+                            <td className="px-5 py-2.5 text-center text-foreground">{total}</td>
+                            <td className="px-5 py-2.5 text-right text-foreground">{fmtGbp(grandUpfront)}</td>
+                            <td className="px-5 py-2.5 text-right text-foreground">{fmtGbp(grandMonthly)}<span className="text-muted-foreground text-xs"> /mo</span></td>
+                            <td className="px-5 py-2.5 text-right text-foreground">{fmtGbp(grandUpfront + grandMonthly * 12)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+              {/* Row 6: Two columns — Top by value + Activity by team */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="bg-card border border-border rounded-md">
+                  <div className="px-5 py-4 border-b border-border">
+                    <h2 className="text-sm font-bold text-foreground">Top Proposals by Value</h2>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {topByValue.map((p, i) => (
+                      <div key={p.id} className="px-5 py-3 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-xs font-bold text-muted-foreground w-5">{i + 1}.</span>
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-foreground truncate">{p.client_name}</div>
+                            <div className="text-xs text-muted-foreground truncate">{p.programme_title}</div>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="text-sm font-bold text-foreground">{fmtGbp(firstYearTotal(p))}</div>
+                          <div className="text-[10px] text-muted-foreground">first year</div>
+                        </div>
+                      </div>
+                    ))}
+                    {topByValue.length === 0 && <div className="px-5 py-6 text-center text-sm text-muted-foreground">No proposals yet.</div>}
+                  </div>
+                </div>
+
+                <div className="bg-card border border-border rounded-md">
+                  <div className="px-5 py-4 border-b border-border">
+                    <h2 className="text-sm font-bold text-foreground">Activity by Team Member</h2>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {userRanking.map(([name, count]) => (
+                      <div key={name} className="px-5 py-3 flex items-center justify-between gap-4">
+                        <span className="text-sm font-medium text-foreground truncate">{name}</span>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full bg-primary rounded-full" style={{ width: `${Math.min(100, (count / (userRanking[0]?.[1] || 1)) * 100)}%` }} />
+                          </div>
+                          <span className="text-xs font-bold text-muted-foreground w-6 text-right">{count}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {userRanking.length === 0 && <div className="px-5 py-6 text-center text-sm text-muted-foreground">No data yet.</div>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 6: Recent activity */}
               <div className="bg-card border border-border rounded-md">
                 <div className="px-5 py-4 border-b border-border">
                   <h2 className="text-sm font-bold text-foreground">Recently Updated</h2>
