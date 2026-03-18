@@ -317,7 +317,7 @@ export default function ProposalView() {
                   <div style={{ width: 10, height: 10, background: '#009FE3', flexShrink: 0, borderRadius: '50%', marginTop: 6 }} />
                   <div>
                     <strong style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#043D5D', marginBottom: 1 }}>{c.title}</strong>
-                    <span style={{ fontSize: 12, color: '#AAAAAA' }}>{c.description}</span>
+                    <span style={{ fontSize: 12, color: '#AAAAAA', whiteSpace: 'pre-line' }}>{c.description}</span>
                   </div>
                 </div>
               ))}
