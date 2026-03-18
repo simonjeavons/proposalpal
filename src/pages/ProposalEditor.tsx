@@ -7,7 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Save, Plus, Trash2, Eye, Upload, FileText, X, BookmarkPlus } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Eye, Upload, FileText, X, BookmarkPlus, GripVertical } from "lucide-react";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import type { DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
@@ -104,6 +108,28 @@ const in30Days = () => {
   return d.toISOString().split('T')[0];
 };
 
+function reorderArray<T>(arr: T[], from: number, to: number): T[] {
+  const result = [...arr];
+  const [item] = result.splice(from, 1);
+  result.splice(to, 0, item);
+  return result;
+}
+
+function SortableItem({ id, children }: { id: string; children: (props: { dragHandleProps: React.HTMLAttributes<HTMLDivElement>; style: React.CSSProperties }) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: 'relative' as const,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ dragHandleProps: { ...attributes, ...listeners }, style })}
+    </div>
+  );
+}
+
 export default function ProposalEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -159,6 +185,30 @@ export default function ProposalEditor() {
     team_member_ids: [],
     status: 'draft',
   });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor),
+  );
+
+  const challengeIds = form.challenges.map((_, i) => `challenge-${i}`);
+  const retainerIds = form.retainer_options.map((_, i) => `retainer-${i}`);
+
+  const handleChallengeDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = challengeIds.indexOf(String(active.id));
+    const to = challengeIds.indexOf(String(over.id));
+    updateField('challenges', reorderArray(form.challenges, from, to));
+  };
+
+  const handleRetainerDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = retainerIds.indexOf(String(active.id));
+    const to = retainerIds.indexOf(String(over.id));
+    updateField('retainer_options', reorderArray(form.retainer_options, from, to));
+  };
 
   useEffect(() => {
     supabase.from("profiles").select("id, full_name, email, job_title, phone_number, office_phone, team_member_id").order("full_name").then(({ data }) => {
@@ -537,19 +587,40 @@ export default function ProposalEditor() {
               <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Challenge Introduction</Label>
               <Textarea value={form.challenge_intro} onChange={e => updateField('challenge_intro', e.target.value)} rows={3} className="text-sm" placeholder="Introduce the challenges the client is facing…" />
             </div>
-            <div className="space-y-3">
-              {form.challenges.map((c, i) => (
-                <div key={i} className="flex gap-3 items-start bg-muted p-4 border border-border">
-                  <div className="flex-1 space-y-2">
-                    <Input placeholder="Challenge title" value={c.title} onChange={e => updateChallenge(i, 'title', e.target.value)} className="text-sm font-semibold" />
-                    <Textarea placeholder="Description" value={c.description} onChange={e => updateChallenge(i, 'description', e.target.value)} rows={2} className="text-sm resize-y min-h-[4rem]" />
-                  </div>
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={() => updateField('challenges', form.challenges.filter((_, j) => j !== i))}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleChallengeDragEnd}>
+              <SortableContext items={challengeIds} strategy={verticalListSortingStrategy}>
+                <div className="space-y-3">
+                  {form.challenges.map((c, i) => (
+                    <SortableItem key={challengeIds[i]} id={challengeIds[i]}>
+                      {({ dragHandleProps }) => (
+                        <div className="flex gap-3 items-start bg-muted p-4 border border-border">
+                          <div {...dragHandleProps} className="cursor-grab active:cursor-grabbing pt-2 text-muted-foreground hover:text-foreground">
+                            <GripVertical className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 space-y-2">
+                            <Input placeholder="Challenge title" value={c.title} onChange={e => updateChallenge(i, 'title', e.target.value)} className="text-sm font-semibold" />
+                            <Textarea placeholder="Description" value={c.description} onChange={e => updateChallenge(i, 'description', e.target.value)} rows={2} className="text-sm resize-y min-h-[4rem]" />
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <select
+                              value={i}
+                              onChange={e => updateField('challenges', reorderArray(form.challenges, i, Number(e.target.value)))}
+                              className="h-7 w-12 text-xs text-center border border-border bg-background rounded"
+                              title="Reorder"
+                            >
+                              {form.challenges.map((_, j) => <option key={j} value={j}>{j + 1}</option>)}
+                            </select>
+                            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={() => updateField('challenges', form.challenges.filter((_, j) => j !== i))}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </SortableItem>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
           </div>
         </Section>
 
@@ -795,10 +866,19 @@ export default function ProposalEditor() {
                 />
               </div>
             </div>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleRetainerDragEnd}>
+              <SortableContext items={retainerIds} strategy={verticalListSortingStrategy}>
             {form.retainer_options.map((r, i) => (
-              <div key={i} className="bg-muted p-4 border border-border space-y-3">
+              <SortableItem key={retainerIds[i]} id={retainerIds[i]}>
+                {({ dragHandleProps }) => (
+              <div className="bg-muted p-4 border border-border space-y-3">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-sm font-bold text-foreground truncate">{r.name || r.type || 'Untitled'}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div {...dragHandleProps} className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground flex-shrink-0">
+                      <GripVertical className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm font-bold text-foreground truncate">{r.name || r.type || 'Untitled'}</span>
+                  </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     {/* Core / Standard / Optional Extra toggle */}
                     <div className="flex items-center bg-background border border-border rounded overflow-hidden">
@@ -859,6 +939,14 @@ export default function ProposalEditor() {
                       />
                       <span className="text-xs text-muted-foreground">★ Recommended</span>
                     </label>
+                    <select
+                      value={i}
+                      onChange={e => updateField('retainer_options', reorderArray(form.retainer_options, i, Number(e.target.value)))}
+                      className="h-7 w-12 text-xs text-center border border-border bg-background rounded"
+                      title="Reorder"
+                    >
+                      {form.retainer_options.map((_, j) => <option key={j} value={j}>{j + 1}</option>)}
+                    </select>
                     <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
                       onClick={() => updateField('retainer_options', form.retainer_options.filter((_, j) => j !== i))}>
                       <Trash2 className="w-4 h-4" />
@@ -927,7 +1015,11 @@ export default function ProposalEditor() {
                   </button>
                 )}
               </div>
+                )}
+              </SortableItem>
             ))}
+              </SortableContext>
+            </DndContext>
           </div>
         </Section>
 
