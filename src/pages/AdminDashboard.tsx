@@ -25,7 +25,7 @@ interface Profile {
   created_at: string;
 }
 
-type Tab = "proposals" | "users" | "team" | "solutions" | "services" | "agreements";
+type Tab = "dashboard" | "proposals" | "users" | "team" | "solutions" | "services" | "agreements";
 
 interface TeamMember {
   id: string;
@@ -97,7 +97,7 @@ interface AgreementTemplate {
 
 export default function AdminDashboard() {
   const { user, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>("proposals");
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
 
   // Proposals state
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -705,6 +705,11 @@ export default function AdminDashboard() {
     fetchTeamMembers();
   }, []);
 
+  // Fetch all agreements when switching to "all" view
+  useEffect(() => {
+    if (activeTab === 'agreements' && adhocView === 'all') fetchAllAgreements();
+  }, [activeTab, adhocView]);
+
   const duplicateProposal = async (p: Proposal) => {
     const { id: _id, slug: _slug, created_at: _ca, updated_at: _ua, ...rest } = p as any;
     // Remove fields that should not be copied
@@ -868,10 +873,93 @@ export default function AdminDashboard() {
         onServicesClick={() => { setActiveTab("services"); setSelectedServiceId(null); }}
         userEmail={user?.email}
         onSignOut={signOut}
+        adhocView={adhocView}
+        onAdhocViewChange={setAdhocView}
       />
 
       <div className="md:ml-56 min-h-screen">
         <div className="max-w-6xl mx-auto px-6 py-8">
+
+        {/* Dashboard Tab */}
+        {activeTab === "dashboard" && (() => {
+          const total = proposals.length;
+          const drafts = proposals.filter(p => p.status === 'draft').length;
+          const sent = proposals.filter(p => p.status === 'sent').length;
+          const accepted = proposals.filter(p => p.status === 'accepted').length;
+          const totalUpfront = proposals.reduce((s, p) => s + Number(p.upfront_total || 0), 0);
+          const totalMonthly = proposals.reduce((s, p) => {
+            return s + (p.retainer_options || []).reduce((rs: number, r: any) => rs + ((r.quantity ?? 1) * (r.discounted_price ?? r.price ?? 0)), 0);
+          }, 0);
+          const recent = [...proposals].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()).slice(0, 5);
+          const fmtGbp = (n: number) => n === 0 ? '£0' : `£${n.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+          return (
+            <>
+              <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Dashboard</h1>
+              <p className="text-sm text-muted-foreground mb-6">Overview of your proposals and pipeline.</p>
+
+              {/* Stats cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div className="bg-card border border-border p-5 rounded-md">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Total Proposals</div>
+                  <div className="text-3xl font-extrabold text-foreground">{total}</div>
+                </div>
+                <div className="bg-card border border-border p-5 rounded-md">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Drafts</div>
+                  <div className="text-3xl font-extrabold text-amber-500">{drafts}</div>
+                </div>
+                <div className="bg-card border border-border p-5 rounded-md">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Sent</div>
+                  <div className="text-3xl font-extrabold text-blue-500">{sent}</div>
+                </div>
+                <div className="bg-card border border-border p-5 rounded-md">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Accepted</div>
+                  <div className="text-3xl font-extrabold text-emerald-500">{accepted}</div>
+                </div>
+              </div>
+
+              {/* Pipeline value */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <div className="bg-card border border-border p-5 rounded-md">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Total Upfront Value (all proposals)</div>
+                  <div className="text-2xl font-extrabold text-foreground">{fmtGbp(totalUpfront)}</div>
+                  <div className="text-xs text-muted-foreground mt-1">Excl. VAT</div>
+                </div>
+                <div className="bg-card border border-border p-5 rounded-md">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Total Monthly Recurring (all proposals)</div>
+                  <div className="text-2xl font-extrabold text-foreground">{fmtGbp(totalMonthly)}<span className="text-sm font-medium text-muted-foreground"> /mo</span></div>
+                  <div className="text-xs text-muted-foreground mt-1">Excl. VAT</div>
+                </div>
+              </div>
+
+              {/* Recent activity */}
+              <div className="bg-card border border-border rounded-md">
+                <div className="px-5 py-4 border-b border-border">
+                  <h2 className="text-sm font-bold text-foreground">Recently Updated</h2>
+                </div>
+                <div className="divide-y divide-border">
+                  {recent.map(p => (
+                    <div key={p.id} className="px-5 py-3 flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-foreground truncate">{p.client_name}</div>
+                        <div className="text-xs text-muted-foreground truncate">{p.programme_title}</div>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <Badge variant={p.status === 'accepted' ? 'default' : p.status === 'sent' ? 'secondary' : 'outline'} className="text-[10px] uppercase">
+                          {p.status}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">{new Date(p.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {recent.length === 0 && (
+                    <div className="px-5 py-8 text-center text-sm text-muted-foreground">No proposals yet.</div>
+                  )}
+                </div>
+              </div>
+            </>
+          );
+        })()}
+
         {/* Proposals Tab */}
         {activeTab === "proposals" && (() => {
           const fmtGbp = (n: number) => n === 0 ? '—' : `£${n.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -1485,26 +1573,13 @@ export default function AdminDashboard() {
         {/* Agreements Tab */}
         {activeTab === "agreements" && (
           <>
-            {/* Header + view toggle */}
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">Agreements</h1>
-                <p className="text-sm text-muted-foreground">Manage service agreement templates or generate a standalone ad-hoc contract.</p>
-              </div>
-              <div className="flex gap-1 border border-border rounded-md overflow-hidden">
-                <button
-                  onClick={() => setAdhocView('templates')}
-                  className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${adhocView === 'templates' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
-                >Templates</button>
-                <button
-                  onClick={() => setAdhocView('adhoc')}
-                  className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${adhocView === 'adhoc' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
-                >Ad-Hoc Generator</button>
-                <button
-                  onClick={() => { setAdhocView('all'); fetchAllAgreements(); }}
-                  className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${adhocView === 'all' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
-                >All Agreements</button>
-              </div>
+            <div className="mb-6">
+              <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">
+                {adhocView === 'templates' ? 'Agreement Templates' : adhocView === 'adhoc' ? 'Ad-Hoc Generator' : 'All Agreements'}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {adhocView === 'templates' ? 'Manage service agreement templates.' : adhocView === 'adhoc' ? 'Generate a standalone ad-hoc contract.' : 'View all saved agreements and their status.'}
+              </p>
             </div>
 
             {/* ── TEMPLATES VIEW ── */}

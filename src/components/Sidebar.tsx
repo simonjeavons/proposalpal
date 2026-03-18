@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { FileText, Users, UserCircle2, Target, ShoppingBag, Scale, LogOut, Plus, Menu, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { LayoutDashboard, FileText, Users, UserCircle2, Target, ShoppingBag, Scale, LogOut, Plus, Menu, X, FileStack, Wand2, FolderOpen, ChevronDown } from "lucide-react";
 
-type Tab = "proposals" | "users" | "team" | "solutions" | "services" | "agreements";
+type Tab = "dashboard" | "proposals" | "users" | "team" | "solutions" | "services" | "agreements";
+type AdhocView = "templates" | "adhoc" | "all";
 
 interface SidebarProps {
   activeTab: Tab;
@@ -11,12 +11,9 @@ interface SidebarProps {
   onServicesClick: () => void;
   userEmail?: string;
   onSignOut: () => void;
+  adhocView?: AdhocView;
+  onAdhocViewChange?: (view: AdhocView) => void;
 }
-
-const MAIN_ITEMS: { tab: Tab; label: string; icon: React.ElementType }[] = [
-  { tab: "proposals", label: "Proposals", icon: FileText },
-  { tab: "agreements", label: "Agreements", icon: Scale },
-];
 
 const ADMIN_ITEMS: { tab: Tab; label: string; icon: React.ElementType }[] = [
   { tab: "users", label: "Users", icon: Users },
@@ -25,8 +22,14 @@ const ADMIN_ITEMS: { tab: Tab; label: string; icon: React.ElementType }[] = [
   { tab: "solutions", label: "Solutions", icon: ShoppingBag },
 ];
 
-function NavItem({ tab, label, icon: Icon, active, onClick, extra }: {
-  tab: Tab; label: string; icon: React.ElementType; active: boolean; onClick: () => void; extra?: React.ReactNode;
+const AGREEMENT_SUBS: { view: AdhocView; label: string; icon: React.ElementType }[] = [
+  { view: "templates", label: "Templates", icon: FileStack },
+  { view: "adhoc", label: "Ad-Hoc Generator", icon: Wand2 },
+  { view: "all", label: "All Agreements", icon: FolderOpen },
+];
+
+function NavItem({ label, icon: Icon, active, onClick, extra }: {
+  label: string; icon: React.ElementType; active: boolean; onClick: () => void; extra?: React.ReactNode;
 }) {
   return (
     <button
@@ -44,7 +47,25 @@ function NavItem({ tab, label, icon: Icon, active, onClick, extra }: {
   );
 }
 
-export function Sidebar({ activeTab, onTabChange, onServicesClick, userEmail, onSignOut }: SidebarProps) {
+function SubNavItem({ label, icon: Icon, active, onClick }: {
+  label: string; icon: React.ElementType; active: boolean; onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-2.5 pl-11 pr-4 py-1.5 text-xs font-medium transition-colors rounded-md ${
+        active
+          ? "text-white/90"
+          : "text-white/35 hover:text-white/60"
+      }`}
+    >
+      <Icon className="w-3 h-3 flex-shrink-0" />
+      <span>{label}</span>
+    </button>
+  );
+}
+
+export function Sidebar({ activeTab, onTabChange, onServicesClick, userEmail, onSignOut, adhocView = 'templates', onAdhocViewChange }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleTabClick = (tab: Tab) => {
@@ -55,6 +76,14 @@ export function Sidebar({ activeTab, onTabChange, onServicesClick, userEmail, on
     }
     setMobileOpen(false);
   };
+
+  const handleAdhocSubClick = (view: AdhocView) => {
+    onTabChange("agreements");
+    onAdhocViewChange?.(view);
+    setMobileOpen(false);
+  };
+
+  const agreementsActive = activeTab === "agreements";
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
@@ -71,25 +100,51 @@ export function Sidebar({ activeTab, onTabChange, onServicesClick, userEmail, on
       </div>
 
       {/* Main nav */}
-      <nav className="flex-1 px-3 pt-4 space-y-1">
-        {MAIN_ITEMS.map(item => (
-          <NavItem
-            key={item.tab}
-            {...item}
-            active={activeTab === item.tab}
-            onClick={() => handleTabClick(item.tab)}
-            extra={item.tab === "proposals" ? (
-              <Link
-                to="/admin/proposals/new"
-                onClick={e => e.stopPropagation()}
-                className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-white transition-colors"
-                title="New Proposal"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </Link>
-            ) : undefined}
-          />
-        ))}
+      <nav className="flex-1 px-3 pt-4 space-y-0.5">
+        <NavItem
+          label="Dashboard"
+          icon={LayoutDashboard}
+          active={activeTab === "dashboard"}
+          onClick={() => handleTabClick("dashboard")}
+        />
+        <NavItem
+          label="Proposals"
+          icon={FileText}
+          active={activeTab === "proposals"}
+          onClick={() => handleTabClick("proposals")}
+          extra={
+            <Link
+              to="/admin/proposals/new"
+              onClick={e => e.stopPropagation()}
+              className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+              title="New Proposal"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </Link>
+          }
+        />
+
+        {/* Agreements with sub-items */}
+        <NavItem
+          label="Agreements"
+          icon={Scale}
+          active={agreementsActive}
+          onClick={() => handleAdhocSubClick(adhocView)}
+          extra={agreementsActive ? <ChevronDown className="w-3 h-3 text-white/30" /> : undefined}
+        />
+        {agreementsActive && (
+          <div className="space-y-0.5 pb-1">
+            {AGREEMENT_SUBS.map(sub => (
+              <SubNavItem
+                key={sub.view}
+                label={sub.label}
+                icon={sub.icon}
+                active={adhocView === sub.view}
+                onClick={() => handleAdhocSubClick(sub.view)}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Admin group */}
         <div className="pt-4 pb-1">
@@ -100,7 +155,8 @@ export function Sidebar({ activeTab, onTabChange, onServicesClick, userEmail, on
         {ADMIN_ITEMS.map(item => (
           <NavItem
             key={item.tab}
-            {...item}
+            label={item.label}
+            icon={item.icon}
             active={activeTab === item.tab}
             onClick={() => handleTabClick(item.tab)}
           />
