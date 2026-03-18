@@ -705,11 +705,18 @@ export default function AdminDashboard() {
   }, []);
 
   const duplicateProposal = async (p: Proposal) => {
-    const { id: _id, slug: _slug, created_at: _ca, updated_at: _ua, ...rest } = p;
-    const { error } = await supabase
+    const { id: _id, slug: _slug, created_at: _ca, updated_at: _ua, ...rest } = p as any;
+    // Remove fields that should not be copied
+    delete rest.viewed_at;
+    delete rest.contract_file_url;
+    const { data, error } = await supabase
       .from("proposals")
-      .insert({ ...rest, client_name: `${p.client_name} (Copy)`, status: "draft" } as any);
-    if (!error) {
+      .insert({ ...rest, client_name: `${p.client_name} (Copy)`, status: "draft" } as any)
+      .select();
+    if (error) {
+      console.error('Duplicate failed:', error);
+      toast.error(`Failed to duplicate: ${error.message}`);
+    } else {
       toast.success("Proposal duplicated");
       fetchProposals();
     }
