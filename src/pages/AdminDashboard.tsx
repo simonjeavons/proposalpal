@@ -163,7 +163,11 @@ export default function AdminDashboard() {
     clientName: '',
     organisation: '',
     companyRegNumber: '',
-    registeredOffice: '',
+    registeredAddress1: '',
+    registeredAddress2: '',
+    registeredCity: '',
+    registeredCounty: '',
+    registeredPostcode: '',
     programmeTitle: '',
     agreementDate: new Date().toISOString().split('T')[0],
     contactName: '',
@@ -437,7 +441,11 @@ export default function AdminDashboard() {
     client_name: adhocForm.clientName,
     organisation: adhocForm.organisation,
     company_reg_number: adhocForm.companyRegNumber,
-    registered_office: adhocForm.registeredOffice,
+    registered_address_1: adhocForm.registeredAddress1,
+    registered_address_2: adhocForm.registeredAddress2,
+    registered_city: adhocForm.registeredCity,
+    registered_county: adhocForm.registeredCounty,
+    registered_postcode: adhocForm.registeredPostcode,
     programme_title: adhocForm.programmeTitle,
     agreement_date: adhocForm.agreementDate,
     contact_name: adhocForm.contactName,
@@ -451,7 +459,7 @@ export default function AdminDashboard() {
 
   const resetAdhocForm = () => {
     setAdhocForm({
-      clientName: '', organisation: '', companyRegNumber: '', registeredOffice: '', programmeTitle: '',
+      clientName: '', organisation: '', companyRegNumber: '', registeredAddress1: '', registeredAddress2: '', registeredCity: '', registeredCounty: '', registeredPostcode: '', programmeTitle: '',
       agreementDate: new Date().toISOString().split('T')[0],
       contactName: '', contactEmail: '',
       paymentTerms: '50% on commencement / 50% on delivery',
@@ -473,7 +481,11 @@ export default function AdminDashboard() {
       clientName: d.client_name || '',
       organisation: d.organisation || '',
       companyRegNumber: d.company_reg_number || '',
-      registeredOffice: d.registered_office || '',
+      registeredAddress1: d.registered_address_1 || '',
+      registeredAddress2: d.registered_address_2 || '',
+      registeredCity: d.registered_city || '',
+      registeredCounty: d.registered_county || '',
+      registeredPostcode: d.registered_postcode || '',
       programmeTitle: d.programme_title || '',
       agreementDate: d.agreement_date || new Date().toISOString().split('T')[0],
       contactName: d.contact_name || '',
@@ -1690,9 +1702,26 @@ export default function AdminDashboard() {
                       <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Company Reg Number</Label>
                       <Input value={adhocForm.companyRegNumber} onChange={e => setAdhocForm(f => ({ ...f, companyRegNumber: e.target.value }))} className="h-8 text-sm" placeholder="e.g. 12345678" />
                     </div>
+                    <div />
                     <div className="space-y-1">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Registered Office</Label>
-                      <Input value={adhocForm.registeredOffice} onChange={e => setAdhocForm(f => ({ ...f, registeredOffice: e.target.value }))} className="h-8 text-sm" placeholder="e.g. 1 High Street, London, SW1A 1AA" />
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Registered Address Line 1</Label>
+                      <Input value={adhocForm.registeredAddress1} onChange={e => setAdhocForm(f => ({ ...f, registeredAddress1: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Address Line 2</Label>
+                      <Input value={adhocForm.registeredAddress2} onChange={e => setAdhocForm(f => ({ ...f, registeredAddress2: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Town / City</Label>
+                      <Input value={adhocForm.registeredCity} onChange={e => setAdhocForm(f => ({ ...f, registeredCity: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">County</Label>
+                      <Input value={adhocForm.registeredCounty} onChange={e => setAdhocForm(f => ({ ...f, registeredCounty: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Postcode</Label>
+                      <Input value={adhocForm.registeredPostcode} onChange={e => setAdhocForm(f => ({ ...f, registeredPostcode: e.target.value }))} className="h-8 text-sm" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Programme Title</Label>

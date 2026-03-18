@@ -27,7 +27,7 @@ export interface ServiceAgreementPDFProps {
   contactName: string;
   contactEmail: string;
   companyRegNumber?: string;
-  registeredOffice?: string;
+  registeredOffice?: string; // pre-formatted address string
   // Static — from chosen template
   templateSections: TemplateSection[];
   // Signature data — passed at signing time to embed into execution block

@@ -495,7 +495,7 @@ export default function ProposalAccept() {
           contactName: proposal.contact_name || '',
           contactEmail: proposal.contact_email || '',
           companyRegNumber: (proposal as any).company_reg_number || '',
-          registeredOffice: (proposal as any).registered_office || '',
+          registeredOffice: [(proposal as any).registered_address_1, (proposal as any).registered_address_2, (proposal as any).registered_city, (proposal as any).registered_county, (proposal as any).registered_postcode].filter(Boolean).join(', '),
           templateSections,
         };
 
@@ -601,7 +601,7 @@ export default function ProposalAccept() {
           contactName: proposal.contact_name || '',
           contactEmail: proposal.contact_email || '',
           companyRegNumber: (proposal as any).company_reg_number || '',
-          registeredOffice: (proposal as any).registered_office || '',
+          registeredOffice: [(proposal as any).registered_address_1, (proposal as any).registered_address_2, (proposal as any).registered_city, (proposal as any).registered_county, (proposal as any).registered_postcode].filter(Boolean).join(', '),
           templateSections,
           // Embed signatures directly into the execution block of the PDF
           clientSignerName: signerName,

@@ -230,7 +230,7 @@ export default function AdhocSign() {
           contactName: contract.contact_name,
           contactEmail: contract.contact_email,
           companyRegNumber: contract.company_reg_number || '',
-          registeredOffice: contract.registered_office || '',
+          registeredOffice: [contract.registered_address_1, contract.registered_address_2, contract.registered_city, contract.registered_county, contract.registered_postcode].filter(Boolean).join(', '),
           templateSections,
           ongoingOptions: contract.ongoing_options,
         })).toBlob();

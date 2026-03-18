@@ -91,7 +91,11 @@ interface FormData {
   contact_mobile: string;
   client_email: string;
   company_reg_number: string;
-  registered_office: string;
+  registered_address_1: string;
+  registered_address_2: string;
+  registered_city: string;
+  registered_county: string;
+  registered_postcode: string;
   payment_terms: string;
   service_agreement_template_id: string | null;
   partnership_overview: string;
@@ -178,7 +182,11 @@ export default function ProposalEditor() {
     contact_mobile: '07904 810 378',
     client_email: '',
     company_reg_number: '',
-    registered_office: '',
+    registered_address_1: '',
+    registered_address_2: '',
+    registered_city: '',
+    registered_county: '',
+    registered_postcode: '',
     payment_terms: '',
     service_agreement_template_id: null,
     partnership_overview: '',
@@ -508,7 +516,12 @@ export default function ProposalEditor() {
             <Field label="Client Email" value={form.client_email} onChange={v => updateField('client_email', v)} type="email" />
             <Field label="Staff" value={form.staff} onChange={v => updateField('staff', v)} />
             <Field label="Company Reg Number" value={form.company_reg_number} onChange={v => updateField('company_reg_number', v)} />
-            <Field label="Registered Office" value={form.registered_office} onChange={v => updateField('registered_office', v)} />
+            <div />
+            <Field label="Registered Address Line 1" value={form.registered_address_1} onChange={v => updateField('registered_address_1', v)} />
+            <Field label="Address Line 2" value={form.registered_address_2} onChange={v => updateField('registered_address_2', v)} />
+            <Field label="Town / City" value={form.registered_city} onChange={v => updateField('registered_city', v)} />
+            <Field label="County" value={form.registered_county} onChange={v => updateField('registered_county', v)} />
+            <Field label="Postcode" value={form.registered_postcode} onChange={v => updateField('registered_postcode', v)} />
             <div className="col-span-2">
               <Field label="Current Tech Stack" value={form.tech_stack} onChange={v => updateField('tech_stack', v)} />
             </div>

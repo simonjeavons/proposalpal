@@ -68,7 +68,11 @@ export interface Proposal {
   contact_mobile: string;
   client_email?: string;
   company_reg_number?: string;
-  registered_office?: string;
+  registered_address_1?: string;
+  registered_address_2?: string;
+  registered_city?: string;
+  registered_county?: string;
+  registered_postcode?: string;
   payment_terms?: string;
   upfront_notes?: string;
   partnership_overview?: string;
