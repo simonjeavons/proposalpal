@@ -567,7 +567,8 @@ export default function ProposalView() {
                             <>
                               <div style={{ fontSize: 12, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through' }}>£{Number(item.price).toLocaleString('en-GB')}</div>
                               <div style={{ fontSize: 15, fontWeight: 800, color: '#009FE3' }}>£{Number(item.discounted_price).toLocaleString('en-GB')}</div>
-                              <div style={{ fontSize: 9, fontWeight: 700, color: '#22C55E', marginTop: 1 }}>Save {Math.round(((item.price - item.discounted_price) / item.price) * 100)}%</div>
+                              {(item as any).show_discount_percent !== false && <div style={{ fontSize: 9, fontWeight: 700, color: '#22C55E', marginTop: 1 }}>Save {Math.round(((item.price - item.discounted_price) / item.price) * 100)}%</div>}
+                              {(item as any).discount_note && <div style={{ fontSize: 10, color: '#6B7280', fontStyle: 'italic', marginTop: 2 }}>{(item as any).discount_note}</div>}
                             </>
                           ) : (
                             <div style={{ fontSize: 15, fontWeight: 800, color: '#043D5D' }}>£{Number(item.price).toLocaleString('en-GB')}</div>
@@ -612,7 +613,8 @@ export default function ProposalView() {
                             <>
                               <div style={{ fontSize: 12, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through' }}>£{((r.quantity ?? 1) * r.price).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                               <div style={{ fontSize: 18, fontWeight: 800, color: '#009FE3' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                              <div style={{ fontSize: 9, fontWeight: 700, color: '#22C55E', marginTop: 1 }}>Save {Math.round(((r.price - r.discounted_price) / r.price) * 100)}%</div>
+                              {r.show_discount_percent !== false && <div style={{ fontSize: 9, fontWeight: 700, color: '#22C55E', marginTop: 1 }}>Save {Math.round(((r.price - r.discounted_price) / r.price) * 100)}%</div>}
+                              {r.discount_note && <div style={{ fontSize: 10, color: '#6B7280', fontStyle: 'italic', marginTop: 2 }}>{r.discount_note}</div>}
                             </>
                           ) : (
                             <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
@@ -667,7 +669,8 @@ export default function ProposalView() {
                             <div style={{ fontSize: 24, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>
                               £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>/ month{r.term_months ? ` for ${r.term_months} months` : ''}</span>
                             </div>
-                            <div style={{ display: 'inline-block', fontSize: 9, fontWeight: 700, color: '#22C55E', background: '#F0FDF4', padding: '2px 6px', marginBottom: 4 }}>Save {Math.round(((r.price - r.discounted_price) / r.price) * 100)}%</div>
+                            {r.show_discount_percent !== false && <div style={{ display: 'inline-block', fontSize: 9, fontWeight: 700, color: '#22C55E', background: '#F0FDF4', padding: '2px 6px', marginBottom: 4 }}>Save {Math.round(((r.price - r.discounted_price) / r.price) * 100)}%</div>}
+                            {r.discount_note && <div style={{ fontSize: 10, color: '#6B7280', fontStyle: 'italic', marginBottom: 4 }}>{r.discount_note}</div>}
                           </>
                         ) : (
                           <div style={{ fontSize: 24, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>
@@ -734,7 +737,8 @@ export default function ProposalView() {
                               <>
                                 <div style={{ fontSize: 12, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through' }}>£{((r.quantity ?? 1) * r.price).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                 <div style={{ fontSize: 18, fontWeight: 800, color: '#009FE3' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                                <div style={{ fontSize: 9, fontWeight: 700, color: '#22C55E', marginTop: 1 }}>Save {Math.round(((r.price - r.discounted_price) / r.price) * 100)}%</div>
+                                {r.show_discount_percent !== false && <div style={{ fontSize: 9, fontWeight: 700, color: '#22C55E', marginTop: 1 }}>Save {Math.round(((r.price - r.discounted_price) / r.price) * 100)}%</div>}
+                                {r.discount_note && <div style={{ fontSize: 10, color: '#6B7280', fontStyle: 'italic', marginTop: 2 }}>{r.discount_note}</div>}
                               </>
                             ) : (
                               <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>

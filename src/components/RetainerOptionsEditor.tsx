@@ -294,12 +294,32 @@ export function RetainerOptionsEditor({
                       <CurrencyField label={`Price (£${freqLabel(r)})`} value={r.price} onChange={v => updateOption(i, 'price', v)} />
                       <CurrencyField label={`Discounted (£${freqLabel(r)})`} value={r.discounted_price ?? ''} onChange={v => updateOption(i, 'discounted_price', v === '' || v === 0 ? undefined : Number(v) || 0)} />
                       <div>
+                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Discount Note</Label>
+                        <input
+                          className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                          placeholder="e.g. Loyalty discount"
+                          value={r.discount_note || ''}
+                          onChange={e => updateOption(i, 'discount_note', e.target.value || undefined)}
+                        />
+                      </div>
+                      <div>
                         <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Total (£{freqLabel(r)})</Label>
                         <div className="h-9 flex items-center px-3 bg-muted border border-border text-sm font-semibold text-foreground">
                           £{((r.quantity ?? 1) * (r.discounted_price ?? r.price)).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </div>
                     </Grid>
+                    {r.discounted_price != null && r.discounted_price < r.price && (
+                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={r.show_discount_percent !== false}
+                          onChange={() => updateOption(i, 'show_discount_percent', r.show_discount_percent === false ? true : false)}
+                          className="w-3.5 h-3.5 accent-green-500"
+                        />
+                        <span className="text-xs text-muted-foreground">Show "Save X%" on customer view</span>
+                      </label>
+                    )}
                     <div>
                       <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Features (one per line)</Label>
                       <Textarea value={r.features.join('\n')} onChange={e => updateOption(i, 'features', e.target.value.split('\n'))} rows={3} className="text-sm" />

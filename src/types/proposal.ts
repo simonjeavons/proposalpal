@@ -3,6 +3,8 @@ export interface UpfrontItem {
   name: string;
   price: number;
   discounted_price?: number;
+  discount_note?: string;
+  show_discount_percent?: boolean;
   description?: string;
 }
 
@@ -28,6 +30,8 @@ export interface RetainerOption {
   quantity: number;
   price: number;
   discounted_price?: number;
+  discount_note?: string;
+  show_discount_percent?: boolean;
   features: string[];
   option_type: 'standard' | 'optional_extra' | 'core';
   recommended: boolean;
