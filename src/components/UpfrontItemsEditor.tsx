@@ -61,6 +61,7 @@ export interface UpfrontItemsEditorProps {
   onPaymentTermsChange?: (v: string) => void;
   onSaveToLibrary?: (name: string, price: number, description: string) => void;
   showDiscountControls?: boolean;
+  hideDiscountPrice?: boolean;
 }
 
 export function UpfrontItemsEditor({
@@ -74,6 +75,7 @@ export function UpfrontItemsEditor({
   onNotesChange,
   onSaveToLibrary,
   showDiscountControls = true,
+  hideDiscountPrice = false,
 }: UpfrontItemsEditorProps) {
   const updateItem = (i: number, patch: Partial<UpfrontItem>) => {
     const updated = [...items];
@@ -133,7 +135,7 @@ export function UpfrontItemsEditor({
                 </select>
               </div>
               <CurrencyField label="Price (£)" value={item.price} onChange={v => updateItem(i, { price: Number(v) || 0 })} />
-              <CurrencyField label="Discounted (£)" value={item.discounted_price ?? ''} onChange={v => updateItem(i, { discounted_price: v === '' || v === 0 ? undefined : Number(v) || 0 } as any)} />
+              {!hideDiscountPrice && <CurrencyField label="Discounted (£)" value={item.discounted_price ?? ''} onChange={v => updateItem(i, { discounted_price: v === '' || v === 0 ? undefined : Number(v) || 0 } as any)} />}
               {showDiscountControls && (
                 <div>
                   <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Discount Note</Label>

@@ -97,6 +97,7 @@ export interface RetainerOptionsEditorProps {
   onOngoingSectionTitleChange?: (v: string) => void;
   showFrequency?: boolean;
   showDiscountControls?: boolean;
+  hideDiscountPrice?: boolean;
   onSaveToLibrary?: (name: string, price: number) => void;
 }
 
@@ -111,6 +112,7 @@ export function RetainerOptionsEditor({
   onOngoingSectionTitleChange,
   showFrequency = false,
   showDiscountControls = true,
+  hideDiscountPrice = false,
   onSaveToLibrary,
 }: RetainerOptionsEditorProps) {
   const sensors = useSensors(
@@ -294,7 +296,7 @@ export function RetainerOptionsEditor({
                         </div>
                       )}
                       <CurrencyField label={`Price (£${freqLabel(r)})`} value={r.price} onChange={v => updateOption(i, 'price', v)} />
-                      <CurrencyField label={`Discounted (£${freqLabel(r)})`} value={r.discounted_price ?? ''} onChange={v => updateOption(i, 'discounted_price', v === '' || v === 0 ? undefined : Number(v) || 0)} />
+                      {!hideDiscountPrice && <CurrencyField label={`Discounted (£${freqLabel(r)})`} value={r.discounted_price ?? ''} onChange={v => updateOption(i, 'discounted_price', v === '' || v === 0 ? undefined : Number(v) || 0)} />}
                       {showDiscountControls && (
                         <div>
                           <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Discount Note</Label>

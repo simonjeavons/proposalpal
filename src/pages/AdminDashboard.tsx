@@ -1830,6 +1830,7 @@ export default function AdminDashboard() {
                   products={products}
                   currentServiceTypeId={null}
                   showDiscountControls={false}
+                  hideDiscountPrice
                 />
 
                 {/* Ongoing Options */}
@@ -1840,6 +1841,7 @@ export default function AdminDashboard() {
                   currentServiceTypeId={null}
                   showFrequency
                   showDiscountControls={false}
+                  hideDiscountPrice
                 />
 
                 {/* Save buttons */}
