@@ -904,7 +904,7 @@ export default function AdminDashboard() {
           const recent = [...proposals].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()).slice(0, 5);
           const topByValue = [...proposals].sort((a, b) => firstYearTotal(b) - firstYearTotal(a)).slice(0, 5);
           // Ad-hoc contract stats from allAgreements
-          const adhocContracts = allAgreements.filter((a: any) => a._source === 'adhoc');
+          const adhocContracts = allAgreements.filter((a: any) => a.source === 'adhoc');
           const adhocPending = adhocContracts.filter((a: any) => a.status === 'pending').length;
           const adhocSigned = adhocContracts.filter((a: any) => a.status === 'signed').length;
           const adhocDraft = adhocContracts.filter((a: any) => a.status === 'draft').length;
