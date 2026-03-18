@@ -601,9 +601,7 @@ export default function ProposalView() {
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
                           <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                           <div style={{ fontSize: 11, color: '#AAAAAA' }}>/ month{r.term_months ? ` · ${r.term_months} mo` : ''}</div>
-                          {(r.quantity ?? 1) > 1 && (
-                            <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity} × £{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
-                          )}
+                          <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity ?? 1} × £{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
                         </div>
                       </div>
                     ))}
@@ -647,9 +645,7 @@ export default function ProposalView() {
                         <div style={{ fontSize: 24, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>
                           £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>/ month{r.term_months ? ` for ${r.term_months} months` : ''}</span>
                         </div>
-                        {(r.quantity ?? 1) > 1 && (
-                          <div style={{ fontSize: 11, color: '#AAAAAA', marginBottom: 4 }}>{r.quantity} × £{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
-                        )}
+                        <div style={{ fontSize: 11, color: '#AAAAAA', marginBottom: 4 }}>{r.quantity ?? 1} × £{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
                         {r.features.filter(f => f.trim()).length > 0 && (
                           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12, paddingTop: 12, borderTop: '1px solid #DDE8EE', padding: 0 }}>
                             {r.features.filter(f => f.trim()).map((f, j) => (
@@ -707,9 +703,7 @@ export default function ProposalView() {
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
                             <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                             <div style={{ fontSize: 11, color: '#AAAAAA' }}>/ month{r.term_months ? ` · ${r.term_months} mo` : ''}</div>
-                            {(r.quantity ?? 1) > 1 && (
-                              <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity} × £{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
-                            )}
+                            <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity ?? 1} × £{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
                           </div>
                         </div>
                       );
