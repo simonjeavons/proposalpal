@@ -6,6 +6,7 @@ import type { Proposal, Phase, UpfrontItem, RetainerOption } from "@/types/propo
 import { UpfrontItemsEditor } from "@/components/UpfrontItemsEditor";
 import { RetainerOptionsEditor } from "@/components/RetainerOptionsEditor";
 import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Target, Download, GitBranch, ShoppingBag, Scale, UserCircle2, Link as LinkIcon } from "lucide-react";
+import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -861,89 +862,16 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-secondary text-secondary-foreground">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg" alt="Shoothill" className="h-6 brightness-0 invert" />
-            <span className="text-xs font-semibold tracking-widest uppercase opacity-50">Proposal Manager</span>
-          </div>
-          <div className="flex items-center gap-3">
-            {activeTab === "proposals" && (
-              <Link to="/admin/proposals/new">
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 text-xs font-bold tracking-wide uppercase">
-                  <Plus className="w-4 h-4" /> New Proposal
-                </Button>
-              </Link>
-            )}
-            <span className="text-xs opacity-60 hidden sm:block">{user?.email}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-secondary-foreground/60 hover:text-secondary-foreground gap-1.5 text-xs"
-              onClick={signOut}
-            >
-              <LogOut className="w-3.5 h-3.5" /> Sign out
-            </Button>
-          </div>
-        </div>
-      </div>
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onServicesClick={() => { setActiveTab("services"); setSelectedServiceId(null); }}
+        userEmail={user?.email}
+        onSignOut={signOut}
+      />
 
-      {/* Tabs */}
-      <div className="border-b border-border bg-card">
-        <div className="max-w-6xl mx-auto px-6 flex gap-0">
-          <button
-            onClick={() => setActiveTab("proposals")}
-            className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === "proposals" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" /> Proposals
-          </button>
-          <button
-            onClick={() => setActiveTab("users")}
-            className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === "users" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Users className="w-3.5 h-3.5" /> Users
-          </button>
-          <button
-            onClick={() => setActiveTab("team")}
-            className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === "team" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <UserCircle2 className="w-3.5 h-3.5" /> Team
-          </button>
-          <button
-            onClick={() => { setActiveTab("services"); setSelectedServiceId(null); }}
-            className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === "services" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Target className="w-3.5 h-3.5" /> Services
-          </button>
-          <button
-            onClick={() => setActiveTab("solutions")}
-            className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === "solutions" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <ShoppingBag className="w-3.5 h-3.5" /> Solutions
-          </button>
-          <button
-            onClick={() => setActiveTab("agreements")}
-            className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === "agreements" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Scale className="w-3.5 h-3.5" /> Agreements
-          </button>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="md:ml-56 min-h-screen">
+        <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Proposals Tab */}
         {activeTab === "proposals" && (() => {
           const fmtGbp = (n: number) => n === 0 ? '—' : `£${n.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -2337,6 +2265,7 @@ export default function AdminDashboard() {
             )}
           </>
         )}
+        </div>
       </div>
     </div>
   );
