@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
 const fmt = (n: number) =>
   `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const optionTotal = (r: RetainerOption) => (r.quantity ?? 1) * r.price;
+const optionTotal = (r: RetainerOption) => (r.quantity ?? 1) * (r.discounted_price ?? r.price);
 
 export function ServiceAgreementPDF({
   clientName,
@@ -324,7 +324,7 @@ export function ServiceAgreementPDF({
         {upfrontItems.map((item, i) => (
           <View key={i} style={styles.tableRow}>
             <Text style={styles.tableDesc}>{item.name || item.type}</Text>
-            <Text style={styles.tableAmt}>{fmt(item.price)} + VAT</Text>
+            <Text style={styles.tableAmt}>{fmt(item.discounted_price ?? item.price)} + VAT</Text>
           </View>
         ))}
         {upfrontItems.length > 0 && (

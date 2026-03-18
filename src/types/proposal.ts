@@ -2,6 +2,7 @@ export interface UpfrontItem {
   type: string;
   name: string;
   price: number;
+  discounted_price?: number;
   description?: string;
 }
 
@@ -26,6 +27,7 @@ export interface RetainerOption {
   term_months?: number;
   quantity: number;
   price: number;
+  discounted_price?: number;
   features: string[];
   option_type: 'standard' | 'optional_extra' | 'core';
   recommended: boolean;

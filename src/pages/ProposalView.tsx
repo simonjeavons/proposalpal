@@ -144,7 +144,8 @@ export default function ProposalView() {
   const standardOptions = proposal.retainer_options.filter(r => r.option_type === 'standard');
   const optionalExtras = proposal.retainer_options.filter(r => r.option_type === 'optional_extra');
   const selectedStandardOption = standardOptions[selectedStandard] || null;
-  const optionTotal = (r: { price: number; quantity?: number }) => (r.quantity ?? 1) * r.price;
+  const effectivePrice = (r: { price: number; discounted_price?: number }) => r.discounted_price ?? r.price;
+  const optionTotal = (r: { price: number; discounted_price?: number; quantity?: number }) => (r.quantity ?? 1) * effectivePrice(r);
   const coreTotal = coreOptions.reduce((sum, r) => sum + optionTotal(r), 0);
   const extrasTotal = [...checkedExtras].reduce((sum, i) => sum + optionTotal(optionalExtras[i] ?? { price: 0 }), 0);
   const monthlyTotal = coreTotal + (selectedStandardOption ? optionTotal(selectedStandardOption) : 0) + extrasTotal;
@@ -561,8 +562,16 @@ export default function ProposalView() {
                           <div style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>{item.name}</div>
                           {(item as any).description && <div style={{ fontSize: 11, color: '#AAAAAA', marginTop: 2 }}>{(item as any).description}</div>}
                         </div>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: '#043D5D', textAlign: 'right' as const }}>
-                          £{Number(item.price).toLocaleString('en-GB')}
+                        <div style={{ textAlign: 'right' as const }}>
+                          {item.discounted_price != null && item.discounted_price < item.price ? (
+                            <>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through' }}>£{Number(item.price).toLocaleString('en-GB')}</div>
+                              <div style={{ fontSize: 15, fontWeight: 800, color: '#009FE3' }}>£{Number(item.discounted_price).toLocaleString('en-GB')}</div>
+                              <div style={{ fontSize: 9, fontWeight: 700, color: '#22C55E', marginTop: 1 }}>Save {Math.round(((item.price - item.discounted_price) / item.price) * 100)}%</div>
+                            </>
+                          ) : (
+                            <div style={{ fontSize: 15, fontWeight: 800, color: '#043D5D' }}>£{Number(item.price).toLocaleString('en-GB')}</div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -599,9 +608,17 @@ export default function ProposalView() {
                           )}
                         </div>
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          {r.discounted_price != null && r.discounted_price < r.price ? (
+                            <>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through' }}>£{((r.quantity ?? 1) * r.price).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                              <div style={{ fontSize: 18, fontWeight: 800, color: '#009FE3' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                              <div style={{ fontSize: 9, fontWeight: 700, color: '#22C55E', marginTop: 1 }}>Save {Math.round(((r.price - r.discounted_price) / r.price) * 100)}%</div>
+                            </>
+                          ) : (
+                            <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          )}
                           <div style={{ fontSize: 11, color: '#AAAAAA' }}>/ month{r.term_months ? ` · ${r.term_months} mo` : ''}</div>
-                          <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity ?? 1} × £{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
+                          <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity ?? 1} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
                         </div>
                       </div>
                     ))}
@@ -642,10 +659,22 @@ export default function ProposalView() {
                         }}>✓</div>
                         {r.type && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 6 }}>{r.type}</div>}
                         <div style={{ fontSize: 15, fontWeight: 800, color: '#043D5D', marginBottom: 2 }}>{r.name}</div>
-                        <div style={{ fontSize: 24, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>
-                          £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>/ month{r.term_months ? ` for ${r.term_months} months` : ''}</span>
-                        </div>
-                        <div style={{ fontSize: 11, color: '#AAAAAA', marginBottom: 4 }}>{r.quantity ?? 1} × £{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
+                        {r.discounted_price != null && r.discounted_price < r.price ? (
+                          <>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through', lineHeight: 1, marginBottom: 2 }}>
+                              £{((r.quantity ?? 1) * r.price).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                            <div style={{ fontSize: 24, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>
+                              £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>/ month{r.term_months ? ` for ${r.term_months} months` : ''}</span>
+                            </div>
+                            <div style={{ display: 'inline-block', fontSize: 9, fontWeight: 700, color: '#22C55E', background: '#F0FDF4', padding: '2px 6px', marginBottom: 4 }}>Save {Math.round(((r.price - r.discounted_price) / r.price) * 100)}%</div>
+                          </>
+                        ) : (
+                          <div style={{ fontSize: 24, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>
+                            £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>/ month{r.term_months ? ` for ${r.term_months} months` : ''}</span>
+                          </div>
+                        )}
+                        <div style={{ fontSize: 11, color: '#AAAAAA', marginBottom: 4 }}>{r.quantity ?? 1} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
                         {r.features.filter(f => f.trim()).length > 0 && (
                           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12, paddingTop: 12, borderTop: '1px solid #DDE8EE', padding: 0 }}>
                             {r.features.filter(f => f.trim()).map((f, j) => (
@@ -701,9 +730,17 @@ export default function ProposalView() {
                             )}
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            {r.discounted_price != null && r.discounted_price < r.price ? (
+                              <>
+                                <div style={{ fontSize: 12, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through' }}>£{((r.quantity ?? 1) * r.price).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                <div style={{ fontSize: 18, fontWeight: 800, color: '#009FE3' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                <div style={{ fontSize: 9, fontWeight: 700, color: '#22C55E', marginTop: 1 }}>Save {Math.round(((r.price - r.discounted_price) / r.price) * 100)}%</div>
+                              </>
+                            ) : (
+                              <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            )}
                             <div style={{ fontSize: 11, color: '#AAAAAA' }}>/ month{r.term_months ? ` · ${r.term_months} mo` : ''}</div>
-                            <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity ?? 1} × £{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
+                            <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity ?? 1} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
                           </div>
                         </div>
                       );

@@ -293,7 +293,7 @@ export default function ProposalEditor() {
     const preparedUser = users.find(u => u.id === form.prepared_by_user_id);
     const payload = {
       ...form,
-      upfront_total: form.upfront_items.reduce((sum, item) => sum + item.price, 0),
+      upfront_total: form.upfront_items.reduce((sum, item) => sum + (item.discounted_price ?? item.price), 0),
       contract_file_url: contractFileUrl,
       client_logo_url: clientLogoUrl,
       prepared_by_user_id: form.prepared_by_user_id || null,
@@ -800,6 +800,11 @@ export default function ProposalEditor() {
                     updated[i] = { ...updated[i], price: Number(v) || 0 };
                     updateField('upfront_items', updated);
                   }} />
+                  <CurrencyField label="Discounted (£)" value={item.discounted_price ?? ''} onChange={v => {
+                    const updated = [...form.upfront_items];
+                    updated[i] = { ...updated[i], discounted_price: v === '' || v === 0 ? undefined : Number(v) || 0 };
+                    updateField('upfront_items', updated);
+                  }} />
                 </Grid>
                 <div>
                   <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Name</Label>
@@ -842,7 +847,7 @@ export default function ProposalEditor() {
             {form.upfront_items.length > 0 && (
               <div className="flex justify-between items-center px-1 pt-1 border-t border-border">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total</span>
-                <span className="text-sm font-bold text-foreground">£{form.upfront_items.reduce((s, i) => s + i.price, 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className="text-sm font-bold text-foreground">£{form.upfront_items.reduce((s, i) => s + (i.discounted_price ?? i.price), 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             )}
             <div className="pt-2">
@@ -861,7 +866,7 @@ export default function ProposalEditor() {
         {/* Ongoing */}
         <Section title="Ongoing" action={
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground text-xs" onClick={() => updateField('retainer_options', [...form.retainer_options].sort((a, b) => ((b.quantity ?? 1) * b.price) - ((a.quantity ?? 1) * a.price)))}>
+            <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground text-xs" onClick={() => updateField('retainer_options', [...form.retainer_options].sort((a, b) => ((b.quantity ?? 1) * (b.discounted_price ?? b.price)) - ((a.quantity ?? 1) * (a.discounted_price ?? a.price))))}>
               <ArrowDownWideNarrow className="w-3.5 h-3.5" /> Sort by value
             </Button>
             <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('retainer_options', [...form.retainer_options, { type: '', name: '', term_months: undefined, quantity: 1, price: 0, features: [], option_type: 'standard', recommended: false }])}>
@@ -1017,10 +1022,11 @@ export default function ProposalEditor() {
                     />
                   </div>
                   <CurrencyField label="Price (£/month)" value={r.price} onChange={v => updateRetainer(i, 'price', v)} />
+                  <CurrencyField label="Discounted (£/month)" value={r.discounted_price ?? ''} onChange={v => updateRetainer(i, 'discounted_price', v === '' || v === 0 ? undefined : Number(v) || 0)} />
                   <div>
                     <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Total (£/month)</Label>
                     <div className="h-9 flex items-center px-3 bg-muted border border-border text-sm font-semibold text-foreground">
-                      £{((r.quantity ?? 1) * r.price).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      £{((r.quantity ?? 1) * (r.discounted_price ?? r.price)).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                 </Grid>
