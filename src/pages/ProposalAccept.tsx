@@ -405,6 +405,15 @@ export default function ProposalAccept() {
   const [agreed, setAgreed] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
 
+  // Mobile detection
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+  useEffect(() => {
+    const h = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  const isMobile = windowWidth < 640;
+
   // Template sections and PDF generation state
   const [templateSections, setTemplateSections] = useState<{ heading: string; body: string }[]>([]);
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState<string | null>(null);
@@ -671,7 +680,7 @@ export default function ProposalAccept() {
 
   if (submitted) return (
     <div style={{ minHeight: '100vh', background: '#F4F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ background: 'white', border: '1px solid #DDE8EE', maxWidth: 560, width: '100%', margin: 24, textAlign: 'center', padding: '56px 40px' }}>
+      <div style={{ background: 'white', border: '1px solid #DDE8EE', maxWidth: 560, width: '100%', margin: isMobile ? 12 : 24, textAlign: 'center', padding: isMobile ? '32px 20px' : '56px 40px' }}>
         <div style={{ width: 56, height: 56, background: '#009FE3', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
         </div>
@@ -708,19 +717,19 @@ export default function ProposalAccept() {
   return (
     <div style={{ minHeight: '100vh', background: '#F4F7FA', fontFamily: "'Inter', sans-serif", color: '#1A2E3B', fontSize: 14, lineHeight: 1.7 }}>
       {/* Header */}
-      <div style={{ background: '#043D5D', padding: '20px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <img style={{ height: 24, filter: 'brightness(0) invert(1)' }} src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg" alt="Shoothill" />
-        <span style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', fontWeight: 600 }}>Contract Acceptance — {proposal.client_name}</span>
+      <div style={{ background: '#043D5D', padding: isMobile ? '16px 16px' : '20px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <img style={{ height: isMobile ? 18 : 24, filter: 'brightness(0) invert(1)', flexShrink: 0 }} src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg" alt="Shoothill" />
+        <span style={{ fontSize: isMobile ? 10 : 12, color: 'rgba(255,255,255,.5)', fontWeight: 600, textAlign: 'right' as const }}>Contract Acceptance — {proposal.client_name}</span>
       </div>
 
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: '32px 24px' }}>
+      <div style={{ maxWidth: 800, margin: '0 auto', padding: isMobile ? '20px 12px' : '32px 24px' }}>
         {/* 01 — Pricing Summary */}
         <div style={{ background: 'white', border: '1px solid #DDE8EE', marginBottom: 24 }}>
-          <div style={{ padding: '18px 28px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
+          <div style={{ padding: isMobile ? '14px 16px' : '18px 28px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: isMobile ? 10 : 14 }}>
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', textTransform: 'uppercase' }}>01</div>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Pricing Summary</h2>
           </div>
-          <div style={{ padding: '24px 28px' }}>
+          <div style={{ padding: isMobile ? '16px' : '24px 28px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: monthlyTotal > 0 ? '1fr 1fr' : '1fr', gap: 16, marginBottom: 20 }}>
               <div style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 6 }}>One-Time Project</div>
@@ -795,11 +804,11 @@ export default function ProposalAccept() {
 
         {/* 02 — Service Agreement (always shown) */}
         <div style={{ background: 'white', border: '1px solid #DDE8EE', marginBottom: 24 }}>
-          <div style={{ padding: '18px 28px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
+          <div style={{ padding: isMobile ? '14px 16px' : '18px 28px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: isMobile ? 10 : 14 }}>
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', textTransform: 'uppercase' }}>02</div>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Service Agreement</h2>
           </div>
-          <div style={{ padding: '24px 28px' }}>
+          <div style={{ padding: isMobile ? '16px' : '24px 28px' }}>
             {pdfGenerating ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '24px 0', color: '#3A6278' }}>
                 <div style={{ width: 24, height: 24, border: '3px solid #009FE3', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', flexShrink: 0 }} />
@@ -824,12 +833,12 @@ export default function ProposalAccept() {
 
         {/* 03 — Sign & Accept */}
         <div style={{ background: 'white', border: '1px solid #DDE8EE', marginBottom: 40 }}>
-          <div style={{ padding: '18px 28px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: 14 }}>
+          <div style={{ padding: isMobile ? '14px 16px' : '18px 28px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: isMobile ? 10 : 14 }}>
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', textTransform: 'uppercase' }}>03</div>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Sign & Accept</h2>
           </div>
-          <div style={{ padding: '24px 28px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+          <div style={{ padding: isMobile ? '16px' : '24px 28px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 20 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 6 }}>Full Name *</label>
                 <input
