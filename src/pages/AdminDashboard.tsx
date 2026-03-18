@@ -162,6 +162,8 @@ export default function AdminDashboard() {
   const [adhocForm, setAdhocForm] = useState({
     clientName: '',
     organisation: '',
+    companyRegNumber: '',
+    registeredOffice: '',
     programmeTitle: '',
     agreementDate: new Date().toISOString().split('T')[0],
     contactName: '',
@@ -434,6 +436,8 @@ export default function AdminDashboard() {
     status,
     client_name: adhocForm.clientName,
     organisation: adhocForm.organisation,
+    company_reg_number: adhocForm.companyRegNumber,
+    registered_office: adhocForm.registeredOffice,
     programme_title: adhocForm.programmeTitle,
     agreement_date: adhocForm.agreementDate,
     contact_name: adhocForm.contactName,
@@ -447,7 +451,7 @@ export default function AdminDashboard() {
 
   const resetAdhocForm = () => {
     setAdhocForm({
-      clientName: '', organisation: '', programmeTitle: '',
+      clientName: '', organisation: '', companyRegNumber: '', registeredOffice: '', programmeTitle: '',
       agreementDate: new Date().toISOString().split('T')[0],
       contactName: '', contactEmail: '',
       paymentTerms: '50% on commencement / 50% on delivery',
@@ -468,6 +472,8 @@ export default function AdminDashboard() {
     setAdhocForm({
       clientName: d.client_name || '',
       organisation: d.organisation || '',
+      companyRegNumber: d.company_reg_number || '',
+      registeredOffice: d.registered_office || '',
       programmeTitle: d.programme_title || '',
       agreementDate: d.agreement_date || new Date().toISOString().split('T')[0],
       contactName: d.contact_name || '',
@@ -1679,6 +1685,14 @@ export default function AdminDashboard() {
                     <div className="space-y-1">
                       <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Organisation</Label>
                       <Input value={adhocForm.organisation} onChange={e => setAdhocForm(f => ({ ...f, organisation: e.target.value }))} className="h-8 text-sm" placeholder="e.g. Acme Corporation Ltd" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Company Reg Number</Label>
+                      <Input value={adhocForm.companyRegNumber} onChange={e => setAdhocForm(f => ({ ...f, companyRegNumber: e.target.value }))} className="h-8 text-sm" placeholder="e.g. 12345678" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Registered Office</Label>
+                      <Input value={adhocForm.registeredOffice} onChange={e => setAdhocForm(f => ({ ...f, registeredOffice: e.target.value }))} className="h-8 text-sm" placeholder="e.g. 1 High Street, London, SW1A 1AA" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Programme Title</Label>

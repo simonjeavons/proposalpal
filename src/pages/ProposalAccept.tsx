@@ -494,6 +494,8 @@ export default function ProposalAccept() {
           paymentTerms: (proposal as any).payment_terms || '',
           contactName: proposal.contact_name || '',
           contactEmail: proposal.contact_email || '',
+          companyRegNumber: (proposal as any).company_reg_number || '',
+          registeredOffice: (proposal as any).registered_office || '',
           templateSections,
         };
 
@@ -598,6 +600,8 @@ export default function ProposalAccept() {
           paymentTerms: (proposal as any).payment_terms || '',
           contactName: proposal.contact_name || '',
           contactEmail: proposal.contact_email || '',
+          companyRegNumber: (proposal as any).company_reg_number || '',
+          registeredOffice: (proposal as any).registered_office || '',
           templateSections,
           // Embed signatures directly into the execution block of the PDF
           clientSignerName: signerName,

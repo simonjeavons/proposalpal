@@ -90,6 +90,8 @@ interface FormData {
   contact_phone: string;
   contact_mobile: string;
   client_email: string;
+  company_reg_number: string;
+  registered_office: string;
   payment_terms: string;
   service_agreement_template_id: string | null;
   partnership_overview: string;
@@ -175,6 +177,8 @@ export default function ProposalEditor() {
     contact_phone: '01743 636 300',
     contact_mobile: '07904 810 378',
     client_email: '',
+    company_reg_number: '',
+    registered_office: '',
     payment_terms: '',
     service_agreement_template_id: null,
     partnership_overview: '',
@@ -503,6 +507,8 @@ export default function ProposalEditor() {
             <Field label="Client Contact Name" value={form.contact_name} onChange={v => updateField('contact_name', v)} />
             <Field label="Client Email" value={form.client_email} onChange={v => updateField('client_email', v)} type="email" />
             <Field label="Staff" value={form.staff} onChange={v => updateField('staff', v)} />
+            <Field label="Company Reg Number" value={form.company_reg_number} onChange={v => updateField('company_reg_number', v)} />
+            <Field label="Registered Office" value={form.registered_office} onChange={v => updateField('registered_office', v)} />
             <div className="col-span-2">
               <Field label="Current Tech Stack" value={form.tech_stack} onChange={v => updateField('tech_stack', v)} />
             </div>

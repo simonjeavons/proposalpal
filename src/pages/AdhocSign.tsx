@@ -229,6 +229,8 @@ export default function AdhocSign() {
           paymentTerms: contract.payment_terms,
           contactName: contract.contact_name,
           contactEmail: contract.contact_email,
+          companyRegNumber: contract.company_reg_number || '',
+          registeredOffice: contract.registered_office || '',
           templateSections,
           ongoingOptions: contract.ongoing_options,
         })).toBlob();
@@ -305,6 +307,8 @@ export default function AdhocSign() {
         paymentTerms: contract.payment_terms,
         contactName: contract.contact_name,
         contactEmail: contract.contact_email,
+        companyRegNumber: contract.company_reg_number || '',
+        registeredOffice: contract.registered_office || '',
         templateSections,
         ongoingOptions: contract.ongoing_options,
         clientSignerName: signerName,

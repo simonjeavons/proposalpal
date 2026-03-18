@@ -26,6 +26,8 @@ export interface ServiceAgreementPDFProps {
   paymentTerms: string;
   contactName: string;
   contactEmail: string;
+  companyRegNumber?: string;
+  registeredOffice?: string;
   // Static — from chosen template
   templateSections: TemplateSection[];
   // Signature data — passed at signing time to embed into execution block
@@ -236,6 +238,8 @@ export function ServiceAgreementPDF({
   paymentTerms,
   contactName,
   contactEmail,
+  companyRegNumber,
+  registeredOffice,
   templateSections,
   clientSignerName,
   clientSignerTitle,
@@ -289,7 +293,7 @@ export function ServiceAgreementPDF({
           <Text style={styles.sectionHeading}>Parties</Text>
         </View>
         <Text style={styles.partiesText}>
-          This Agreement is made between: (1) SHOOTHILL LIMITED, a company incorporated in England and Wales with registered number 05885234 whose registered office is at Willow House East, Shrewsbury Business Park, Shrewsbury, England, SY2 6LG (the "Supplier"); and (2) {entityName} (the "Customer"). Together referred to as the "Parties".
+          This Agreement is made between: (1) SHOOTHILL LIMITED, a company incorporated in England and Wales with registered number 05885234 whose registered office is at Willow House East, Shrewsbury Business Park, Shrewsbury, England, SY2 6LG (the "Supplier"); and (2) {entityName}{companyRegNumber ? `, registered number ${companyRegNumber}` : ''}{registeredOffice ? `, whose registered office is at ${registeredOffice}` : ''} (the "Customer"). Together referred to as the "Parties".
         </Text>
 
         {/* Schedule 1 — Scope */}
