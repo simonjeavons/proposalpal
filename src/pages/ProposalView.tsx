@@ -601,6 +601,9 @@ export default function ProposalView() {
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
                           <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                           <div style={{ fontSize: 11, color: '#AAAAAA' }}>/ month{r.term_months ? ` · ${r.term_months} mo` : ''}</div>
+                          {(r.quantity ?? 1) > 1 && (
+                            <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity} × £{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -644,6 +647,9 @@ export default function ProposalView() {
                         <div style={{ fontSize: 24, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>
                           £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>/ month{r.term_months ? ` for ${r.term_months} months` : ''}</span>
                         </div>
+                        {(r.quantity ?? 1) > 1 && (
+                          <div style={{ fontSize: 11, color: '#AAAAAA', marginBottom: 4 }}>{r.quantity} × £{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
+                        )}
                         {r.features.filter(f => f.trim()).length > 0 && (
                           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12, paddingTop: 12, borderTop: '1px solid #DDE8EE', padding: 0 }}>
                             {r.features.filter(f => f.trim()).map((f, j) => (
@@ -701,6 +707,9 @@ export default function ProposalView() {
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
                             <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                             <div style={{ fontSize: 11, color: '#AAAAAA' }}>/ month{r.term_months ? ` · ${r.term_months} mo` : ''}</div>
+                            {(r.quantity ?? 1) > 1 && (
+                              <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity} × £{r.price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
+                            )}
                           </div>
                         </div>
                       );
@@ -709,19 +718,30 @@ export default function ProposalView() {
                 </div>
               )}
 
-              {/* Grand total */}
-              <div style={{ background: '#043D5D', padding: isMobile ? '18px 16px' : '24px 28px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: isMobile ? 12 : 24, alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.45)', marginBottom: 6 }}>Investment summary</div>
-                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,.5)' }}>
-                    One-time project: <span style={{ color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>£{Number(proposal.upfront_total).toLocaleString('en-GB')}</span> + VAT
-                    {monthlyTotal > 0 && <> &nbsp;·&nbsp; Monthly ongoing: <span style={{ color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>£{monthlyTotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> + VAT / month</>}
+              {/* Investment summary */}
+              <div style={{ background: '#043D5D', padding: isMobile ? '24px 16px' : '32px 36px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.45)', marginBottom: isMobile ? 16 : 20 }}>Investment summary</div>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : monthlyTotal > 0 ? '1fr 1fr 1fr' : '1fr 1fr', gap: isMobile ? 20 : 0, alignItems: 'end' }}>
+                  {/* Monthly ongoing — hero position */}
+                  {monthlyTotal > 0 && (
+                    <div style={{ borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,.12)', paddingRight: isMobile ? 0 : 32 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)', marginBottom: 8 }}>Monthly ongoing</div>
+                      <div style={{ fontSize: isMobile ? 36 : 42, fontWeight: 900, color: '#00D4FF', letterSpacing: '-.04em', lineHeight: 1, transition: 'all .3s' }}>£{monthlyTotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>Excl. VAT / month{selectedStandardOption?.term_months ? ` · ${selectedStandardOption.term_months} month term` : ''}</div>
+                    </div>
+                  )}
+                  {/* One-time project — uses dynamic title */}
+                  <div style={{ borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,.12)', padding: isMobile ? 0 : '0 32px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)', marginBottom: 8 }}>{((proposal as any).upfront_section_title || 'One-time project').replace(/^Part\s*\d+:\s*/i, '')}</div>
+                    <div style={{ fontSize: isMobile ? 28 : 28, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, transition: 'all .3s' }}>£{Number(proposal.upfront_total).toLocaleString('en-GB')}</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>Excl. VAT</div>
                   </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.45)', marginBottom: 4, textAlign: 'right' }}>First year total</div>
-                  <div style={{ fontSize: 34, fontWeight: 900, color: '#009FE3', letterSpacing: '-.04em', lineHeight: 1, textAlign: 'right', transition: 'all .3s' }}>£{firstYearTotal.toLocaleString('en-GB')}</div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)', textAlign: 'right' }}>+ VAT · indicative first-year cost</div>
+                  {/* First year total */}
+                  <div style={{ padding: isMobile ? 0 : '0 0 0 32px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)', marginBottom: 8 }}>First year total</div>
+                    <div style={{ fontSize: isMobile ? 28 : 28, fontWeight: 800, color: 'rgba(255,255,255,.85)', letterSpacing: '-.03em', lineHeight: 1, transition: 'all .3s' }}>£{firstYearTotal.toLocaleString('en-GB')}</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>+ VAT · indicative first-year cost</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -729,38 +749,23 @@ export default function ProposalView() {
         </div>
       </div>
 
-      {/* SUMMARY BAND */}
-      {(() => {
-        const bandCols = 1 + (monthlyTotal > 0 ? 1 : 0) + (proposal.payment_terms ? 1 : 0) + 1;
-        return (
-          <div style={{ background: 'white', borderTop: '1px solid #DDE8EE', borderBottom: '1px solid #DDE8EE' }}>
-            <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '20px 16px' : '28px 48px', display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : `repeat(${bandCols}, 1fr)` }}>
-              <div style={{ padding: '0 24px', borderRight: '1px solid #DDE8EE' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>One-time project</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 2 }}>£{Number(proposal.upfront_total).toLocaleString('en-GB')}</div>
-                <div style={{ fontSize: 12, color: '#AAAAAA' }}>Excl. VAT</div>
+      {/* DETAILS BAND — payment terms & validity */}
+      {(proposal.payment_terms || proposal.valid_until) && (
+        <div style={{ background: 'white', borderTop: '1px solid #DDE8EE', borderBottom: '1px solid #DDE8EE' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '20px 16px' : '20px 48px', display: 'flex', flexWrap: 'wrap', gap: isMobile ? 16 : 40, alignItems: 'center' }}>
+            {proposal.payment_terms && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA' }}>Payment terms</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#043D5D' }}>{proposal.payment_terms}</div>
               </div>
-              {monthlyTotal > 0 && (
-                <div style={{ padding: '0 24px', borderRight: '1px solid #DDE8EE' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>Monthly ongoing</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 2 }}>£{monthlyTotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                  <div style={{ fontSize: 12, color: '#AAAAAA' }}>Excl. VAT / month{selectedStandardOption?.term_months ? ` · ${selectedStandardOption.term_months} months` : ''}</div>
-                </div>
-              )}
-              {proposal.payment_terms && (
-                <div style={{ padding: '0 24px', borderRight: '1px solid #DDE8EE' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>Payment terms</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#043D5D', lineHeight: 1.4, marginTop: 4 }}>{proposal.payment_terms}</div>
-                </div>
-              )}
-              <div style={{ padding: '0 24px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>Proposal valid until</div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: '#043D5D', marginTop: 6 }}>{formatDate(proposal.valid_until)}</div>
-              </div>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA' }}>Proposal valid until</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>{formatDate(proposal.valid_until)}</div>
             </div>
           </div>
-        );
-      })()}
+        </div>
+      )}
 
       {/* TEAM */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
