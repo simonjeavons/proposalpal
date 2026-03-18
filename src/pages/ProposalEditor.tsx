@@ -14,6 +14,8 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { UpfrontItemsEditor } from "@/components/UpfrontItemsEditor";
+import { RetainerOptionsEditor } from "@/components/RetainerOptionsEditor";
 
 interface UserProfile {
   id: string;
@@ -746,312 +748,30 @@ export default function ProposalEditor() {
         </Section>
 
         {/* Upfront Items */}
-        <Section title="Upfront Items" action={
-          <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('upfront_items', [...form.upfront_items, { type: '', name: '', price: 0, description: '' }])}>
-            <Plus className="w-4 h-4" /> Add Item
-          </Button>
-        }>
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Section Title</label>
-              <Input
-                placeholder="Part 1: One-time project delivery"
-                value={form.upfront_section_title}
-                onChange={e => updateField('upfront_section_title', e.target.value)}
-                className="text-sm"
-              />
-            </div>
-            {form.upfront_items.length === 0 && (
-              <p className="text-sm text-muted-foreground italic">No upfront items yet. Add items to build the one-time investment breakdown.</p>
-            )}
-            {form.upfront_items.map((item, i) => (
-              <div key={i} className="bg-muted p-4 border border-border space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-foreground">{item.name || item.type || 'Untitled'}</span>
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
-                    onClick={() => updateField('upfront_items', form.upfront_items.filter((_, j) => j !== i))}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-                <Grid>
-                  <div>
-                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Solution</Label>
-                    <select
-                      value={item.type}
-                      onChange={e => {
-                        const product = products.find(p => p.name === e.target.value);
-                        const updated = [...form.upfront_items];
-                        updated[i] = {
-                          ...updated[i],
-                          type: e.target.value,
-                          price: product ? product.default_price : updated[i].price,
-                          description: product?.description ? product.description : (updated[i].description || ''),
-                        };
-                        updateField('upfront_items', updated);
-                      }}
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                    >
-                      <option value="">Select…</option>
-                      {products.filter(p => p.is_upfront && (!p.service_type_id || p.service_type_id === currentServiceTypeId)).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                    </select>
-                  </div>
-                  <CurrencyField label="Price (£)" value={item.price} onChange={v => {
-                    const updated = [...form.upfront_items];
-                    updated[i] = { ...updated[i], price: Number(v) || 0 };
-                    updateField('upfront_items', updated);
-                  }} />
-                  <CurrencyField label="Discounted (£)" value={item.discounted_price ?? ''} onChange={v => {
-                    const updated = [...form.upfront_items];
-                    updated[i] = { ...updated[i], discounted_price: v === '' || v === 0 ? undefined : Number(v) || 0 };
-                    updateField('upfront_items', updated);
-                  }} />
-                </Grid>
-                <div>
-                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Name</Label>
-                  <input
-                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                    placeholder="e.g. Onboarding of RMM and AV"
-                    value={item.name}
-                    onChange={e => {
-                      const updated = [...form.upfront_items];
-                      updated[i] = { ...updated[i], name: e.target.value };
-                      updateField('upfront_items', updated);
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Description</Label>
-                  <input
-                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm text-muted-foreground"
-                    placeholder="Brief description shown on proposal (auto-filled when solution selected)"
-                    value={item.description || ''}
-                    onChange={e => {
-                      const updated = [...form.upfront_items];
-                      updated[i] = { ...updated[i], description: e.target.value };
-                      updateField('upfront_items', updated);
-                    }}
-                  />
-                </div>
-                {!item.type && item.name && !products.find(p => p.name === item.name) && (
-                  <button
-                    type="button"
-                    onClick={() => saveItemToLibrary(item.name, item.price, item.description ?? '', 'upfront')}
-                    className="flex items-center gap-1.5 text-xs text-primary hover:underline pt-1"
-                  >
-                    <BookmarkPlus className="w-3 h-3" />
-                    Save "{item.name}" to solutions library
-                  </button>
-                )}
-              </div>
-            ))}
-            {form.upfront_items.length > 0 && (
-              <div className="flex justify-between items-center px-1 pt-1 border-t border-border">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total</span>
-                <span className="text-sm font-bold text-foreground">£{form.upfront_items.reduce((s, i) => s + (i.discounted_price ?? i.price), 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-            )}
-            <div className="pt-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Pricing Footnote (optional)</label>
-              <textarea
-                className="w-full border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                rows={2}
-                placeholder="e.g. All prices exclude VAT. Travel and expenses charged at cost."
-                value={form.upfront_notes}
-                onChange={e => updateField('upfront_notes', e.target.value)}
-              />
-            </div>
-          </div>
-        </Section>
+        <UpfrontItemsEditor
+          items={form.upfront_items}
+          onChange={v => updateField('upfront_items', v)}
+          products={products}
+          currentServiceTypeId={currentServiceTypeId}
+          sectionTitle={form.upfront_section_title}
+          onSectionTitleChange={v => updateField('upfront_section_title', v)}
+          notes={form.upfront_notes}
+          onNotesChange={v => updateField('upfront_notes', v)}
+          onSaveToLibrary={(name, price, desc) => saveItemToLibrary(name, price, desc, 'upfront')}
+        />
 
         {/* Ongoing */}
-        <Section title="Ongoing" action={
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground text-xs" onClick={() => updateField('retainer_options', [...form.retainer_options].sort((a, b) => ((b.quantity ?? 1) * (b.discounted_price ?? b.price)) - ((a.quantity ?? 1) * (a.discounted_price ?? a.price))))}>
-              <ArrowDownWideNarrow className="w-3.5 h-3.5" /> Sort by value
-            </Button>
-            <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('retainer_options', [...form.retainer_options, { type: '', name: '', term_months: undefined, quantity: 1, price: 0, features: [], option_type: 'standard', recommended: false }])}>
-              <Plus className="w-4 h-4" /> Add Option
-            </Button>
-          </div>
-        }>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Core section title</label>
-                <Input
-                  placeholder="Core — always included"
-                  value={form.core_section_title}
-                  onChange={e => updateField('core_section_title', e.target.value)}
-                  className="text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Standard section title</label>
-                <Input
-                  placeholder="Part 2: Ongoing support / options"
-                  value={form.ongoing_section_title}
-                  onChange={e => updateField('ongoing_section_title', e.target.value)}
-                  className="text-sm"
-                />
-              </div>
-            </div>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleRetainerDragEnd}>
-              <SortableContext items={retainerIds} strategy={verticalListSortingStrategy}>
-            {form.retainer_options.map((r, i) => (
-              <SortableItem key={retainerIds[i]} id={retainerIds[i]}>
-                {({ dragHandleProps }) => (
-              <div className="bg-muted p-4 border border-border space-y-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div {...dragHandleProps} className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground flex-shrink-0">
-                      <GripVertical className="w-4 h-4" />
-                    </div>
-                    <span className="text-sm font-bold text-foreground truncate">{r.name || r.type || 'Untitled'}</span>
-                  </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    {/* Core / Standard / Optional Extra toggle */}
-                    <div className="flex items-center bg-background border border-border rounded overflow-hidden">
-                      <button
-                        onClick={() => {
-                          const updated = [...form.retainer_options];
-                          updated[i] = { ...updated[i], option_type: 'core' };
-                          updateField('retainer_options', updated);
-                        }}
-                        className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 transition-colors ${
-                          r.option_type === 'core'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        Core
-                      </button>
-                      <button
-                        onClick={() => {
-                          const updated = [...form.retainer_options];
-                          updated[i] = { ...updated[i], option_type: 'standard' };
-                          updateField('retainer_options', updated);
-                        }}
-                        className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 transition-colors ${
-                          r.option_type === 'standard'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        Standard
-                      </button>
-                      <button
-                        onClick={() => {
-                          const updated = [...form.retainer_options];
-                          updated[i] = { ...updated[i], option_type: 'optional_extra' };
-                          updateField('retainer_options', updated);
-                        }}
-                        className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 transition-colors ${
-                          r.option_type === 'optional_extra'
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        Optional Extra
-                      </button>
-                    </div>
-                    {/* Recommended */}
-                    <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={!!r.recommended}
-                        onChange={() => {
-                          const updated = [...form.retainer_options];
-                          updated[i] = { ...updated[i], recommended: !updated[i].recommended };
-                          updateField('retainer_options', updated);
-                        }}
-                        className="w-3.5 h-3.5 accent-amber-500"
-                      />
-                      <span className="text-xs text-muted-foreground">★ Recommended</span>
-                    </label>
-                    <select
-                      value={i}
-                      onChange={e => updateField('retainer_options', reorderArray(form.retainer_options, i, Number(e.target.value)))}
-                      className="h-7 w-12 text-xs text-center border border-border bg-background rounded"
-                      title="Reorder"
-                    >
-                      {form.retainer_options.map((_, j) => <option key={j} value={j}>{j + 1}</option>)}
-                    </select>
-                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
-                      onClick={() => updateField('retainer_options', form.retainer_options.filter((_, j) => j !== i))}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-                <Grid>
-                  <div>
-                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Type</Label>
-                    <select
-                      value={r.type}
-                      onChange={e => {
-                        const product = products.find(p => p.name === e.target.value);
-                        const updated = [...form.retainer_options];
-                        updated[i] = { ...updated[i], type: e.target.value, price: product ? product.default_price : updated[i].price };
-                        updateField('retainer_options', updated);
-                      }}
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                    >
-                      <option value="">Select…</option>
-                      {products.filter(p => p.is_ongoing && (!p.service_type_id || p.service_type_id === currentServiceTypeId)).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                    </select>
-                  </div>
-                  <Field label="Name / Tier" value={r.name} onChange={v => updateRetainer(i, 'name', v)} />
-                  <div>
-                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Term (months)</Label>
-                    <input
-                      type="number"
-                      min={1}
-                      placeholder="e.g. 12"
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                      value={r.term_months ?? ''}
-                      onChange={e => updateRetainer(i, 'term_months', e.target.value ? Number(e.target.value) : undefined)}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Quantity</Label>
-                    <input
-                      type="number"
-                      min={1}
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                      value={r.quantity ?? 1}
-                      onChange={e => updateRetainer(i, 'quantity', Math.max(1, Number(e.target.value) || 1))}
-                    />
-                  </div>
-                  <CurrencyField label="Price (£/month)" value={r.price} onChange={v => updateRetainer(i, 'price', v)} />
-                  <CurrencyField label="Discounted (£/month)" value={r.discounted_price ?? ''} onChange={v => updateRetainer(i, 'discounted_price', v === '' || v === 0 ? undefined : Number(v) || 0)} />
-                  <div>
-                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Total (£/month)</Label>
-                    <div className="h-9 flex items-center px-3 bg-muted border border-border text-sm font-semibold text-foreground">
-                      £{((r.quantity ?? 1) * (r.discounted_price ?? r.price)).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>
-                  </div>
-                </Grid>
-                <div>
-                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Features (one per line)</Label>
-                  <Textarea value={r.features.join('\n')} onChange={e => updateRetainer(i, 'features', e.target.value.split('\n'))} rows={3} className="text-sm" />
-                </div>
-                {!r.type && r.name && !products.find(p => p.name === r.name) && (
-                  <button
-                    type="button"
-                    onClick={() => saveItemToLibrary(r.name, r.price, '', 'ongoing')}
-                    className="flex items-center gap-1.5 text-xs text-primary hover:underline pt-1"
-                  >
-                    <BookmarkPlus className="w-3 h-3" />
-                    Save "{r.name}" to solutions library
-                  </button>
-                )}
-              </div>
-                )}
-              </SortableItem>
-            ))}
-              </SortableContext>
-            </DndContext>
-          </div>
-        </Section>
+        <RetainerOptionsEditor
+          options={form.retainer_options}
+          onChange={v => updateField('retainer_options', v)}
+          products={products}
+          currentServiceTypeId={currentServiceTypeId}
+          coreSectionTitle={form.core_section_title}
+          onCoreSectionTitleChange={v => updateField('core_section_title', v)}
+          ongoingSectionTitle={form.ongoing_section_title}
+          onOngoingSectionTitleChange={v => updateField('ongoing_section_title', v)}
+          onSaveToLibrary={(name, price) => saveItemToLibrary(name, price, '', 'ongoing')}
+        />
 
         {/* Project Team */}
         <Section title="Project Team">

@@ -2,7 +2,9 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import type { Proposal, Phase, UpfrontItem } from "@/types/proposal";
+import type { Proposal, Phase, UpfrontItem, RetainerOption } from "@/types/proposal";
+import { UpfrontItemsEditor } from "@/components/UpfrontItemsEditor";
+import { RetainerOptionsEditor } from "@/components/RetainerOptionsEditor";
 import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Target, Download, GitBranch, ShoppingBag, Scale, UserCircle2, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -176,7 +178,7 @@ export default function AdminDashboard() {
     templateId: '',
     phases: [] as Phase[],
     upfrontItems: [] as UpfrontItem[],
-    ongoingOptions: [] as Array<{ name: string; yearlyCosts: number[]; term: number; frequency: 'weekly' | 'monthly' | 'annual' }>,
+    retainerOptions: [] as RetainerOption[],
   });
 
   const fetchServiceTypes = async () => {
@@ -454,7 +456,8 @@ export default function AdminDashboard() {
     template_id: adhocForm.templateId || null,
     phases: adhocForm.phases,
     upfront_items: adhocForm.upfrontItems,
-    ongoing_options: adhocForm.ongoingOptions,
+    ongoing_options: adhocForm.retainerOptions,
+    retainer_options: adhocForm.retainerOptions,
   });
 
   const resetAdhocForm = () => {
@@ -463,7 +466,7 @@ export default function AdminDashboard() {
       agreementDate: new Date().toISOString().split('T')[0],
       contactName: '', contactEmail: '',
       paymentTerms: '50% on commencement / 50% on delivery',
-      templateId: '', phases: [], upfrontItems: [], ongoingOptions: [],
+      templateId: '', phases: [], upfrontItems: [], retainerOptions: [],
     });
     setEditingDraftId(null);
     setAdhocLink(null);
@@ -494,12 +497,16 @@ export default function AdminDashboard() {
       templateId: d.template_id || '',
       phases: Array.isArray(d.phases) ? d.phases : [],
       upfrontItems: Array.isArray(d.upfront_items) ? d.upfront_items : [],
-      ongoingOptions: Array.isArray(d.ongoing_options)
-        ? d.ongoing_options.map((o: any) => ({
-            ...o,
-            yearlyCosts: o.yearlyCosts ?? (o.cost != null ? [o.cost] : [0]),
-          }))
-        : [],
+      retainerOptions: Array.isArray(d.retainer_options) && d.retainer_options.length > 0
+        ? d.retainer_options
+        : Array.isArray(d.ongoing_options)
+          ? d.ongoing_options.map((o: any) => ({
+              type: '', name: o.name || '', hours: undefined, term_months: o.term || undefined,
+              quantity: 1, price: (o.yearlyCosts ?? (o.cost != null ? [o.cost] : [0]))[0] || 0,
+              features: [], option_type: 'standard' as const, recommended: false,
+              frequency: o.frequency || 'monthly',
+            }))
+          : [],
     });
     setEditingDraftId(id);
     setAdhocLink(null);
@@ -540,19 +547,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Term is always in months. yearlyCosts[i] = cost for year i.
-  const getAdhocOptionTotal = (opt: { yearlyCosts: number[]; term: number; frequency: 'weekly' | 'monthly' | 'annual' }) => {
-    const numYears = Math.ceil(Math.max(opt.term, 1) / 12);
-    const costs: number[] = Array.from({ length: numYears }, (_, y) =>
-      opt.yearlyCosts[y] ?? (opt.yearlyCosts[opt.yearlyCosts.length - 1] ?? 0)
-    );
-    if (opt.frequency === 'annual') return costs.reduce((s, c) => s + c, 0);
-    return costs.reduce((s, c, idx) => {
-      const months = idx === numYears - 1 ? (opt.term % 12 || 12) : 12;
-      const periods = opt.frequency === 'monthly' ? months : Math.round(months * 52 / 12);
-      return s + c * periods;
-    }, 0);
-  };
 
   const saveAdhocContract = async () => {
     if (!adhocForm.clientName.trim()) { toast.error('Enter a client name first'); return; }
@@ -1823,158 +1817,21 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Upfront Pricing */}
-                <div className="bg-card border border-border p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Upfront Pricing</h2>
-                    <Button variant="ghost" size="sm" className="gap-1 text-primary text-xs h-7"
-                      onClick={() => setAdhocForm(f => ({ ...f, upfrontItems: [...f.upfrontItems, { type: '', name: '', price: 0 }] }))}>
-                      <Plus className="w-3.5 h-3.5" /> Add Item
-                    </Button>
-                  </div>
-                  {adhocForm.upfrontItems.length === 0 && (
-                    <p className="text-sm text-muted-foreground italic">No items added yet.</p>
-                  )}
-                  <div className="space-y-3">
-                    {adhocForm.upfrontItems.map((item, i) => (
-                      <div key={i} className="bg-muted border border-border p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-semibold text-foreground">{item.name || 'Untitled item'}</span>
-                          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive h-6 w-6 p-0"
-                            onClick={() => setAdhocForm(f => ({ ...f, upfrontItems: f.upfrontItems.filter((_, j) => j !== i) }))}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
-                            <Input value={item.name} onChange={e => { const items = [...adhocForm.upfrontItems]; items[i] = { ...items[i], name: e.target.value }; setAdhocForm(f => ({ ...f, upfrontItems: items })); }} className="h-7 text-xs" placeholder="e.g. Initial setup fee" />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Price (£)</Label>
-                            <Input type="number" min="0" value={item.price || ''} onChange={e => { const items = [...adhocForm.upfrontItems]; items[i] = { ...items[i], price: Number(e.target.value) || 0 }; setAdhocForm(f => ({ ...f, upfrontItems: items })); }} className="h-7 text-xs" placeholder="0" />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {adhocForm.upfrontItems.length > 0 && (
-                    <div className="flex justify-between items-center mt-3 pt-3 border-t border-border">
-                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Upfront Total</span>
-                      <span className="text-sm font-bold text-foreground">£{adhocForm.upfrontItems.reduce((s, i) => s + i.price, 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                  )}
-                </div>
+                <UpfrontItemsEditor
+                  items={adhocForm.upfrontItems}
+                  onChange={items => setAdhocForm(f => ({ ...f, upfrontItems: items }))}
+                  products={products}
+                  currentServiceTypeId={null}
+                />
 
                 {/* Ongoing Options */}
-                <div className="bg-card border border-border p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Ongoing Options <span className="text-muted-foreground font-normal normal-case tracking-normal">(optional)</span></h2>
-                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
-                      onClick={() => setAdhocForm(f => ({ ...f, ongoingOptions: [...f.ongoingOptions, { name: '', yearlyCosts: [0], term: 12, frequency: 'monthly' as const }] }))}>
-                      <Plus className="w-3.5 h-3.5" /> Add Option
-                    </Button>
-                  </div>
-                  {adhocForm.ongoingOptions.length === 0 && (
-                    <p className="text-sm text-muted-foreground italic">No ongoing options added yet.</p>
-                  )}
-                  <div className="space-y-3">
-                    {adhocForm.ongoingOptions.map((opt, i) => {
-                      const numYears = Math.ceil(Math.max(opt.term, 1) / 12);
-                      const displayCosts: number[] = Array.from({ length: numYears }, (_, y) =>
-                        opt.yearlyCosts[y] ?? (opt.yearlyCosts[opt.yearlyCosts.length - 1] ?? 0)
-                      );
-                      const optTotal = getAdhocOptionTotal(opt);
-                      return (
-                        <div key={i} className="bg-muted border border-border p-3 space-y-3">
-                          {/* Header */}
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-primary uppercase tracking-wider">Option {i + 1}</span>
-                            <button
-                              onClick={() => setAdhocForm(f => ({ ...f, ongoingOptions: f.ongoingOptions.filter((_, j) => j !== i) }))}
-                              className="text-muted-foreground hover:text-destructive transition-colors"
-                            ><X className="w-3.5 h-3.5" /></button>
-                          </div>
-
-                          {/* Description */}
-                          <div className="space-y-1">
-                            <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
-                            <Input
-                              value={opt.name}
-                              onChange={e => { const opts = [...adhocForm.ongoingOptions]; opts[i] = { ...opts[i], name: e.target.value }; setAdhocForm(f => ({ ...f, ongoingOptions: opts })); }}
-                              className="h-7 text-xs" placeholder="e.g. Monthly Support Retainer"
-                            />
-                          </div>
-
-                          {/* Frequency + Term */}
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                              <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Frequency</Label>
-                              <select
-                                value={opt.frequency}
-                                onChange={e => { const opts = [...adhocForm.ongoingOptions]; opts[i] = { ...opts[i], frequency: e.target.value as 'weekly' | 'monthly' | 'annual' }; setAdhocForm(f => ({ ...f, ongoingOptions: opts })); }}
-                                className="h-7 rounded-md border border-input bg-background px-2 text-xs w-full"
-                              >
-                                <option value="weekly">Weekly</option>
-                                <option value="monthly">Monthly</option>
-                                <option value="annual">Annual</option>
-                              </select>
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Term (months)</Label>
-                              <Input
-                                type="number" min="1"
-                                value={opt.term || ''}
-                                onChange={e => {
-                                  const opts = [...adhocForm.ongoingOptions];
-                                  const newTerm = Number(e.target.value) || 1;
-                                  const newNumYears = Math.ceil(newTerm / 12);
-                                  const current = [...opts[i].yearlyCosts];
-                                  while (current.length < newNumYears) current.push(current[current.length - 1] ?? 0);
-                                  opts[i] = { ...opts[i], term: newTerm, yearlyCosts: current.slice(0, newNumYears) };
-                                  setAdhocForm(f => ({ ...f, ongoingOptions: opts }));
-                                }}
-                                className="h-7 text-xs" placeholder="12"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Per-year costs */}
-                          <div className="space-y-1">
-                            <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                              Cost per year (£) — {opt.frequency === 'annual' ? 'paid annually' : opt.frequency === 'weekly' ? 'cost per week for that year' : 'cost per month for that year'}
-                            </Label>
-                            <div className="grid grid-cols-3 gap-2">
-                              {displayCosts.map((c, y) => (
-                                <div key={y} className="space-y-0.5">
-                                  <span className="text-[9px] text-muted-foreground font-medium">Year {y + 1}</span>
-                                  <Input
-                                    type="number" min="0"
-                                    value={c || ''}
-                                    onChange={e => {
-                                      const opts = [...adhocForm.ongoingOptions];
-                                      const newCosts = [...displayCosts];
-                                      newCosts[y] = Number(e.target.value) || 0;
-                                      opts[i] = { ...opts[i], yearlyCosts: newCosts };
-                                      setAdhocForm(f => ({ ...f, ongoingOptions: opts }));
-                                    }}
-                                    className="h-7 text-xs"
-                                    placeholder="0"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Total */}
-                          <div className="flex justify-between items-center pt-2 border-t border-border">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Total Cost</span>
-                            <span className="text-sm font-bold text-foreground">£{optTotal.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <RetainerOptionsEditor
+                  options={adhocForm.retainerOptions}
+                  onChange={opts => setAdhocForm(f => ({ ...f, retainerOptions: opts }))}
+                  products={products}
+                  currentServiceTypeId={null}
+                  showFrequency
+                />
 
                 {/* Save buttons */}
                 <div className="grid grid-cols-2 gap-3">

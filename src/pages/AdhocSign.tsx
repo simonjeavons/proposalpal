@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import type { Phase, UpfrontItem } from "@/types/proposal";
+import type { Phase, UpfrontItem, RetainerOption } from "@/types/proposal";
 
 const formatCurrency = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const formatDate = (s: string) => {
@@ -11,8 +11,8 @@ const formatDate = (s: string) => {
 
 interface OngoingOption {
   name: string;
-  yearlyCosts: number[];   // one per year; term is always in months
-  term: number;            // total term in months
+  yearlyCosts: number[];
+  term: number;
   frequency: 'weekly' | 'monthly' | 'annual';
 }
 
@@ -30,6 +30,7 @@ interface AdhocContract {
   phases: Phase[];
   upfront_items: UpfrontItem[];
   ongoing_options: OngoingOption[];
+  retainer_options?: RetainerOption[];
   template_id: string | null;
   signed_contract_url: string | null;
   signer_name: string | null;
@@ -37,6 +38,9 @@ interface AdhocContract {
   signed_at: string | null;
 }
 
+const FREQ_LABEL: Record<string, string> = { weekly: '/wk', monthly: '/mo', annual: '/yr' };
+
+// Legacy ongoing option total (year-by-year)
 const getOptionTotal = (opt: OngoingOption) => {
   const numYears = Math.ceil(Math.max(opt.term, 1) / 12);
   const costs: number[] = Array.from({ length: numYears }, (_, y) =>
@@ -48,6 +52,16 @@ const getOptionTotal = (opt: OngoingOption) => {
     const periods = opt.frequency === 'monthly' ? months : Math.round(months * 52 / 12);
     return s + c * periods;
   }, 0);
+};
+
+// New retainer option total (price × quantity, annualised based on frequency)
+const getRetainerAnnualTotal = (r: RetainerOption) => {
+  const unitPrice = r.discounted_price ?? r.price;
+  const qty = r.quantity ?? 1;
+  const freq = r.frequency ?? 'monthly';
+  if (freq === 'annual') return unitPrice * qty;
+  if (freq === 'weekly') return unitPrice * qty * 52;
+  return unitPrice * qty * 12; // monthly
 };
 
 interface TemplateSection { heading: string; body: string; }
@@ -148,11 +162,25 @@ export default function AdhocSign() {
           ongoing_options: Array.isArray((data as any).ongoing_options)
             ? (data as any).ongoing_options.map((o: any) => ({
                 ...o,
-                // backward compat: old rows stored cost: number instead of yearlyCosts
                 yearlyCosts: o.yearlyCosts ?? (o.cost != null ? [o.cost] : [0]),
               }))
             : [],
+          retainer_options: Array.isArray((data as any).retainer_options) ? (data as any).retainer_options : undefined,
         } as AdhocContract;
+        // If new-format retainer_options exist, convert them to ongoing_options for display
+        if (c.retainer_options && c.retainer_options.length > 0) {
+          c.ongoing_options = c.retainer_options.map((r: RetainerOption) => {
+            const freq = r.frequency ?? 'monthly';
+            const unitPrice = r.discounted_price ?? r.price;
+            const perPeriod = (r.quantity ?? 1) * unitPrice;
+            return {
+              name: r.name || r.type || 'Ongoing Option',
+              yearlyCosts: [perPeriod],
+              term: r.term_months ?? 12,
+              frequency: freq,
+            };
+          });
+        }
         setContract(c);
 
         // If already signed, show confirmation immediately
@@ -181,7 +209,7 @@ export default function AdhocSign() {
 
     (async () => {
       try {
-        const upfrontTotal = contract.upfront_items.reduce((s, i) => s + i.price, 0);
+        const upfrontTotal = contract.upfront_items.reduce((s, i) => s + (i.discounted_price ?? i.price), 0);
         const allAnnualTotals = contract.ongoing_options.map(getOptionTotal);
         const totalAnnualOngoing = allAnnualTotals.reduce((s, t) => s + t, 0);
         const monthlyTotal = totalAnnualOngoing / 12;
@@ -257,7 +285,7 @@ export default function AdhocSign() {
 
     const signedAt = new Date();
     const signingDateStr = signedAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-    const upfrontTotal = contract.upfront_items.reduce((s, i) => s + i.price, 0);
+    const upfrontTotal = contract.upfront_items.reduce((s, i) => s + (i.discounted_price ?? i.price), 0);
     const allAnnualTotals = contract.ongoing_options.map(getOptionTotal);
     const totalAnnualOngoing = allAnnualTotals.reduce((s, t) => s + t, 0);
     const monthlyTotal = totalAnnualOngoing / 12;
@@ -308,7 +336,7 @@ export default function AdhocSign() {
         contactName: contract.contact_name,
         contactEmail: contract.contact_email,
         companyRegNumber: contract.company_reg_number || '',
-        registeredOffice: contract.registered_office || '',
+        registeredOffice: [contract.registered_address_1, contract.registered_address_2, contract.registered_city, contract.registered_county, contract.registered_postcode].filter(Boolean).join(', '),
         templateSections,
         ongoingOptions: contract.ongoing_options,
         clientSignerName: signerName,
@@ -462,7 +490,7 @@ export default function AdhocSign() {
   );
 
   // ── Pricing calculations ──
-  const upfrontTotal = contract.upfront_items.reduce((s, i) => s + i.price, 0);
+  const upfrontTotal = contract.upfront_items.reduce((s, i) => s + (i.discounted_price ?? i.price), 0);
   const allAnnualTotals = contract.ongoing_options.map(getOptionTotal);
   const totalAnnualOngoing = allAnnualTotals.reduce((s, t) => s + t, 0);
   const firstYearTotal = upfrontTotal + totalAnnualOngoing;

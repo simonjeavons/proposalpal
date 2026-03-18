@@ -31,6 +31,7 @@ export interface RetainerOption {
   features: string[];
   option_type: 'standard' | 'optional_extra' | 'core';
   recommended: boolean;
+  frequency?: 'weekly' | 'monthly' | 'annual';
 }
 
 export interface TeamMember {
