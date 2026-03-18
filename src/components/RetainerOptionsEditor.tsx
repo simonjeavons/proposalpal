@@ -96,6 +96,7 @@ export interface RetainerOptionsEditorProps {
   ongoingSectionTitle?: string;
   onOngoingSectionTitleChange?: (v: string) => void;
   showFrequency?: boolean;
+  showDiscountControls?: boolean;
   onSaveToLibrary?: (name: string, price: number) => void;
 }
 
@@ -109,6 +110,7 @@ export function RetainerOptionsEditor({
   ongoingSectionTitle,
   onOngoingSectionTitleChange,
   showFrequency = false,
+  showDiscountControls = true,
   onSaveToLibrary,
 }: RetainerOptionsEditorProps) {
   const sensors = useSensors(
@@ -293,15 +295,17 @@ export function RetainerOptionsEditor({
                       )}
                       <CurrencyField label={`Price (£${freqLabel(r)})`} value={r.price} onChange={v => updateOption(i, 'price', v)} />
                       <CurrencyField label={`Discounted (£${freqLabel(r)})`} value={r.discounted_price ?? ''} onChange={v => updateOption(i, 'discounted_price', v === '' || v === 0 ? undefined : Number(v) || 0)} />
-                      <div>
-                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Discount Note</Label>
-                        <input
-                          className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                          placeholder="e.g. Loyalty discount"
-                          value={r.discount_note || ''}
-                          onChange={e => updateOption(i, 'discount_note', e.target.value || undefined)}
-                        />
-                      </div>
+                      {showDiscountControls && (
+                        <div>
+                          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Discount Note</Label>
+                          <input
+                            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                            placeholder="e.g. Loyalty discount"
+                            value={r.discount_note || ''}
+                            onChange={e => updateOption(i, 'discount_note', e.target.value || undefined)}
+                          />
+                        </div>
+                      )}
                       <div>
                         <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Total (£{freqLabel(r)})</Label>
                         <div className="h-9 flex items-center px-3 bg-muted border border-border text-sm font-semibold text-foreground">
@@ -309,7 +313,7 @@ export function RetainerOptionsEditor({
                         </div>
                       </div>
                     </Grid>
-                    {r.discounted_price != null && r.discounted_price < r.price && (
+                    {showDiscountControls && r.discounted_price != null && r.discounted_price < r.price && (
                       <label className="flex items-center gap-1.5 cursor-pointer select-none">
                         <input
                           type="checkbox"

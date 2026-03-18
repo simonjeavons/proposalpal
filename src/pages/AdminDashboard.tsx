@@ -1829,6 +1829,7 @@ export default function AdminDashboard() {
                   onChange={items => setAdhocForm(f => ({ ...f, upfrontItems: items }))}
                   products={products}
                   currentServiceTypeId={null}
+                  showDiscountControls={false}
                 />
 
                 {/* Ongoing Options */}
@@ -1838,6 +1839,7 @@ export default function AdminDashboard() {
                   products={products}
                   currentServiceTypeId={null}
                   showFrequency
+                  showDiscountControls={false}
                 />
 
                 {/* Save buttons */}

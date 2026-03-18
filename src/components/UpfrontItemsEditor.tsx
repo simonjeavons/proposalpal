@@ -60,6 +60,7 @@ export interface UpfrontItemsEditorProps {
   paymentTerms?: string;
   onPaymentTermsChange?: (v: string) => void;
   onSaveToLibrary?: (name: string, price: number, description: string) => void;
+  showDiscountControls?: boolean;
 }
 
 export function UpfrontItemsEditor({
@@ -72,6 +73,7 @@ export function UpfrontItemsEditor({
   notes,
   onNotesChange,
   onSaveToLibrary,
+  showDiscountControls = true,
 }: UpfrontItemsEditorProps) {
   const updateItem = (i: number, patch: Partial<UpfrontItem>) => {
     const updated = [...items];
@@ -132,17 +134,19 @@ export function UpfrontItemsEditor({
               </div>
               <CurrencyField label="Price (£)" value={item.price} onChange={v => updateItem(i, { price: Number(v) || 0 })} />
               <CurrencyField label="Discounted (£)" value={item.discounted_price ?? ''} onChange={v => updateItem(i, { discounted_price: v === '' || v === 0 ? undefined : Number(v) || 0 } as any)} />
-              <div>
-                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Discount Note</Label>
-                <input
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                  placeholder="e.g. Early sign-up discount"
-                  value={item.discount_note || ''}
-                  onChange={e => updateItem(i, { discount_note: e.target.value || undefined } as any)}
-                />
-              </div>
+              {showDiscountControls && (
+                <div>
+                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Discount Note</Label>
+                  <input
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    placeholder="e.g. Early sign-up discount"
+                    value={item.discount_note || ''}
+                    onChange={e => updateItem(i, { discount_note: e.target.value || undefined } as any)}
+                  />
+                </div>
+              )}
             </Grid>
-            {item.discounted_price != null && item.discounted_price < item.price && (
+            {showDiscountControls && item.discounted_price != null && item.discounted_price < item.price && (
               <label className="flex items-center gap-1.5 cursor-pointer select-none pt-1">
                 <input
                   type="checkbox"
