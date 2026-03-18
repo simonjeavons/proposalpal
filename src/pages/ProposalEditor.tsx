@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Save, Plus, Trash2, Eye, Upload, FileText, X, BookmarkPlus, GripVertical } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Eye, Upload, FileText, X, BookmarkPlus, GripVertical, ArrowDownWideNarrow } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
@@ -841,9 +841,14 @@ export default function ProposalEditor() {
 
         {/* Ongoing */}
         <Section title="Ongoing" action={
-          <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('retainer_options', [...form.retainer_options, { type: '', name: '', term_months: undefined, quantity: 1, price: 0, features: [], option_type: 'standard', recommended: false }])}>
-            <Plus className="w-4 h-4" /> Add Option
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground text-xs" onClick={() => updateField('retainer_options', [...form.retainer_options].sort((a, b) => ((b.quantity ?? 1) * b.price) - ((a.quantity ?? 1) * a.price)))}>
+              <ArrowDownWideNarrow className="w-3.5 h-3.5" /> Sort by value
+            </Button>
+            <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => updateField('retainer_options', [...form.retainer_options, { type: '', name: '', term_months: undefined, quantity: 1, price: 0, features: [], option_type: 'standard', recommended: false }])}>
+              <Plus className="w-4 h-4" /> Add Option
+            </Button>
+          </div>
         }>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
