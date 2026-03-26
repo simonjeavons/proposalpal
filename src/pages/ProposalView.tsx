@@ -31,6 +31,7 @@ export default function ProposalView() {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedRetainer, setSelectedRetainer] = useState(1);
+  const [selectedOptionals, setSelectedOptionals] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const fetchProposal = async () => {
@@ -71,7 +72,31 @@ export default function ProposalView() {
 
   const retainers = proposal.retainer_options;
   const currentRetainer = retainers[selectedRetainer] || { price: 0 };
-  const firstYearTotal = Number(proposal.upfront_total) + (currentRetainer.price * 12);
+
+  const parsePrice = (priceStr: string) => {
+    const num = parseFloat(priceStr.replace(/[^0-9.]/g, ''));
+    return isNaN(num) ? 0 : num;
+  };
+
+  const optionalPhases = proposal.phases
+    .map((p, i) => ({ phase: p, index: i }))
+    .filter(({ phase }) => phase.optional);
+
+  const toggleOptional = (index: number) => {
+    setSelectedOptionals(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index); else next.add(index);
+      return next;
+    });
+  };
+
+  const optionalAddOn = Array.from(selectedOptionals).reduce((sum, i) => {
+    const phase = proposal.phases[i];
+    return sum + (phase ? parsePrice(phase.price) : 0);
+  }, 0);
+
+  const displayUpfrontTotal = Number(proposal.upfront_total) + optionalAddOn;
+  const firstYearTotal = displayUpfrontTotal + (currentRetainer.price * 12);
 
   return (
     <div style={{ background: '#F4F7FA', color: '#1A2E3B', fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.7 }}>
@@ -280,18 +305,52 @@ export default function ProposalView() {
               {/* Upfront */}
               <div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 2 }}>Part 1 — One-time project delivery</div>
+                {optionalPhases.length > 0 && (
+                  <p style={{ fontSize: 12, color: '#3A6278', marginTop: 12, marginBottom: 0 }}>
+                    Items marked <strong style={{ color: '#B45309' }}>Optional</strong> are not included by default — select them below to add to your investment.
+                  </p>
+                )}
                 <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(proposal.phases.length + 1, 5)}, 1fr)`, gap: 2, background: '#DDE8EE', marginTop: 16 }}>
-                  {proposal.phases.map((phase, i) => (
-                    <div key={i} style={{ background: 'white', padding: '22px 18px', display: 'flex', flexDirection: 'column', gap: 0 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#043D5D', color: 'white', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>{String(i + 1).padStart(2, '0')}</div>
+                  {proposal.phases.map((phase, i) => {
+                    const isSelected = selectedOptionals.has(i);
+                    return (
+                    <div
+                      key={i}
+                      onClick={() => phase.optional && toggleOptional(i)}
+                      style={{
+                        background: phase.optional ? (isSelected ? '#FFFBEB' : '#FAFAFA') : 'white',
+                        padding: '22px 18px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 0,
+                        cursor: phase.optional ? 'pointer' : 'default',
+                        border: phase.optional ? (isSelected ? '2px solid #F59E0B' : '2px dashed #D1D5DB') : '2px solid transparent',
+                        opacity: phase.optional && !isSelected ? 0.75 : 1,
+                        transition: 'all .2s',
+                      }}
+                    >
+                      {phase.optional && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#B45309', background: '#FEF3C7', padding: '2px 6px', border: '1px solid #FCD34D' }}>Optional</span>
+                          <div style={{
+                            width: 18, height: 18, border: isSelected ? 'none' : '2px solid #D1D5DB', borderRadius: 4,
+                            background: isSelected ? '#F59E0B' : 'transparent',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 10, color: 'white', fontWeight: 800,
+                            transition: 'all .2s',
+                          }}>{isSelected ? '✓' : ''}</div>
+                        </div>
+                      )}
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: phase.optional ? (isSelected ? '#F59E0B' : '#9CA3AF') : '#043D5D', color: 'white', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, transition: 'background .2s' }}>{String(i + 1).padStart(2, '0')}</div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', marginBottom: 4, lineHeight: 1.3 }}>{phase.title}</div>
                       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 10 }}>{phase.duration}</div>
                       <div style={{ fontSize: 12, color: '#3A6278', lineHeight: 1.6, flex: 1, paddingBottom: 14, borderBottom: '1px solid #DDE8EE', marginBottom: 12 }}>
                         {phase.tasks.join(', ')}
                       </div>
-                      <div style={{ fontSize: 22, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1 }}>{phase.price}</div>
+                      <div style={{ fontSize: 22, fontWeight: 900, color: phase.optional ? (isSelected ? '#B45309' : '#9CA3AF') : '#043D5D', letterSpacing: '-.03em', lineHeight: 1 }}>{phase.price}</div>
                     </div>
-                  ))}
+                    );
+                  })}
                   {/* Launch included card */}
                   <div style={{ background: '#E4F4FD', padding: '22px 18px', display: 'flex', flexDirection: 'column', gap: 0, border: '2px solid rgba(0,159,227,.2)' }}>
                     <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#009FE3', color: 'white', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>{String(proposal.phases.length + 1).padStart(2, '0')}</div>
@@ -302,8 +361,15 @@ export default function ProposalView() {
                   </div>
                 </div>
                 <div style={{ background: '#043D5D', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)' }}>Total one-time investment</span>
-                  <strong style={{ fontSize: 20, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em' }}>£{Number(proposal.upfront_total).toLocaleString('en-GB')} + VAT</strong>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)' }}>Total one-time investment</span>
+                    {optionalAddOn > 0 && (
+                      <div style={{ fontSize: 10, color: '#FCD34D', marginTop: 2 }}>
+                        Includes £{optionalAddOn.toLocaleString('en-GB')} of optional items
+                      </div>
+                    )}
+                  </div>
+                  <strong style={{ fontSize: 20, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em', transition: 'all .3s' }}>£{displayUpfrontTotal.toLocaleString('en-GB')} + VAT</strong>
                 </div>
                 <p style={{ fontSize: 12, color: '#AAAAAA', fontStyle: 'italic', marginTop: 8 }}>Payment: {proposal.payment_terms}. Statement of work issued before any work begins.</p>
               </div>
@@ -358,7 +424,7 @@ export default function ProposalView() {
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.45)', marginBottom: 6 }}>Investment summary</div>
                   <div style={{ fontSize: 13, color: 'rgba(255,255,255,.5)' }}>
-                    One-time project: <span style={{ color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>£{Number(proposal.upfront_total).toLocaleString('en-GB')}</span> + VAT &nbsp;·&nbsp;
+                    One-time project: <span style={{ color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>£{displayUpfrontTotal.toLocaleString('en-GB')}</span> + VAT &nbsp;·&nbsp;
                     Monthly retainer: <span style={{ color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>£{currentRetainer.price.toLocaleString('en-GB')}</span> + VAT / month
                   </div>
                 </div>
@@ -378,7 +444,7 @@ export default function ProposalView() {
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 48px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
           <div style={{ padding: '0 24px', borderRight: '1px solid #DDE8EE' }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>One-time project</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 2 }}>£{Number(proposal.upfront_total).toLocaleString('en-GB')}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 2, transition: 'all .3s' }}>£{displayUpfrontTotal.toLocaleString('en-GB')}</div>
             <div style={{ fontSize: 12, color: '#AAAAAA' }}>Excl. VAT</div>
           </div>
           <div style={{ padding: '0 24px', borderRight: '1px solid #DDE8EE' }}>

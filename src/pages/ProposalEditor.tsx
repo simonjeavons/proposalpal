@@ -323,10 +323,24 @@ export default function ProposalEditor() {
             {form.phases.map((p, i) => (
               <div key={i} className="bg-muted p-4 border border-border space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-primary uppercase tracking-wider">{p.label}</span>
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={() => updateField('phases', form.phases.filter((_, j) => j !== i))}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-primary uppercase tracking-wider">{p.label}</span>
+                    {p.optional && <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5">OPTIONAL</span>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={!!p.optional}
+                        onChange={e => updatePhase(i, 'optional', e.target.checked)}
+                        className="w-3.5 h-3.5"
+                      />
+                      <span className="text-xs text-muted-foreground">Optional</span>
+                    </label>
+                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={() => updateField('phases', form.phases.filter((_, j) => j !== i))}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
                 <Grid>
                   <Field label="Label" value={p.label} onChange={v => updatePhase(i, 'label', v)} />

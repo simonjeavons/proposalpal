@@ -9,6 +9,7 @@ export interface Phase {
   duration: string;
   tasks: string[];
   price: string;
+  optional?: boolean;
 }
 
 export interface RetainerOption {
