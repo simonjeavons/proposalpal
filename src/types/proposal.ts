@@ -6,6 +6,7 @@ export interface UpfrontItem {
   discount_note?: string;
   show_discount_percent?: boolean;
   description?: string;
+  optional?: boolean;
 }
 
 export interface Challenge {

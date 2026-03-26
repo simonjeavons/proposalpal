@@ -42,6 +42,7 @@ export default function ProposalView() {
   const [loading, setLoading] = useState(true);
   const [selectedStandard, setSelectedStandard] = useState(-1);
   const [checkedExtras, setCheckedExtras] = useState<Set<number>>(new Set());
+  const [selectedOptionalItems, setSelectedOptionalItems] = useState<Set<number>>(new Set());
   const [teamCards, setTeamCards] = useState<TeamMember[]>([]);
   const [showStickyBar, setShowStickyBar] = useState(false);
   const w = useWindowWidth();
@@ -149,7 +150,13 @@ export default function ProposalView() {
   const coreTotal = coreOptions.reduce((sum, r) => sum + optionTotal(r), 0);
   const extrasTotal = [...checkedExtras].reduce((sum, i) => sum + optionTotal(optionalExtras[i] ?? { price: 0 }), 0);
   const monthlyTotal = coreTotal + (selectedStandardOption ? optionTotal(selectedStandardOption) : 0) + extrasTotal;
-  const firstYearTotal = Number(proposal.upfront_total) + (monthlyTotal * 12);
+  const optionalUpfrontItems = (proposal.upfront_items || []).map((item, i) => ({ item, index: i })).filter(({ item }) => (item as any).optional);
+  const optionalUpfrontAddOn = [...selectedOptionalItems].reduce((sum, i) => {
+    const item = proposal.upfront_items?.[i];
+    return sum + (item ? (item.discounted_price ?? item.price) : 0);
+  }, 0);
+  const displayUpfrontTotal = Number(proposal.upfront_total) + optionalUpfrontAddOn;
+  const firstYearTotal = displayUpfrontTotal + (monthlyTotal * 12);
 
   // Timeline helpers
   const parseWeeks = (d: string) => Math.max(1, parseInt(d?.match(/(\d+)/)?.[1] ?? '1'));
@@ -553,34 +560,90 @@ export default function ProposalView() {
               <div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 16 }}>{(proposal as any).upfront_section_title || 'Part 1: One-time project delivery'}</div>
                 {/* Upfront items table */}
-                {(proposal.upfront_items || []).length > 0 && (
-                  <div style={{ border: '1px solid #DDE8EE', overflow: 'hidden' }}>
-                    {(proposal.upfront_items || []).map((item, i) => (
-                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 110px', alignItems: 'center', padding: '12px 20px', borderBottom: i < (proposal.upfront_items || []).length - 1 ? '1px solid #DDE8EE' : 'none', gap: 16, background: i % 2 === 0 ? 'white' : '#F9FAFB' }}>
-                        <div>
-                          {item.type && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 2 }}>{item.type}</div>}
-                          <div style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>{item.name}</div>
-                          {(item as any).description && <div style={{ fontSize: 11, color: '#AAAAAA', marginTop: 2 }}>{(item as any).description}</div>}
-                        </div>
-                        <div style={{ textAlign: 'right' as const }}>
-                          {item.discounted_price != null && item.discounted_price < item.price ? (
-                            <>
-                              <div style={{ fontSize: 12, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through' }}>£{Number(item.price).toLocaleString('en-GB')}</div>
-                              <div style={{ fontSize: 15, fontWeight: 800, color: '#009FE3' }}>£{Number(item.discounted_price).toLocaleString('en-GB')}</div>
-                              {(item as any).show_discount_percent !== false && <div style={{ fontSize: 9, fontWeight: 700, color: '#22C55E', marginTop: 1 }}>Save {Math.round(((item.price - item.discounted_price) / item.price) * 100)}%</div>}
-                              {(item as any).discount_note && <div style={{ fontSize: 10, color: '#6B7280', fontStyle: 'italic', marginTop: 2 }}>{(item as any).discount_note}</div>}
-                            </>
-                          ) : (
-                            <div style={{ fontSize: 15, fontWeight: 800, color: '#043D5D' }}>£{Number(item.price).toLocaleString('en-GB')}</div>
-                          )}
-                        </div>
+                {(proposal.upfront_items || []).length > 0 && (() => {
+                  const allItems = proposal.upfront_items || [];
+                  const hasOptional = allItems.some(item => (item as any).optional);
+                  return (
+                    <>
+                      {hasOptional && (
+                        <p style={{ fontSize: 12, color: '#3A6278', marginBottom: 12, marginTop: 0 }}>
+                          Items marked <strong style={{ color: '#B45309' }}>Optional</strong> are not included by default — select them to add to your investment.
+                        </p>
+                      )}
+                      <div style={{ border: '1px solid #DDE8EE', overflow: 'hidden' }}>
+                        {allItems.map((item, i) => {
+                          const isOptional = !!(item as any).optional;
+                          const isSelected = selectedOptionalItems.has(i);
+                          const rowBg = isOptional ? (isSelected ? '#FFFBEB' : '#FAFAFA') : (i % 2 === 0 ? 'white' : '#F9FAFB');
+                          return (
+                            <div
+                              key={i}
+                              onClick={() => {
+                                if (!isOptional) return;
+                                setSelectedOptionalItems(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(i)) next.delete(i); else next.add(i);
+                                  return next;
+                                });
+                              }}
+                              style={{
+                                display: 'grid', gridTemplateColumns: '1fr 110px', alignItems: 'center',
+                                padding: '12px 20px',
+                                borderBottom: i < allItems.length - 1 ? '1px solid #DDE8EE' : 'none',
+                                gap: 16, background: rowBg,
+                                cursor: isOptional ? 'pointer' : 'default',
+                                opacity: isOptional && !isSelected ? 0.7 : 1,
+                                transition: 'all .2s',
+                                outline: isOptional && isSelected ? '2px solid #F59E0B' : isOptional ? '1px dashed #D1D5DB' : 'none',
+                                outlineOffset: -1,
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                                {isOptional && (
+                                  <div style={{
+                                    width: 18, height: 18, border: isSelected ? 'none' : '2px solid #D1D5DB', borderRadius: 4,
+                                    background: isSelected ? '#F59E0B' : 'transparent',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: 10, color: 'white', fontWeight: 800, flexShrink: 0, marginTop: 2,
+                                    transition: 'all .2s',
+                                  }}>{isSelected ? '✓' : ''}</div>
+                                )}
+                                <div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                                    {item.type && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#009FE3' }}>{item.type}</div>}
+                                    {isOptional && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: '#B45309', background: '#FEF3C7', padding: '1px 5px', border: '1px solid #FCD34D' }}>Optional</div>}
+                                  </div>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>{item.name}</div>
+                                  {(item as any).description && <div style={{ fontSize: 11, color: '#AAAAAA', marginTop: 2 }}>{(item as any).description}</div>}
+                                </div>
+                              </div>
+                              <div style={{ textAlign: 'right' as const }}>
+                                {item.discounted_price != null && item.discounted_price < item.price ? (
+                                  <>
+                                    <div style={{ fontSize: 12, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through' }}>£{Number(item.price).toLocaleString('en-GB')}</div>
+                                    <div style={{ fontSize: 15, fontWeight: 800, color: isOptional ? (isSelected ? '#B45309' : '#9CA3AF') : '#009FE3' }}>£{Number(item.discounted_price).toLocaleString('en-GB')}</div>
+                                    {(item as any).show_discount_percent !== false && <div style={{ fontSize: 9, fontWeight: 700, color: '#22C55E', marginTop: 1 }}>Save {Math.round(((item.price - item.discounted_price) / item.price) * 100)}%</div>}
+                                    {(item as any).discount_note && <div style={{ fontSize: 10, color: '#6B7280', fontStyle: 'italic', marginTop: 2 }}>{(item as any).discount_note}</div>}
+                                  </>
+                                ) : (
+                                  <div style={{ fontSize: 15, fontWeight: 800, color: isOptional ? (isSelected ? '#B45309' : '#9CA3AF') : '#043D5D' }}>£{Number(item.price).toLocaleString('en-GB')}</div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    </>
+                  );
+                })()}
                 <div style={{ background: '#043D5D', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)' }}>Total one-time investment</span>
-                  <strong style={{ fontSize: 20, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em' }}>£{Number(proposal.upfront_total).toLocaleString('en-GB')} + VAT</strong>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)' }}>Total one-time investment</span>
+                    {optionalUpfrontAddOn > 0 && (
+                      <div style={{ fontSize: 10, color: '#FCD34D', marginTop: 2 }}>Includes £{optionalUpfrontAddOn.toLocaleString('en-GB')} of optional items</div>
+                    )}
+                  </div>
+                  <strong style={{ fontSize: 20, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em', transition: 'all .3s' }}>£{displayUpfrontTotal.toLocaleString('en-GB')} + VAT</strong>
                 </div>
                 {(proposal.upfront_notes || proposal.payment_terms) && (
                   <div style={{ padding: '10px 0', display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -768,7 +831,7 @@ export default function ProposalView() {
                   {/* One-time project — uses dynamic title */}
                   <div style={{ borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,.12)', padding: isMobile ? 0 : '0 32px' }}>
                     <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)', marginBottom: 8 }}>{((proposal as any).upfront_section_title || 'One-time project').replace(/^Part\s*\d+:\s*/i, '')}</div>
-                    <div style={{ fontSize: isMobile ? 28 : 28, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, transition: 'all .3s' }}>£{Number(proposal.upfront_total).toLocaleString('en-GB')}</div>
+                    <div style={{ fontSize: isMobile ? 28 : 28, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, transition: 'all .3s' }}>£{displayUpfrontTotal.toLocaleString('en-GB')}</div>
                     <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>Excl. VAT</div>
                   </div>
                   {/* First year total */}
