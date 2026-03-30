@@ -201,18 +201,21 @@ export function RetainerOptionsEditor({
                         {/* Core / Standard / Optional Extra toggle */}
                         <div className="flex items-center bg-background border border-border rounded overflow-hidden">
                           <button
+                            type="button"
                             onClick={() => updateOption(i, 'option_type', 'core')}
                             className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 transition-colors ${
                               r.option_type === 'core' ? 'bg-emerald-100 text-emerald-700' : 'text-muted-foreground hover:text-foreground'
                             }`}
                           >Core</button>
                           <button
+                            type="button"
                             onClick={() => updateOption(i, 'option_type', 'standard')}
                             className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 transition-colors ${
                               r.option_type === 'standard' ? 'bg-blue-100 text-blue-700' : 'text-muted-foreground hover:text-foreground'
                             }`}
                           >Standard</button>
                           <button
+                            type="button"
                             onClick={() => updateOption(i, 'option_type', 'optional_extra')}
                             className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 transition-colors ${
                               r.option_type === 'optional_extra' ? 'bg-amber-100 text-amber-700' : 'text-muted-foreground hover:text-foreground'
@@ -250,8 +253,13 @@ export function RetainerOptionsEditor({
                           value={r.type}
                           onChange={e => {
                             const product = products.find(p => p.name === e.target.value);
-                            updateOption(i, 'type', e.target.value);
-                            if (product) updateOption(i, 'price', product.default_price);
+                            const updated = [...options];
+                            updated[i] = {
+                              ...updated[i],
+                              type: e.target.value,
+                              ...(product ? { price: product.default_price } : {}),
+                            };
+                            onChange(updated);
                           }}
                           className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
                         >
