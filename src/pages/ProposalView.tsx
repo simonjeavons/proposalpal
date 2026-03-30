@@ -557,10 +557,10 @@ export default function ProposalView() {
           <div style={{ padding: isMobile ? '16px 16px' : '28px 32px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
               {/* Upfront */}
-              <div>
+              {(proposal.upfront_items || []).length > 0 && <div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 16 }}>{(proposal as any).upfront_section_title || 'Part 1: One-time project delivery'}</div>
                 {/* Upfront items table */}
-                {(proposal.upfront_items || []).length > 0 && (() => {
+                {(() => {
                   const allItems = proposal.upfront_items || [];
                   const hasOptional = allItems.some(item => (item as any).optional);
                   return (
@@ -651,7 +651,7 @@ export default function ProposalView() {
                     {proposal.payment_terms && <p style={{ fontSize: 12, color: '#AAAAAA', fontStyle: 'italic', margin: 0 }}>Payment: {proposal.payment_terms}. Statement of work issued before any work begins.</p>}
                   </div>
                 )}
-              </div>
+              </div>}
 
               {/* Core ongoing options — always included, not selectable */}
               {coreOptions.length > 0 && (
@@ -816,6 +816,14 @@ export default function ProposalView() {
                 </div>
               )}
 
+              {/* Pricing footnote — shown here when no upfront items */}
+              {(proposal.upfront_items || []).length === 0 && (proposal.upfront_notes || proposal.payment_terms) && (
+                <div style={{ padding: '10px 0', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {proposal.upfront_notes && <p style={{ fontSize: 12, color: '#AAAAAA', margin: 0 }}>{proposal.upfront_notes}</p>}
+                  {proposal.payment_terms && <p style={{ fontSize: 12, color: '#AAAAAA', fontStyle: 'italic', margin: 0 }}>Payment: {proposal.payment_terms}. Statement of work issued before any work begins.</p>}
+                </div>
+              )}
+
               {/* Investment summary */}
               <div style={{ background: '#043D5D', padding: isMobile ? '24px 16px' : '32px 36px' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.45)', marginBottom: isMobile ? 16 : 20 }}>Investment summary</div>
@@ -922,12 +930,15 @@ export default function ProposalView() {
           </div>
           <div style={{ padding: '28px 32px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14 }}>
-              {[
-                { n: 1, title: 'Choose your package', desc: 'Review the pricing above and click to choose your preferred package.' },
-                { n: 2, title: 'Sign your service agreement', desc: 'Sign to accept your Shoothill service agreement. No work begins and no payment is due until you\'ve signed.' },
-                { n: 3, title: 'Kick-off meeting', desc: `A 30-minute call with ${ownerName || 'your Shoothill contact'} to align on timelines, access requirements and next steps.` },
-                { n: 4, title: 'Handover to project manager', desc: 'Once signed, you\'ll be introduced to your dedicated Shoothill project manager who will guide you through onboarding, set up your project workspace, and ensure a smooth transition into delivery.' },
-              ].map((step, i) => (
+              {((proposal as any).next_steps && (proposal as any).next_steps.length > 0
+                ? (proposal as any).next_steps.map((s: any, i: number) => ({ n: i + 1, title: s.title, desc: s.description }))
+                : [
+                    { n: 1, title: 'Choose your package', desc: 'Review the investment options and make a selection.' },
+                    { n: 2, title: 'Sign your service agreement', desc: 'Sign to accept the Shoothill service agreement. Once this is received we\'ll be in contact.' },
+                    { n: 3, title: 'Kick-off meeting', desc: 'A 30-minute call to finalise outcomes, timelines and next steps.' },
+                    { n: 4, title: 'Handover to project lead', desc: 'You\'ll be introduced to your dedicated project lead who will guide you through onboarding and ensure a smooth transition into delivery.' },
+                  ]
+              ).map((step: any, i: number) => (
                 <div key={step.n} className="scroll-reveal" style={{ display: 'flex', gap: 14, padding: '18px 20px', border: '1px solid #DDE8EE', alignItems: 'flex-start', transitionDelay: `${i * 80}ms` }}>
                   <div style={{ width: 30, height: 30, background: '#009FE3', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>{step.n}</div>
                   <div>

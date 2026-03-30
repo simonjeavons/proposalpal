@@ -106,8 +106,16 @@ interface FormData {
   whats_needed: string;
   working_together: string;
   team_member_ids: string[];
+  next_steps: { title: string; description: string }[];
   status: string;
 }
+
+const DEFAULT_NEXT_STEPS: { title: string; description: string }[] = [
+  { title: 'Choose your package', description: 'Review the investment options and make a selection.' },
+  { title: 'Sign your service agreement', description: 'Sign to accept the Shoothill service agreement. Once this is received we\'ll be in contact.' },
+  { title: 'Kick-off meeting', description: 'A 30-minute call to finalise outcomes, timelines and next steps.' },
+  { title: 'Handover to project lead', description: 'You\'ll be introduced to your dedicated project lead who will guide you through onboarding and ensure a smooth transition into delivery.' },
+];
 
 const today = () => new Date().toISOString().split('T')[0];
 const in30Days = () => {
@@ -197,6 +205,7 @@ export default function ProposalEditor() {
     whats_needed: '',
     working_together: '',
     team_member_ids: [],
+    next_steps: [...DEFAULT_NEXT_STEPS],
     status: 'draft',
   });
 
@@ -279,6 +288,7 @@ export default function ProposalEditor() {
             whats_needed: (data as any).whats_needed || '',
             working_together: (data as any).working_together || '',
             team_member_ids: ((data as any).team_member_ids as string[]) || [],
+            next_steps: ((data as any).next_steps as { title: string; description: string }[]) || [...DEFAULT_NEXT_STEPS],
             status: data.status,
           });
           setSlug(data.slug);
@@ -771,6 +781,8 @@ export default function ProposalEditor() {
           ongoingSectionTitle={form.ongoing_section_title}
           onOngoingSectionTitleChange={v => updateField('ongoing_section_title', v)}
           onSaveToLibrary={(name, price) => saveItemToLibrary(name, price, '', 'ongoing')}
+          notes={form.upfront_notes}
+          onNotesChange={v => updateField('upfront_notes', v)}
         />
 
         {/* Project Team */}
@@ -866,6 +878,51 @@ export default function ProposalEditor() {
             <Field label="Office Phone" value={form.contact_phone} onChange={v => updateField('contact_phone', v)} />
             <Field label="Mobile" value={form.contact_mobile} onChange={v => updateField('contact_mobile', v)} />
           </Grid>
+        </Section>
+
+        {/* Next Steps */}
+        <Section title="Next Steps">
+          <p className="text-xs text-muted-foreground mb-4">Customise the "How We Get Started" steps shown on the proposal. Maximum 4 steps.</p>
+          <div className="space-y-3">
+            {form.next_steps.map((step, i) => (
+              <div key={i} className="flex items-start gap-3 bg-muted p-3 border border-border">
+                <div className="w-7 h-7 bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{i + 1}</div>
+                <div className="flex-1 space-y-2">
+                  <Input
+                    placeholder="Step title"
+                    value={step.title}
+                    onChange={e => {
+                      const updated = [...form.next_steps];
+                      updated[i] = { ...updated[i], title: e.target.value };
+                      updateField('next_steps', updated);
+                    }}
+                    className="text-sm font-semibold"
+                  />
+                  <textarea
+                    placeholder="Step description"
+                    value={step.description}
+                    onChange={e => {
+                      const updated = [...form.next_steps];
+                      updated[i] = { ...updated[i], description: e.target.value };
+                      updateField('next_steps', updated);
+                    }}
+                    rows={2}
+                    className="w-full border border-border bg-background p-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                  />
+                </div>
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive h-7 w-7 p-0 flex-shrink-0"
+                  onClick={() => updateField('next_steps', form.next_steps.filter((_, j) => j !== i))}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+            {form.next_steps.length < 4 && (
+              <Button variant="ghost" size="sm" className="gap-1 text-primary"
+                onClick={() => updateField('next_steps', [...form.next_steps, { title: '', description: '' }])}>
+                <Plus className="w-4 h-4" /> Add Step
+              </Button>
+            )}
+          </div>
         </Section>
 
         {/* Service Agreement Document */}

@@ -99,6 +99,8 @@ export interface RetainerOptionsEditorProps {
   showDiscountControls?: boolean;
   hideDiscountPrice?: boolean;
   onSaveToLibrary?: (name: string, price: number) => void;
+  notes?: string;
+  onNotesChange?: (v: string) => void;
 }
 
 export function RetainerOptionsEditor({
@@ -114,6 +116,8 @@ export function RetainerOptionsEditor({
   showDiscountControls = true,
   hideDiscountPrice = false,
   onSaveToLibrary,
+  notes,
+  onNotesChange,
 }: RetainerOptionsEditorProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -354,6 +358,18 @@ export function RetainerOptionsEditor({
             ))}
           </SortableContext>
         </DndContext>
+        {onNotesChange && (
+          <div className="pt-2">
+            <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Pricing Footnote</label>
+            <textarea
+              className="w-full border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+              rows={2}
+              placeholder="e.g. All prices exclude VAT. Travel and expenses charged at cost."
+              value={notes ?? ''}
+              onChange={e => onNotesChange(e.target.value)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

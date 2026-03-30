@@ -211,7 +211,7 @@ export function UpfrontItemsEditor({
         )}
         {onNotesChange && (
           <div className="pt-2">
-            <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Pricing Footnote (optional)</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Pricing Footnote</label>
             <textarea
               className="w-full border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
               rows={2}
