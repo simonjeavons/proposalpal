@@ -76,10 +76,25 @@ function Grid({ children }: { children: React.ReactNode }) {
 }
 
 function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const [local, setLocal] = useState(value);
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setLocal(value);
+  }, [value, focused]);
+
   return (
     <div>
       <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{label}</Label>
-      <Input type="text" value={value} onChange={e => onChange(e.target.value)} className="text-sm" />
+      <Input
+        type="text"
+        value={local}
+        onChange={e => { setLocal(e.target.value); onChange(e.target.value); }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => { setFocused(false); onChange(local); }}
+        className="text-sm"
+        autoComplete="off"
+      />
     </div>
   );
 }
