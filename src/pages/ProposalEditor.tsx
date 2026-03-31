@@ -765,8 +765,6 @@ export default function ProposalEditor() {
           currentServiceTypeId={currentServiceTypeId}
           sectionTitle={form.upfront_section_title}
           onSectionTitleChange={v => updateField('upfront_section_title', v)}
-          notes={form.upfront_notes}
-          onNotesChange={v => updateField('upfront_notes', v)}
           onSaveToLibrary={(name, price, desc) => saveItemToLibrary(name, price, desc, 'upfront')}
         />
 

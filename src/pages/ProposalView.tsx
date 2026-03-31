@@ -645,12 +645,6 @@ export default function ProposalView() {
                   </div>
                   <strong style={{ fontSize: 20, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em', transition: 'all .3s' }}>£{displayUpfrontTotal.toLocaleString('en-GB')} + VAT</strong>
                 </div>
-                {(proposal.upfront_notes || proposal.payment_terms) && (
-                  <div style={{ padding: '10px 0', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {proposal.upfront_notes && <p style={{ fontSize: 12, color: '#AAAAAA', margin: 0 }}>{proposal.upfront_notes}</p>}
-                    {proposal.payment_terms && <p style={{ fontSize: 12, color: '#AAAAAA', fontStyle: 'italic', margin: 0 }}>Payment: {proposal.payment_terms}. Statement of work issued before any work begins.</p>}
-                  </div>
-                )}
               </div>}
 
               {/* Core ongoing options — always included, not selectable */}
@@ -816,8 +810,8 @@ export default function ProposalView() {
                 </div>
               )}
 
-              {/* Pricing footnote — shown here when no upfront items */}
-              {(proposal.upfront_items || []).length === 0 && (proposal.upfront_notes || proposal.payment_terms) && (
+              {/* Pricing footnote */}
+              {(proposal.upfront_notes || proposal.payment_terms) && (
                 <div style={{ padding: '10px 0', display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {proposal.upfront_notes && <p style={{ fontSize: 12, color: '#AAAAAA', margin: 0 }}>{proposal.upfront_notes}</p>}
                   {proposal.payment_terms && <p style={{ fontSize: 12, color: '#AAAAAA', fontStyle: 'italic', margin: 0 }}>Payment: {proposal.payment_terms}. Statement of work issued before any work begins.</p>}
