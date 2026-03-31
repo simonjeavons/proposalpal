@@ -779,8 +779,6 @@ export default function ProposalEditor() {
           ongoingSectionTitle={form.ongoing_section_title}
           onOngoingSectionTitleChange={v => updateField('ongoing_section_title', v)}
           onSaveToLibrary={(name, price) => saveItemToLibrary(name, price, '', 'ongoing')}
-          notes={form.upfront_notes}
-          onNotesChange={v => updateField('upfront_notes', v)}
         />
 
         {/* Project Team */}
@@ -973,6 +971,16 @@ export default function ProposalEditor() {
               />
             </label>
           )}
+          <div className="mt-4">
+            <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Pricing Footnote</label>
+            <textarea
+              className="w-full border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+              rows={2}
+              placeholder="e.g. All prices exclude VAT. Travel and expenses charged at cost."
+              value={form.upfront_notes}
+              onChange={e => updateField('upfront_notes', e.target.value)}
+            />
+          </div>
           <div className="mt-4">
             <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">Payment Terms</label>
             <textarea

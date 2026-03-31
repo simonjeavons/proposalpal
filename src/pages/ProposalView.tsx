@@ -810,14 +810,6 @@ export default function ProposalView() {
                 </div>
               )}
 
-              {/* Pricing footnote */}
-              {(proposal.upfront_notes || proposal.payment_terms) && (
-                <div style={{ padding: '10px 0', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {proposal.upfront_notes && <p style={{ fontSize: 12, color: '#AAAAAA', margin: 0 }}>{proposal.upfront_notes}</p>}
-                  {proposal.payment_terms && <p style={{ fontSize: 12, color: '#AAAAAA', fontStyle: 'italic', margin: 0 }}>Payment: {proposal.payment_terms}. Statement of work issued before any work begins.</p>}
-                </div>
-              )}
-
               {/* Investment summary */}
               <div style={{ background: '#043D5D', padding: isMobile ? '24px 16px' : '32px 36px' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.45)', marginBottom: isMobile ? 16 : 20 }}>Investment summary</div>
@@ -849,19 +841,24 @@ export default function ProposalView() {
         </div>
       </div>
 
-      {/* DETAILS BAND — payment terms & validity */}
-      {(proposal.payment_terms || proposal.valid_until) && (
+      {/* DETAILS BAND — pricing footnote, payment terms & validity */}
+      {((proposal as any).upfront_notes || proposal.payment_terms || proposal.valid_until) && (
         <div style={{ background: 'white', borderTop: '1px solid #DDE8EE', borderBottom: '1px solid #DDE8EE' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '20px 16px' : '20px 48px', display: 'flex', flexWrap: 'wrap', gap: isMobile ? 16 : 40, alignItems: 'center' }}>
-            {proposal.payment_terms && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA' }}>Payment terms</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#043D5D' }}>{proposal.payment_terms}</div>
-              </div>
+          <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '20px 16px' : '20px 48px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {(proposal as any).upfront_notes && (
+              <p style={{ fontSize: 12, color: '#AAAAAA', margin: 0 }}>{(proposal as any).upfront_notes}</p>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA' }}>Proposal valid until</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>{formatDate(proposal.valid_until)}</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 16 : 40, alignItems: 'center' }}>
+              {proposal.payment_terms && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA' }}>Payment terms</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#043D5D' }}>{proposal.payment_terms}</div>
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#AAAAAA' }}>Proposal valid until</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>{formatDate(proposal.valid_until)}</div>
+              </div>
             </div>
           </div>
         </div>
