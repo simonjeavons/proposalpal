@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Save, Plus, Trash2, Eye, Upload, FileText, X, BookmarkPlus, GripVertical, ArrowDownWideNarrow } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Eye, Upload, FileText, X, BookmarkPlus, GripVertical, ArrowDownWideNarrow, LinkIcon, ExternalLink } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
@@ -165,6 +165,7 @@ export default function ProposalEditor() {
   const [showImportOptions, setShowImportOptions] = useState(false);
   const [showImportPhaseOptions, setShowImportPhaseOptions] = useState(false);
   const [agreementTemplates, setAgreementTemplates] = useState<AgreementTemplate[]>([]);
+  const [signingLink, setSigningLink] = useState('');
 
   const [form, setForm] = useState<FormData>({
     client_name: '',
@@ -300,10 +301,9 @@ export default function ProposalEditor() {
     }
   }, [id, isNew]);
 
-  const save = async () => {
-    setSaving(true);
+  const buildPayload = () => {
     const preparedUser = users.find(u => u.id === form.prepared_by_user_id);
-    const payload = {
+    return {
       ...form,
       upfront_total: form.upfront_items.reduce((sum, item) => sum + (item.discounted_price ?? item.price), 0),
       contract_file_url: contractFileUrl,
@@ -311,6 +311,11 @@ export default function ProposalEditor() {
       prepared_by_user_id: form.prepared_by_user_id || null,
       lead_team_member_id: preparedUser?.team_member_id || null,
     } as any;
+  };
+
+  const save = async () => {
+    setSaving(true);
+    const payload = buildPayload();
     if (isNew) {
       const { data, error } = await supabase.from("proposals").insert(payload).select().single();
       if (error) { toast.error("Failed to save"); setSaving(false); return; }
@@ -320,6 +325,31 @@ export default function ProposalEditor() {
       const { error } = await supabase.from("proposals").update(payload).eq("id", id);
       if (error) { toast.error("Failed to save"); setSaving(false); return; }
       toast.success("Proposal saved!");
+    }
+    setSaving(false);
+  };
+
+  const saveAndGenerateLink = async () => {
+    setSaving(true);
+    const payload = buildPayload();
+    if (isNew) {
+      const { data, error } = await supabase.from("proposals").insert({ ...payload, status: 'sent' }).select('id, slug').single();
+      if (error) { toast.error("Failed to save"); setSaving(false); return; }
+      setSlug(data.slug);
+      setSigningLink(`${window.location.origin}/p/${data.slug}`);
+      toast.success("Signing link generated!");
+      navigate(`/admin/proposals/${data.id}`, { replace: true });
+    } else {
+      const { error } = await supabase.from("proposals").update({ ...payload, status: 'sent' }).eq("id", id);
+      if (error) { toast.error("Failed to save"); setSaving(false); return; }
+      if (!slug) {
+        const { data } = await supabase.from("proposals").select("slug").eq("id", id).single();
+        if (data) setSlug(data.slug);
+        setSigningLink(`${window.location.origin}/p/${data?.slug}`);
+      } else {
+        setSigningLink(`${window.location.origin}/p/${slug}`);
+      }
+      toast.success("Signing link generated!");
     }
     setSaving(false);
   };
@@ -993,10 +1023,37 @@ export default function ProposalEditor() {
           </div>
         </Section>
 
-        <div className="pb-8">
-          <Button onClick={save} disabled={saving} className="bg-primary text-primary-foreground gap-2 font-bold uppercase tracking-wide w-full py-6">
-            <Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save Proposal'}
-          </Button>
+        <div className="pb-8 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Button onClick={save} disabled={saving} variant="outline" className="gap-2 font-bold uppercase tracking-wide py-6">
+              <Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save as Draft'}
+            </Button>
+            <Button onClick={saveAndGenerateLink} disabled={saving} className="bg-primary text-primary-foreground gap-2 font-bold uppercase tracking-wide py-6">
+              {saving ? (
+                <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />Saving…</>
+              ) : (
+                <><LinkIcon className="w-4 h-4" /> Save & Generate Signing Link</>
+              )}
+            </Button>
+          </div>
+          {signingLink && (
+            <div className="bg-card border border-primary p-4 space-y-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">Signing Link Ready</p>
+              <div className="flex items-center gap-2">
+                <input readOnly value={signingLink} className="flex-1 h-8 border border-border bg-muted px-3 text-xs font-mono rounded-md" />
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 flex-shrink-0"
+                  onClick={() => { navigator.clipboard.writeText(signingLink); toast.success('Copied!'); }}>
+                  <LinkIcon className="w-3.5 h-3.5" /> Copy
+                </Button>
+                <a href={signingLink} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 flex-shrink-0">
+                    <ExternalLink className="w-3.5 h-3.5" /> Open
+                  </Button>
+                </a>
+              </div>
+              <p className="text-xs text-muted-foreground">Share this link with your client for signing. Generate a new contract if you need to make changes.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
