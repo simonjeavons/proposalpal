@@ -897,7 +897,7 @@ export default function ProposalView() {
                     <div key={year} style={{ borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,.08)', paddingRight: isMobile ? 0 : 24, paddingLeft: isMobile || year === 1 ? 0 : 24 }}>
                       <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.4)', marginBottom: 6 }}>Year {year}</div>
                       <div style={{ fontSize: isMobile ? 20 : 22, fontWeight: 700, color: 'rgba(255,255,255,.65)', letterSpacing: '-.02em', lineHeight: 1 }}>£{total.toLocaleString('en-GB')}</div>
-                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', marginTop: 4, minHeight: 16 }}>{year === 1 && displayUpfrontTotal > 0 ? 'Incl. one-off' : '\u00A0'}</div>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', marginTop: 4, minHeight: 16 }}>{year === 1 && displayUpfrontTotal > 0 ? 'Incl. one-off · + VAT' : '+ VAT'}</div>
                     </div>
                   ))}
                   {totalYears > 1 && (
