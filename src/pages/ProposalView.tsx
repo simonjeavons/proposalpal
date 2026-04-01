@@ -147,16 +147,44 @@ export default function ProposalView() {
   const selectedStandardOption = standardOptions[selectedStandard] || null;
   const effectivePrice = (r: { price: number; discounted_price?: number }) => r.discounted_price ?? r.price;
   const optionTotal = (r: { price: number; discounted_price?: number; quantity?: number }) => (r.quantity ?? 1) * effectivePrice(r);
+
+  // Frequency helpers
+  const FREQ_LABEL: Record<string, string> = { weekly: '/week', monthly: '/month', annual: '/year' };
+  const freqLabel = (r: RetainerOption) => FREQ_LABEL[r.frequency ?? 'monthly'] ?? '/month';
+  const annualMultiplier = (r: RetainerOption) => {
+    if (r.frequency === 'weekly') return 52;
+    if (r.frequency === 'annual') return 1;
+    return 12;
+  };
+
+  // Gather all selected options for totals
+  const allSelectedOptions: RetainerOption[] = [
+    ...coreOptions,
+    ...(selectedStandardOption ? [selectedStandardOption] : []),
+    ...[...checkedExtras].map(i => optionalExtras[i]).filter(Boolean),
+  ];
+
+  // Per-frequency totals for display
   const coreTotal = coreOptions.reduce((sum, r) => sum + optionTotal(r), 0);
   const extrasTotal = [...checkedExtras].reduce((sum, i) => sum + optionTotal(optionalExtras[i] ?? { price: 0 }), 0);
-  const monthlyTotal = coreTotal + (selectedStandardOption ? optionTotal(selectedStandardOption) : 0) + extrasTotal;
+  const ongoingTotal = coreTotal + (selectedStandardOption ? optionTotal(selectedStandardOption) : 0) + extrasTotal;
+
+  // Determine dominant frequency for label
+  const frequencies = allSelectedOptions.map(r => r.frequency ?? 'monthly');
+  const dominantFreq = frequencies.length > 0 && frequencies.every(f => f === frequencies[0]) ? frequencies[0] : 'mixed';
+  const ongoingLabel = dominantFreq === 'monthly' ? 'Monthly ongoing' : dominantFreq === 'annual' ? 'Annual ongoing' : dominantFreq === 'weekly' ? 'Weekly ongoing' : 'Ongoing';
+  const ongoingFreqSuffix = dominantFreq !== 'mixed' ? (FREQ_LABEL[dominantFreq] ?? '/month') : '/year';
+
+  // Annual cost for first-year calculation
+  const annualOngoing = allSelectedOptions.reduce((sum, r) => sum + optionTotal(r) * annualMultiplier(r), 0);
+
   const optionalUpfrontItems = (proposal.upfront_items || []).map((item, i) => ({ item, index: i })).filter(({ item }) => (item as any).optional);
   const optionalUpfrontAddOn = [...selectedOptionalItems].reduce((sum, i) => {
     const item = proposal.upfront_items?.[i];
     return sum + (item ? (item.discounted_price ?? item.price) : 0);
   }, 0);
   const displayUpfrontTotal = Number(proposal.upfront_total) + optionalUpfrontAddOn;
-  const firstYearTotal = displayUpfrontTotal + (monthlyTotal * 12);
+  const firstYearTotal = displayUpfrontTotal + annualOngoing;
 
   // Timeline helpers
   const parseWeeks = (d: string) => Math.max(1, parseInt(d?.match(/(\d+)/)?.[1] ?? '1'));
@@ -676,7 +704,7 @@ export default function ProposalView() {
                           ) : (
                             <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                           )}
-                          <div style={{ fontSize: 11, color: '#AAAAAA' }}>/ month{r.term_months ? ` · ${r.term_months} mo` : ''}</div>
+                          <div style={{ fontSize: 11, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}{r.term_months ? ` · ${r.term_months} mo` : ''}</div>
                           <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity ?? 1} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
                         </div>
                       </div>
@@ -724,14 +752,14 @@ export default function ProposalView() {
                               £{((r.quantity ?? 1) * r.price).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
                             <div style={{ fontSize: 24, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>
-                              £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>/ month{r.term_months ? ` for ${r.term_months} months` : ''}</span>
+                              £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}{r.term_months ? ` for ${r.term_months} months` : ''}</span>
                             </div>
                             {r.show_discount_percent !== false && <div style={{ display: 'inline-block', fontSize: 9, fontWeight: 700, color: '#22C55E', background: '#F0FDF4', padding: '2px 6px', marginBottom: 4 }}>Save {Math.round(((r.price - r.discounted_price) / r.price) * 100)}%</div>}
                             {r.discount_note && <div style={{ fontSize: 10, color: '#6B7280', fontStyle: 'italic', marginBottom: 4 }}>{r.discount_note}</div>}
                           </>
                         ) : (
                           <div style={{ fontSize: 24, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>
-                            £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>/ month{r.term_months ? ` for ${r.term_months} months` : ''}</span>
+                            £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}{r.term_months ? ` for ${r.term_months} months` : ''}</span>
                           </div>
                         )}
                         <div style={{ fontSize: 11, color: '#AAAAAA', marginBottom: 4 }}>{r.quantity ?? 1} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
@@ -800,7 +828,7 @@ export default function ProposalView() {
                             ) : (
                               <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                             )}
-                            <div style={{ fontSize: 11, color: '#AAAAAA' }}>/ month{r.term_months ? ` · ${r.term_months} mo` : ''}</div>
+                            <div style={{ fontSize: 11, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}{r.term_months ? ` · ${r.term_months} mo` : ''}</div>
                             <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity ?? 1} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
                           </div>
                         </div>
@@ -813,13 +841,13 @@ export default function ProposalView() {
               {/* Investment summary */}
               <div style={{ background: '#043D5D', padding: isMobile ? '24px 16px' : '32px 36px' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.45)', marginBottom: isMobile ? 16 : 20 }}>Investment summary</div>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : monthlyTotal > 0 ? '1fr 1fr 1fr' : '1fr 1fr', gap: isMobile ? 20 : 0, alignItems: 'end' }}>
-                  {/* Monthly ongoing — hero position */}
-                  {monthlyTotal > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : ongoingTotal > 0 ? '1fr 1fr 1fr' : '1fr 1fr', gap: isMobile ? 20 : 0, alignItems: 'end' }}>
+                  {/* Ongoing — hero position */}
+                  {ongoingTotal > 0 && (
                     <div style={{ borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,.12)', paddingRight: isMobile ? 0 : 32 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)', marginBottom: 8 }}>Monthly ongoing</div>
-                      <div style={{ fontSize: isMobile ? 36 : 42, fontWeight: 900, color: '#00D4FF', letterSpacing: '-.04em', lineHeight: 1, transition: 'all .3s' }}>£{monthlyTotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>Excl. VAT / month{selectedStandardOption?.term_months ? ` · ${selectedStandardOption.term_months} month term` : ''}</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)', marginBottom: 8 }}>{ongoingLabel}</div>
+                      <div style={{ fontSize: isMobile ? 36 : 42, fontWeight: 900, color: '#00D4FF', letterSpacing: '-.04em', lineHeight: 1, transition: 'all .3s' }}>£{ongoingTotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>Excl. VAT {ongoingFreqSuffix}{selectedStandardOption?.term_months ? ` · ${selectedStandardOption.term_months} month term` : ''}</div>
                     </div>
                   )}
                   {/* One-time project — uses dynamic title */}

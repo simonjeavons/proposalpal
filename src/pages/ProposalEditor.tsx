@@ -809,6 +809,7 @@ export default function ProposalEditor() {
           ongoingSectionTitle={form.ongoing_section_title}
           onOngoingSectionTitleChange={v => updateField('ongoing_section_title', v)}
           onSaveToLibrary={(name, price) => saveItemToLibrary(name, price, '', 'ongoing')}
+          showFrequency
         />
 
         {/* Project Team */}
