@@ -186,6 +186,15 @@ export default function ProposalView() {
   const displayUpfrontTotal = Number(proposal.upfront_total) + optionalUpfrontAddOn;
   const firstYearTotal = displayUpfrontTotal + annualOngoing;
 
+  // Multi-year totals based on max term
+  const maxTermMonths = Math.max(...allSelectedOptions.map(r => r.term_months ?? 12), 12);
+  const totalYears = Math.min(Math.ceil(maxTermMonths / 12), 5);
+  const yearTotals = Array.from({ length: totalYears }, (_, y) => ({
+    year: y + 1,
+    total: (y === 0 ? displayUpfrontTotal : 0) + annualOngoing,
+  }));
+  const contractTotal = yearTotals.reduce((sum, y) => sum + y.total, 0);
+
   // Timeline helpers
   const parseWeeks = (d: string) => Math.max(1, parseInt(d?.match(/(\d+)/)?.[1] ?? '1'));
   const hasTimeline = proposal.phases.length > 0 && proposal.phases.some(p => p.wc_date);
@@ -841,8 +850,9 @@ export default function ProposalView() {
               {/* Investment summary */}
               <div style={{ background: '#043D5D', padding: isMobile ? '24px 16px' : '32px 36px' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.45)', marginBottom: isMobile ? 16 : 20 }}>Investment summary</div>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : ongoingTotal > 0 ? '1fr 1fr 1fr' : '1fr 1fr', gap: isMobile ? 20 : 0, alignItems: 'end' }}>
-                  {/* Ongoing — hero position */}
+
+                {/* Row 1: Ongoing rate + Upfront */}
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : ongoingTotal > 0 ? '1fr 1fr' : '1fr', gap: isMobile ? 20 : 0, alignItems: 'end' }}>
                   {ongoingTotal > 0 && (
                     <div style={{ borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,.12)', paddingRight: isMobile ? 0 : 32 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)', marginBottom: 8 }}>{ongoingLabel}</div>
@@ -850,18 +860,32 @@ export default function ProposalView() {
                       <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>Excl. VAT {ongoingFreqSuffix}{selectedStandardOption?.term_months ? ` · ${selectedStandardOption.term_months} month term` : ''}</div>
                     </div>
                   )}
-                  {/* One-time project — uses dynamic title */}
-                  <div style={{ borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,.12)', padding: isMobile ? 0 : '0 32px' }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)', marginBottom: 8 }}>{((proposal as any).upfront_section_title || 'One-time project').replace(/^Part\s*\d+:\s*/i, '')}</div>
-                    <div style={{ fontSize: isMobile ? 28 : 28, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, transition: 'all .3s' }}>£{displayUpfrontTotal.toLocaleString('en-GB')}</div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>Excl. VAT</div>
-                  </div>
-                  {/* First year total */}
-                  <div style={{ padding: isMobile ? 0 : '0 0 0 32px' }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)', marginBottom: 8 }}>First year total</div>
-                    <div style={{ fontSize: isMobile ? 28 : 28, fontWeight: 800, color: 'rgba(255,255,255,.85)', letterSpacing: '-.03em', lineHeight: 1, transition: 'all .3s' }}>£{firstYearTotal.toLocaleString('en-GB')}</div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>+ VAT · indicative first-year cost</div>
-                  </div>
+                  {displayUpfrontTotal > 0 && (
+                    <div style={{ padding: isMobile ? 0 : '0 32px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)', marginBottom: 8 }}>{((proposal as any).upfront_section_title || 'One-time project').replace(/^Part\s*\d+:\s*/i, '')}</div>
+                      <div style={{ fontSize: isMobile ? 28 : 28, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, transition: 'all .3s' }}>£{displayUpfrontTotal.toLocaleString('en-GB')}</div>
+                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>Excl. VAT · one-off</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Row 2: Year-by-year breakdown */}
+                <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', marginTop: 24, paddingTop: 24, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${Math.min(totalYears + 1, 6)}, 1fr)`, gap: isMobile ? 16 : 0, alignItems: 'end' }}>
+                  {yearTotals.map(({ year, total }) => (
+                    <div key={year} style={{ borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,.08)', paddingRight: isMobile ? 0 : 24, paddingLeft: isMobile || year === 1 ? 0 : 24 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.4)', marginBottom: 6 }}>Year {year}</div>
+                      <div style={{ fontSize: isMobile ? 22 : 24, fontWeight: 800, color: year === 1 ? 'rgba(255,255,255,.85)' : 'rgba(255,255,255,.6)', letterSpacing: '-.03em', lineHeight: 1 }}>£{total.toLocaleString('en-GB')}</div>
+                      {year === 1 && displayUpfrontTotal > 0 && <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)', marginTop: 4 }}>Incl. one-off</div>}
+                    </div>
+                  ))}
+                  {/* Contract total */}
+                  {totalYears > 1 && (
+                    <div style={{ paddingLeft: isMobile ? 0 : 24, borderTop: isMobile ? '1px solid rgba(255,255,255,.1)' : 'none', paddingTop: isMobile ? 16 : 0 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.4)', marginBottom: 6 }}>{totalYears}-Year total</div>
+                      <div style={{ fontSize: isMobile ? 22 : 24, fontWeight: 900, color: 'rgba(255,255,255,.95)', letterSpacing: '-.03em', lineHeight: 1 }}>£{contractTotal.toLocaleString('en-GB')}</div>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)', marginTop: 4 }}>+ VAT</div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
