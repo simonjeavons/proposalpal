@@ -199,14 +199,17 @@ export default function ProposalView() {
   const parseWeeks = (d: string) => Math.max(1, parseInt(d?.match(/(\d+)/)?.[1] ?? '1'));
   const hasTimeline = proposal.phases.length > 0 && proposal.phases.some(p => p.wc_date);
 
-  // Dynamic section numbering (shifts if partnership overview and/or timeline shown)
+  // Dynamic section numbering — only count sections that are actually shown
   const hasPartnership = !!(proposal as any).partnership_overview;
-  const po = hasPartnership ? 1 : 0; // partnership offset
-  const numUnderstanding = String(1 + po).padStart(2, '0');
-  const numTimeline      = String(2 + po).padStart(2, '0');
-  const numPricing       = String(2 + po + (hasTimeline ? 1 : 0)).padStart(2, '0');
-  const numTeam          = String(3 + po + (hasTimeline ? 1 : 0)).padStart(2, '0');
-  const numSteps         = String(4 + po + (hasTimeline ? 1 : 0)).padStart(2, '0');
+  const hasChallenge = !!(proposal.challenge_intro?.trim()) || proposal.challenges.length > 0;
+  let sectionNum = 0;
+  const nextSection = () => String(++sectionNum).padStart(2, '0');
+  const numPartnership   = hasPartnership ? nextSection() : '';
+  const numUnderstanding = hasChallenge ? nextSection() : '';
+  const numTimeline      = hasTimeline ? nextSection() : '';
+  const numPricing       = nextSection();
+  const numTeam          = nextSection();
+  const numSteps         = nextSection();
 
   // Shoothill contact (proposal owner) — extract name only from "First Last, Job Title"
   const ownerName = proposal.prepared_by ? proposal.prepared_by.split(',')[0].trim() : '';
@@ -308,7 +311,7 @@ export default function ProposalView() {
           <div className="scroll-reveal" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
             <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const, marginTop: 3 }}>01</div>
+                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const, marginTop: 3 }}>{numPartnership}</div>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 8 }}>Your Business &amp; Our Partnership</div>
                   <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>How we work together</h2>
@@ -328,7 +331,7 @@ export default function ProposalView() {
       )}
 
       {/* CLIENT CHALLENGE */}
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
+      {hasChallenge && <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 16px' : '0 48px' }}>
         <div id="challenge" style={{ background: 'white', border: '1px solid #DDE8EE', margin: '28px 0' }}>
           <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const, marginTop: 3 }}>{numUnderstanding}</div>
@@ -369,7 +372,7 @@ export default function ProposalView() {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* MARKETING SERVICES — additional narrative sections */}
       {proposal.sector?.toLowerCase().includes('marketing') && (() => {
