@@ -151,7 +151,7 @@ export default function ProposalView() {
   // Frequency helpers
   const FREQ_LABEL: Record<string, string> = { weekly: '/week', monthly: '/month', annual: '/year' };
   const freqLabel = (r: RetainerOption) => FREQ_LABEL[r.frequency ?? 'monthly'] ?? '/month';
-  const contractTotal = (r: RetainerOption) => {
+  const optionContractTotal = (r: RetainerOption) => {
     if (!r.term_months) return null;
     const freq = r.frequency ?? 'monthly';
     const periods = freq === 'annual' ? r.term_months / 12 : freq === 'weekly' ? r.term_months * 4.33 : r.term_months;
@@ -729,7 +729,7 @@ export default function ProposalView() {
                             <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}</span></div>
                           )}
                           {(r.quantity ?? 1) > 1 && <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each {freqLabel(r).replace('/', '/ ')}</div>}
-                          {r.term_months && <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.term_months}-month term{contractTotal(r) != null && <> · £{contractTotal(r)!.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total</>}</div>}
+                          {r.term_months && <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.term_months}-month term{optionContractTotal(r) != null && <> · £{optionContractTotal(r)!.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total</>}</div>}
                         </div>
                       </div>
                     ))}
@@ -787,7 +787,7 @@ export default function ProposalView() {
                           </div>
                         )}
                         {(r.quantity ?? 1) > 1 && <div style={{ fontSize: 11, color: '#AAAAAA', marginBottom: 2 }}>{r.quantity} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each {freqLabel(r).replace('/', '/ ')}</div>}
-                        {r.term_months && <div style={{ fontSize: 11, color: '#AAAAAA', marginBottom: 4 }}>{r.term_months}-month term{contractTotal(r) != null && <> · £{contractTotal(r)!.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total</>}</div>}
+                        {r.term_months && <div style={{ fontSize: 11, color: '#AAAAAA', marginBottom: 4 }}>{r.term_months}-month term{optionContractTotal(r) != null && <> · £{optionContractTotal(r)!.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total</>}</div>}
                         {r.features.filter(f => f.trim()).length > 0 && (
                           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12, paddingTop: 12, borderTop: '1px solid #DDE8EE', padding: 0 }}>
                             {r.features.filter(f => f.trim()).map((f, j) => (
@@ -860,7 +860,7 @@ export default function ProposalView() {
                               <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}</span></div>
                             )}
                             {(r.quantity ?? 1) > 1 && <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each {freqLabel(r).replace('/', '/ ')}</div>}
-                            {r.term_months && <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.term_months}-month term{contractTotal(r) != null && <> · £{contractTotal(r)!.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total</>}</div>}
+                            {r.term_months && <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.term_months}-month term{optionContractTotal(r) != null && <> · £{optionContractTotal(r)!.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total</>}</div>}
                           </div>
                         </div>
                       );

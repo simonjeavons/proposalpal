@@ -734,8 +734,6 @@ export default function ProposalAccept() {
     ? `/contracts/${contractFileUrl}#toolbar=1&navpanes=0`
     : generatedPdfUrl;
   const hasServiceAgreement = !!(contractFileUrl || templateSections.length > 0);
-    ? `${generatedPdfUrl}#toolbar=1&navpanes=0`
-    : null;
 
   const downloadPdfUrl = contractFileUrl
     ? `/contracts/${contractFileUrl}`
