@@ -1140,7 +1140,7 @@ export default function AdminDashboard() {
         {/* Proposals Tab */}
         {activeTab === "proposals" && (() => {
           const fmtGbp = (n: number) => n === 0 ? '—' : `£${n.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-          const monthlyTotal = (p: Proposal) => ((p.retainer_options || []) as any[]).reduce((s: number, r: any) => s + (r.price ?? 0) * (r.quantity ?? 1), 0);
+          const monthlyTotal = (p: Proposal) => ((p.retainer_options || []) as any[]).reduce((s: number, r: any) => s + (r.discounted_price ?? r.price ?? 0) * (r.quantity ?? 1), 0);
           const uniqueSectors = [...new Set(proposals.map(p => p.sector).filter(Boolean))] as string[];
           const uniqueUsers = [...new Set(proposals.map(p => p.prepared_by).filter(Boolean))] as string[];
           const filtered = proposals.filter(p => {
