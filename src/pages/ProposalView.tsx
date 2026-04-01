@@ -895,7 +895,7 @@ export default function ProposalView() {
                   ))}
                   {totalYears > 1 && (
                     <div style={{ paddingLeft: isMobile ? 0 : 24 }}>
-                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: '#00D4FF', opacity: 0.7, marginBottom: 6 }}>{totalYears}-Year total</div>
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: '#00D4FF', opacity: 0.7, marginBottom: 6 }}>Total contract value</div>
                       <div style={{ fontSize: isMobile ? 24 : 28, fontWeight: 900, color: '#00D4FF', letterSpacing: '-.03em', lineHeight: 1 }}>£{contractTotal.toLocaleString('en-GB')}</div>
                       <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', marginTop: 4 }}>+ VAT</div>
                     </div>
