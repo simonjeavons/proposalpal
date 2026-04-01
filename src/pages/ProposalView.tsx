@@ -254,7 +254,7 @@ export default function ProposalView() {
       </nav>
 
       {/* ABOUT */}
-      <section id="about" style={{ background: 'white', borderBottom: '1px solid #DDE8EE' }}>
+      <section id="about" className="no-print" style={{ background: 'white', borderBottom: '1px solid #DDE8EE' }}>
         <div className="scroll-reveal print-compact" style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '32px 20px' : '52px 48px', display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1fr 1fr', gap: isTablet ? 32 : 72, alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -288,7 +288,7 @@ export default function ProposalView() {
       </section>
 
       {/* SIMON QUOTE */}
-      <section className="print-bg-white" style={{ background: '#F4F7FA', borderBottom: '1px solid #DDE8EE' }}>
+      <section className="print-bg-white no-print" style={{ background: '#F4F7FA', borderBottom: '1px solid #DDE8EE' }}>
         <div className="scroll-reveal print-compact" style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '32px 20px' : '56px 48px', display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1fr 280px', gap: isTablet ? 24 : 64, alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: 80, fontWeight: 900, color: '#009FE3', opacity: .2, lineHeight: .8, marginBottom: 6, fontFamily: 'Georgia, serif' }}>"</div>
@@ -1010,7 +1010,7 @@ export default function ProposalView() {
       </div>
 
       {/* TESTIMONIALS */}
-      <section id="testimonials" className="print-bg-white" style={{ background: '#F4F7FA', borderBottom: '1px solid #DDE8EE' }}>
+      <section id="testimonials" className="print-bg-white no-print" style={{ background: '#F4F7FA', borderBottom: '1px solid #DDE8EE' }}>
         <div className="print-compact" style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '32px 20px' : '52px 48px' }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <span style={{ width: 24, height: 2, background: '#009FE3', display: 'block' }} />What Our Clients Say
@@ -1041,7 +1041,7 @@ export default function ProposalView() {
       </section>
 
       {/* CLIENT LOGOS */}
-      <section id="clients" style={{ background: 'white', borderBottom: '1px solid #DDE8EE' }}>
+      <section id="clients" className="no-print" style={{ background: 'white', borderBottom: '1px solid #DDE8EE' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? 20 : 48 }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <span style={{ width: 24, height: 2, background: '#009FE3', display: 'block' }} />Clients We've Worked With
@@ -1091,7 +1091,7 @@ export default function ProposalView() {
       </section>
 
       {/* FOOTER */}
-      <section id="contact" style={{ background: '#043D5D', padding: '52px 0 40px', position: 'relative', overflow: 'hidden' }}>
+      <section id="contact" className="no-print" style={{ background: '#043D5D', padding: '52px 0 40px', position: 'relative', overflow: 'hidden' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0 20px' : '0 56px', position: 'relative', zIndex: 1 }}>
           <div className="scroll-reveal" style={{ display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1 }}>
 
