@@ -480,8 +480,10 @@ export default function ProposalAccept() {
         const upfrontAmt = Number(proposal.upfront_total);
         const stdPrice = selStandard ? (selStandard.quantity ?? 1) * (selStandard.discounted_price ?? selStandard.price) : 0;
         const extrasPrice = selExtras.reduce((sum, r) => sum + (r.quantity ?? 1) * (r.discounted_price ?? r.price), 0);
-        const monthlyAmt = stdPrice + extrasPrice;
-        const firstYrTotal = upfrontAmt + monthlyAmt * 12;
+        const allOpts: RetainerOption[] = [...coreOpts, ...(selStandard ? [selStandard] : []), ...selExtras];
+        const annualAmt = allOpts.reduce((sum, r) => sum + (r.quantity ?? 1) * (r.discounted_price ?? r.price) * (r.frequency === 'weekly' ? 52 : r.frequency === 'annual' ? 1 : 12), 0);
+        const ongoingAmt = stdPrice + extrasPrice;
+        const firstYrTotal = upfrontAmt + annualAmt;
 
         const [{ pdf }, { ServiceAgreementPDF }] = await Promise.all([
           import('@react-pdf/renderer'),
@@ -498,7 +500,7 @@ export default function ProposalAccept() {
           selectedStandard: selStandard,
           selectedExtras: selExtras,
           upfrontTotal: upfrontAmt,
-          monthlyTotal: monthlyAmt,
+          monthlyTotal: ongoingAmt,
           firstYearTotal: firstYrTotal,
           paymentTerms: (proposal as any).payment_terms || '',
           contactName: proposal.contact_name || '',
@@ -548,9 +550,31 @@ export default function ProposalAccept() {
   const corePrice = coreOptions.reduce((sum, r) => sum + optionTotal(r), 0);
   const standardPrice = selectedStandard ? optionTotal(selectedStandard) : 0;
   const extrasPrice = selectedExtras.reduce((sum, r) => sum + optionTotal(r), 0);
-  const monthlyTotal = corePrice + standardPrice + extrasPrice;
-  const monthlyAnnual = monthlyTotal * 12;
-  const firstYearTotal = upfront + monthlyAnnual;
+  const ongoingTotal = corePrice + standardPrice + extrasPrice;
+
+  // Frequency-aware annual calculation
+  const annualMultiplier = (r: RetainerOption) => {
+    if (r.frequency === 'weekly') return 52;
+    if (r.frequency === 'annual') return 1;
+    return 12;
+  };
+  const allSelectedOptions: RetainerOption[] = [
+    ...coreOptions,
+    ...(selectedStandard ? [selectedStandard] : []),
+    ...selectedExtras,
+  ];
+  const annualOngoing = allSelectedOptions.reduce((sum, r) => sum + optionTotal(r) * annualMultiplier(r), 0);
+  const frequencies = allSelectedOptions.map(r => r.frequency ?? 'monthly');
+  const dominantFreq = frequencies.length > 0 && frequencies.every(f => f === frequencies[0]) ? frequencies[0] : 'mixed';
+  const FREQ_LABEL: Record<string, string> = { weekly: '/wk', monthly: '/mo', annual: '/yr' };
+  const freqSuffix = dominantFreq !== 'mixed' ? (FREQ_LABEL[dominantFreq] ?? '/mo') : '/yr';
+  const ongoingLabel = dominantFreq === 'annual' ? 'Annual Ongoing' : dominantFreq === 'weekly' ? 'Weekly Ongoing' : 'Monthly Ongoing';
+
+  // Max term for multi-year breakdown
+  const maxTermMonths = Math.max(...allSelectedOptions.map(r => r.term_months ?? 12), 12);
+  const totalYears = Math.min(Math.ceil(maxTermMonths / 12), 5);
+  const firstYearTotal = upfront + annualOngoing;
+  const contractTotal = upfront + annualOngoing * totalYears;
 
   const contractFileUrl = (proposal as any).contract_file_url as string | null;
 
@@ -591,8 +615,10 @@ export default function ProposalAccept() {
         const coreAmt = coreOpts.reduce((sum, r) => sum + (r.quantity ?? 1) * (r.discounted_price ?? r.price), 0);
         const stdPrice = selStandard ? (selStandard.quantity ?? 1) * (selStandard.discounted_price ?? selStandard.price) : 0;
         const extrasPrice = selExtras.reduce((sum, r) => sum + (r.quantity ?? 1) * (r.discounted_price ?? r.price), 0);
-        const monthlyAmt = coreAmt + stdPrice + extrasPrice;
-        const firstYrTotal = upfrontAmt + monthlyAmt * 12;
+        const allOpts2: RetainerOption[] = [...coreOpts, ...(selStandard ? [selStandard] : []), ...selExtras];
+        const annualAmt2 = allOpts2.reduce((sum, r) => sum + (r.quantity ?? 1) * (r.discounted_price ?? r.price) * (r.frequency === 'weekly' ? 52 : r.frequency === 'annual' ? 1 : 12), 0);
+        const ongoingAmt2 = coreAmt + stdPrice + extrasPrice;
+        const firstYrTotal = upfrontAmt + annualAmt2;
 
         const signedProps = {
           clientName: proposal.client_name,
@@ -604,7 +630,7 @@ export default function ProposalAccept() {
           selectedStandard: selStandard,
           selectedExtras: selExtras,
           upfrontTotal: upfrontAmt,
-          monthlyTotal: monthlyAmt,
+          monthlyTotal: ongoingAmt2,
           firstYearTotal: firstYrTotal,
           paymentTerms: (proposal as any).payment_terms || '',
           contactName: proposal.contact_name || '',
@@ -663,8 +689,8 @@ export default function ProposalAccept() {
       selected_retainer_index: standardIndex,
       selected_extras: selectedExtrasIndices,
       upfront_total: upfront,
-      retainer_price: monthlyTotal,
-      first_year_total: firstYearTotal,
+      retainer_price: ongoingTotal,
+      first_year_total: contractTotal,
       signature_data: signatureData,
       signed_contract_url: signedContractUrl,
       signing_error: signingError || null,
@@ -730,23 +756,25 @@ export default function ProposalAccept() {
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Pricing Summary</h2>
           </div>
           <div style={{ padding: isMobile ? '16px' : '24px 28px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: monthlyTotal > 0 ? '1fr 1fr' : '1fr', gap: 16, marginBottom: 20 }}>
-              <div style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 6 }}>One-Time Project</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(upfront)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT</span></div>
-              </div>
-              {monthlyTotal > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: ongoingTotal > 0 ? '1fr 1fr' : '1fr', gap: 16, marginBottom: 20 }}>
+              {upfront > 0 && (
+                <div style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 6 }}>One-Time Project</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(upfront)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT</span></div>
+                </div>
+              )}
+              {ongoingTotal > 0 && (
                 <div style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 6 }}>
-                    Monthly Ongoing{selectedStandard ? ` — ${selectedStandard.name || selectedStandard.type}` : ''}
+                    {ongoingLabel}{selectedStandard ? ` — ${selectedStandard.name || selectedStandard.type}` : ''}
                   </div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(monthlyTotal)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT / mo</span></div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(ongoingTotal)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT {freqSuffix}</span></div>
                   {selectedExtras.length > 0 && (
                     <div style={{ fontSize: 12, color: '#3A6278', marginTop: 4 }}>
                       Includes: {selectedExtras.map(r => r?.name || r?.type).filter(Boolean).join(', ')}
                     </div>
                   )}
-                  <div style={{ fontSize: 12, color: '#AAAAAA', marginTop: 2 }}>Annual: {formatCurrency(monthlyAnnual)}</div>
+                  {dominantFreq !== 'annual' && <div style={{ fontSize: 12, color: '#AAAAAA', marginTop: 2 }}>Annual: {formatCurrency(annualOngoing)}</div>}
                 </div>
               )}
             </div>
@@ -786,7 +814,7 @@ export default function ProposalAccept() {
                           )}
                         </span>
                         <span style={{ fontSize: 13, fontWeight: 700, color: '#043D5D', flexShrink: 0 }}>
-                          +{formatCurrency((extra.quantity ?? 1) * (extra.discounted_price ?? extra.price))}/mo
+                          +{formatCurrency((extra.quantity ?? 1) * (extra.discounted_price ?? extra.price))}{FREQ_LABEL[extra.frequency ?? 'monthly'] ?? '/mo'}
                         </span>
                       </div>
                     );
@@ -796,8 +824,8 @@ export default function ProposalAccept() {
             )}
 
             <div style={{ background: '#043D5D', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>First Year Total</span>
-              <span style={{ fontSize: 24, fontWeight: 800, color: '#009FE3', letterSpacing: '-.02em' }}>{formatCurrency(firstYearTotal)}<span style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,.4)' }}> + VAT</span></span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Total Contract Value{totalYears > 1 ? ` (${totalYears} years)` : ''}</span>
+              <span style={{ fontSize: 24, fontWeight: 800, color: '#009FE3', letterSpacing: '-.02em' }}>{formatCurrency(contractTotal)}<span style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,.4)' }}> + VAT</span></span>
             </div>
           </div>
         </div>
