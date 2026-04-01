@@ -870,20 +870,19 @@ export default function ProposalView() {
                 </div>
 
                 {/* Row 2: Year-by-year breakdown */}
-                <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', marginTop: 24, paddingTop: 24, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${Math.min(totalYears + 1, 6)}, 1fr)`, gap: isMobile ? 16 : 0, alignItems: 'end' }}>
+                <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', marginTop: 24, paddingTop: 24, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : `repeat(${Math.min(totalYears + (totalYears > 1 ? 1 : 0), 6)}, 1fr)`, gap: isMobile ? '16px 0' : 0, alignItems: 'baseline' }}>
                   {yearTotals.map(({ year, total }) => (
                     <div key={year} style={{ borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,.08)', paddingRight: isMobile ? 0 : 24, paddingLeft: isMobile || year === 1 ? 0 : 24 }}>
                       <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.4)', marginBottom: 6 }}>Year {year}</div>
-                      <div style={{ fontSize: isMobile ? 22 : 24, fontWeight: 800, color: year === 1 ? 'rgba(255,255,255,.85)' : 'rgba(255,255,255,.6)', letterSpacing: '-.03em', lineHeight: 1 }}>£{total.toLocaleString('en-GB')}</div>
-                      {year === 1 && displayUpfrontTotal > 0 && <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)', marginTop: 4 }}>Incl. one-off</div>}
+                      <div style={{ fontSize: isMobile ? 20 : 22, fontWeight: 700, color: 'rgba(255,255,255,.65)', letterSpacing: '-.02em', lineHeight: 1 }}>£{total.toLocaleString('en-GB')}</div>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', marginTop: 4, minHeight: 16 }}>{year === 1 && displayUpfrontTotal > 0 ? 'Incl. one-off' : '\u00A0'}</div>
                     </div>
                   ))}
-                  {/* Contract total */}
                   {totalYears > 1 && (
-                    <div style={{ paddingLeft: isMobile ? 0 : 24, borderTop: isMobile ? '1px solid rgba(255,255,255,.1)' : 'none', paddingTop: isMobile ? 16 : 0 }}>
-                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.4)', marginBottom: 6 }}>{totalYears}-Year total</div>
-                      <div style={{ fontSize: isMobile ? 22 : 24, fontWeight: 900, color: 'rgba(255,255,255,.95)', letterSpacing: '-.03em', lineHeight: 1 }}>£{contractTotal.toLocaleString('en-GB')}</div>
-                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)', marginTop: 4 }}>+ VAT</div>
+                    <div style={{ paddingLeft: isMobile ? 0 : 24 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: '#00D4FF', opacity: 0.7, marginBottom: 6 }}>{totalYears}-Year total</div>
+                      <div style={{ fontSize: isMobile ? 24 : 28, fontWeight: 900, color: '#00D4FF', letterSpacing: '-.03em', lineHeight: 1 }}>£{contractTotal.toLocaleString('en-GB')}</div>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', marginTop: 4 }}>+ VAT</div>
                     </div>
                   )}
                 </div>
