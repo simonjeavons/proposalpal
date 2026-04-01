@@ -151,6 +151,12 @@ export default function ProposalView() {
   // Frequency helpers
   const FREQ_LABEL: Record<string, string> = { weekly: '/week', monthly: '/month', annual: '/year' };
   const freqLabel = (r: RetainerOption) => FREQ_LABEL[r.frequency ?? 'monthly'] ?? '/month';
+  const contractTotal = (r: RetainerOption) => {
+    if (!r.term_months) return null;
+    const freq = r.frequency ?? 'monthly';
+    const periods = freq === 'annual' ? r.term_months / 12 : freq === 'weekly' ? r.term_months * 4.33 : r.term_months;
+    return optionTotal(r) * periods;
+  };
   const annualMultiplier = (r: RetainerOption) => {
     if (r.frequency === 'weekly') return 52;
     if (r.frequency === 'annual') return 1;
@@ -715,15 +721,15 @@ export default function ProposalView() {
                           {r.discounted_price != null && r.discounted_price < r.price ? (
                             <>
                               <div style={{ fontSize: 12, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through' }}>£{((r.quantity ?? 1) * r.price).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                              <div style={{ fontSize: 18, fontWeight: 800, color: '#009FE3' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                              <div style={{ fontSize: 18, fontWeight: 800, color: '#009FE3' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}</span></div>
                               {r.show_discount_percent !== false && <div style={{ fontSize: 9, fontWeight: 700, color: '#22C55E', marginTop: 1 }}>Save {Math.round(((r.price - r.discounted_price) / r.price) * 100)}%</div>}
                               {r.discount_note && <div style={{ fontSize: 10, color: '#6B7280', fontStyle: 'italic', marginTop: 2 }}>{r.discount_note}</div>}
                             </>
                           ) : (
-                            <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}</span></div>
                           )}
-                          <div style={{ fontSize: 11, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}{r.term_months ? ` · ${r.term_months} mo` : ''}</div>
-                          <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity ?? 1} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
+                          {(r.quantity ?? 1) > 1 && <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each {freqLabel(r).replace('/', '/ ')}</div>}
+                          {r.term_months && <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.term_months}-month term{contractTotal(r) != null && <> · £{contractTotal(r)!.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total</>}</div>}
                         </div>
                       </div>
                     ))}
@@ -770,17 +776,18 @@ export default function ProposalView() {
                               £{((r.quantity ?? 1) * r.price).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
                             <div style={{ fontSize: 24, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>
-                              £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}{r.term_months ? ` for ${r.term_months} months` : ''}</span>
+                              £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}</span>
                             </div>
                             {r.show_discount_percent !== false && <div style={{ display: 'inline-block', fontSize: 9, fontWeight: 700, color: '#22C55E', background: '#F0FDF4', padding: '2px 6px', marginBottom: 4 }}>Save {Math.round(((r.price - r.discounted_price) / r.price) * 100)}%</div>}
                             {r.discount_note && <div style={{ fontSize: 10, color: '#6B7280', fontStyle: 'italic', marginBottom: 4 }}>{r.discount_note}</div>}
                           </>
                         ) : (
                           <div style={{ fontSize: 24, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>
-                            £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}{r.term_months ? ` for ${r.term_months} months` : ''}</span>
+                            £{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 13, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}</span>
                           </div>
                         )}
-                        <div style={{ fontSize: 11, color: '#AAAAAA', marginBottom: 4 }}>{r.quantity ?? 1} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
+                        {(r.quantity ?? 1) > 1 && <div style={{ fontSize: 11, color: '#AAAAAA', marginBottom: 2 }}>{r.quantity} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each {freqLabel(r).replace('/', '/ ')}</div>}
+                        {r.term_months && <div style={{ fontSize: 11, color: '#AAAAAA', marginBottom: 4 }}>{r.term_months}-month term{contractTotal(r) != null && <> · £{contractTotal(r)!.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total</>}</div>}
                         {r.features.filter(f => f.trim()).length > 0 && (
                           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12, paddingTop: 12, borderTop: '1px solid #DDE8EE', padding: 0 }}>
                             {r.features.filter(f => f.trim()).map((f, j) => (
@@ -845,15 +852,15 @@ export default function ProposalView() {
                             {r.discounted_price != null && r.discounted_price < r.price ? (
                               <>
                                 <div style={{ fontSize: 12, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through' }}>£{((r.quantity ?? 1) * r.price).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                                <div style={{ fontSize: 18, fontWeight: 800, color: '#009FE3' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                <div style={{ fontSize: 18, fontWeight: 800, color: '#009FE3' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}</span></div>
                                 {r.show_discount_percent !== false && <div style={{ fontSize: 9, fontWeight: 700, color: '#22C55E', marginTop: 1 }}>Save {Math.round(((r.price - r.discounted_price) / r.price) * 100)}%</div>}
                                 {r.discount_note && <div style={{ fontSize: 10, color: '#6B7280', fontStyle: 'italic', marginTop: 2 }}>{r.discount_note}</div>}
                               </>
                             ) : (
-                              <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                              <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}</span></div>
                             )}
-                            <div style={{ fontSize: 11, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}{r.term_months ? ` · ${r.term_months} mo` : ''}</div>
-                            <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity ?? 1} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ea.</div>
+                            {(r.quantity ?? 1) > 1 && <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each {freqLabel(r).replace('/', '/ ')}</div>}
+                            {r.term_months && <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.term_months}-month term{contractTotal(r) != null && <> · £{contractTotal(r)!.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total</>}</div>}
                           </div>
                         </div>
                       );
