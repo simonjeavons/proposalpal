@@ -689,7 +689,7 @@ export default function ProposalView() {
                       <div style={{ fontSize: 10, color: '#FCD34D', marginTop: 2 }}>Includes £{optionalUpfrontAddOn.toLocaleString('en-GB')} of optional items</div>
                     )}
                   </div>
-                  <strong style={{ fontSize: 20, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em', transition: 'all .3s' }}>£{displayUpfrontTotal.toLocaleString('en-GB')} + VAT</strong>
+                  <strong style={{ fontSize: 20, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em', transition: 'all .3s' }}>£{displayUpfrontTotal.toLocaleString('en-GB')} + VAT @ 20%</strong>
                 </div>
               </div>}
 
@@ -879,14 +879,14 @@ export default function ProposalView() {
                     <div style={{ borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,.12)', paddingRight: isMobile ? 0 : 32 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)', marginBottom: 8 }}>{ongoingLabel}</div>
                       <div style={{ fontSize: isMobile ? 36 : 42, fontWeight: 900, color: '#00D4FF', letterSpacing: '-.04em', lineHeight: 1, transition: 'all .3s' }}>£{ongoingTotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>Excl. VAT {ongoingFreqSuffix}{selectedStandardOption?.term_months ? ` · ${selectedStandardOption.term_months} month term` : ''}</div>
+                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>+ VAT @ 20% {ongoingFreqSuffix}{selectedStandardOption?.term_months ? ` · ${selectedStandardOption.term_months} month term` : ''}</div>
                     </div>
                   )}
                   {displayUpfrontTotal > 0 && (
                     <div style={{ padding: isMobile ? 0 : '0 32px' }}>
                       <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)', marginBottom: 8 }}>{((proposal as any).upfront_section_title || 'One-time project').replace(/^Part\s*\d+:\s*/i, '')}</div>
                       <div style={{ fontSize: isMobile ? 28 : 28, fontWeight: 800, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, transition: 'all .3s' }}>£{displayUpfrontTotal.toLocaleString('en-GB')}</div>
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>Excl. VAT · one-off</div>
+                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>+ VAT @ 20% · one-off</div>
                     </div>
                   )}
                 </div>
@@ -904,7 +904,7 @@ export default function ProposalView() {
                     <div style={{ paddingLeft: isMobile ? 0 : 24 }}>
                       <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: '#00D4FF', opacity: 0.7, marginBottom: 6 }}>Total contract value</div>
                       <div style={{ fontSize: isMobile ? 24 : 28, fontWeight: 900, color: '#00D4FF', letterSpacing: '-.03em', lineHeight: 1 }}>£{contractTotal.toLocaleString('en-GB')}</div>
-                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', marginTop: 4 }}>+ VAT</div>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', marginTop: 4 }}>+ VAT @ 20%</div>
                     </div>
                   )}
                 </div>
