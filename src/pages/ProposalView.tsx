@@ -699,7 +699,13 @@ export default function ProposalView() {
                           </div>
                           <div style={{ fontSize: 14, fontWeight: 700, color: '#043D5D' }}>{r.name || r.type}</div>
                           {r.features.filter(f => f.trim()).length > 0 && (
-                            <div style={{ fontSize: 12, color: '#3A6278', marginTop: 4 }}>{r.features.filter(f => f.trim()).join(' · ')}</div>
+                            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3, marginTop: 8, padding: 0, margin: '8px 0 0 0' }}>
+                              {r.features.filter(f => f.trim()).map((f, j) => (
+                                <li key={j} style={{ fontSize: 12, color: '#3A6278', display: 'flex', gap: 7, alignItems: 'flex-start' }}>
+                                  <span style={{ color: '#009FE3', fontWeight: 700, flexShrink: 0 }}>✓</span>{f}
+                                </li>
+                              ))}
+                            </ul>
                           )}
                         </div>
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -823,7 +829,13 @@ export default function ProposalView() {
                             </div>
                             <div style={{ fontSize: 14, fontWeight: 700, color: '#043D5D' }}>{r.name || r.type}</div>
                             {r.features.filter(f => f.trim()).length > 0 && (
-                              <div style={{ fontSize: 12, color: '#3A6278', marginTop: 4 }}>{r.features.filter(f => f.trim()).join(' · ')}</div>
+                              <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3, marginTop: 8, padding: 0, margin: '8px 0 0 0' }}>
+                                {r.features.filter(f => f.trim()).map((f, j) => (
+                                  <li key={j} style={{ fontSize: 12, color: '#3A6278', display: 'flex', gap: 7, alignItems: 'flex-start' }}>
+                                    <span style={{ color: '#009FE3', fontWeight: 700, flexShrink: 0 }}>✓</span>{f}
+                                  </li>
+                                ))}
+                              </ul>
                             )}
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
