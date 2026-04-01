@@ -732,7 +732,8 @@ export default function ProposalAccept() {
   // Determine PDF URL to display (manual override takes precedence over generated)
   const displayPdfUrl = contractFileUrl
     ? `/contracts/${contractFileUrl}#toolbar=1&navpanes=0`
-    : generatedPdfUrl
+    : generatedPdfUrl;
+  const hasServiceAgreement = !!(contractFileUrl || templateSections.length > 0);
     ? `${generatedPdfUrl}#toolbar=1&navpanes=0`
     : null;
 
@@ -830,39 +831,37 @@ export default function ProposalAccept() {
           </div>
         </div>
 
-        {/* 02 — Service Agreement (always shown) */}
-        <div style={{ background: 'white', border: '1px solid #DDE8EE', marginBottom: 24 }}>
-          <div style={{ padding: isMobile ? '14px 16px' : '18px 28px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: isMobile ? 10 : 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', textTransform: 'uppercase' }}>02</div>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Service Agreement</h2>
+        {/* 02 — Service Agreement (only if template or file exists) */}
+        {hasServiceAgreement && (
+          <div style={{ background: 'white', border: '1px solid #DDE8EE', marginBottom: 24 }}>
+            <div style={{ padding: isMobile ? '14px 16px' : '18px 28px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: isMobile ? 10 : 14 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', textTransform: 'uppercase' }}>02</div>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Service Agreement</h2>
+            </div>
+            <div style={{ padding: isMobile ? '16px' : '24px 28px' }}>
+              {pdfGenerating ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '24px 0', color: '#3A6278' }}>
+                  <div style={{ width: 24, height: 24, border: '3px solid #009FE3', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', flexShrink: 0 }} />
+                  <span style={{ fontSize: 14 }}>Generating your service agreement…</span>
+                </div>
+              ) : displayPdfUrl ? (
+                <>
+                  <iframe src={displayPdfUrl} title="Service Agreement" width="100%" style={{ height: 600, border: '1px solid #DDE8EE' }} />
+                  {downloadPdfUrl && (
+                    <a href={downloadPdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 12, fontSize: 12, color: '#009FE3', fontWeight: 600 }}>
+                      Open in new tab ↗
+                    </a>
+                  )}
+                </>
+              ) : null}
+            </div>
           </div>
-          <div style={{ padding: isMobile ? '16px' : '24px 28px' }}>
-            {pdfGenerating ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '24px 0', color: '#3A6278' }}>
-                <div style={{ width: 24, height: 24, border: '3px solid #009FE3', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', flexShrink: 0 }} />
-                <span style={{ fontSize: 14 }}>Generating your service agreement…</span>
-              </div>
-            ) : displayPdfUrl ? (
-              <>
-                <iframe src={displayPdfUrl} title="Service Agreement" width="100%" style={{ height: 600, border: '1px solid #DDE8EE' }} />
-                {downloadPdfUrl && (
-                  <a href={downloadPdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 12, fontSize: 12, color: '#009FE3', fontWeight: 600 }}>
-                    Open in new tab ↗
-                  </a>
-                )}
-              </>
-            ) : (
-              <p style={{ fontSize: 13, color: '#AAAAAA', padding: '16px 0' }}>
-                No service agreement template selected. You can still accept the proposal.
-              </p>
-            )}
-          </div>
-        </div>
+        )}
 
-        {/* 03 — Sign & Accept */}
+        {/* Sign & Accept */}
         <div style={{ background: 'white', border: '1px solid #DDE8EE', marginBottom: 40 }}>
           <div style={{ padding: isMobile ? '14px 16px' : '18px 28px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'baseline', gap: isMobile ? 10 : 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', textTransform: 'uppercase' }}>03</div>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', textTransform: 'uppercase' }}>{hasServiceAgreement ? '03' : '02'}</div>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Sign & Accept</h2>
           </div>
           <div style={{ padding: isMobile ? '16px' : '24px 28px' }}>
