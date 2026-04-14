@@ -177,6 +177,7 @@ export default function AdminDashboard() {
     contactEmail: '',
     paymentTerms: '50% on commencement / 50% on delivery',
     templateId: '',
+    scopeOfWorkText: '',
     phases: [] as Phase[],
     upfrontItems: [] as UpfrontItem[],
     retainerOptions: [] as RetainerOption[],
@@ -455,6 +456,7 @@ export default function AdminDashboard() {
     contact_email: adhocForm.contactEmail,
     payment_terms: adhocForm.paymentTerms,
     template_id: adhocForm.templateId || null,
+    scope_of_work_text: adhocForm.scopeOfWorkText || null,
     phases: adhocForm.phases,
     upfront_items: adhocForm.upfrontItems,
     ongoing_options: adhocForm.retainerOptions,
@@ -467,7 +469,7 @@ export default function AdminDashboard() {
       agreementDate: new Date().toISOString().split('T')[0],
       contactName: '', contactEmail: '',
       paymentTerms: '50% on commencement / 50% on delivery',
-      templateId: '', phases: [], upfrontItems: [], retainerOptions: [],
+      templateId: '', scopeOfWorkText: '', phases: [], upfrontItems: [], retainerOptions: [],
     });
     setEditingDraftId(null);
     setAdhocLink(null);
@@ -496,6 +498,7 @@ export default function AdminDashboard() {
       contactEmail: d.contact_email || '',
       paymentTerms: d.payment_terms || '50% on commencement / 50% on delivery',
       templateId: d.template_id || '',
+      scopeOfWorkText: d.scope_of_work_text || '',
       phases: Array.isArray(d.phases) ? d.phases : [],
       upfrontItems: Array.isArray(d.upfront_items) ? d.upfront_items : [],
       retainerOptions: Array.isArray(d.retainer_options) && d.retainer_options.length > 0
@@ -1223,6 +1226,7 @@ export default function AdminDashboard() {
                             <p className="text-xs text-muted-foreground truncate">{p.programme_title || 'Untitled project'} · {new Date(p.created_at).toLocaleDateString('en-GB')}</p>
                             <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                               {p.sector && <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{p.sector}</span>}
+                              {(p as any).pricing_model === 'dual' && <span className="inline-flex items-center rounded-full bg-cyan-100 dark:bg-cyan-900/30 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 dark:text-cyan-400">Dual</span>}
                               {p.prepared_by && <span className="text-[11px] text-muted-foreground">{p.prepared_by}</span>}
                             </div>
                           </div>
@@ -1968,7 +1972,19 @@ export default function AdminDashboard() {
                     </Button>
                   </div>
                   {adhocForm.phases.length === 0 && (
-                    <p className="text-sm text-muted-foreground italic">No phases added yet.</p>
+                    <>
+                      <p className="text-sm text-muted-foreground italic mb-3">No phases added — describe the scope below, or add phases above.</p>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Scope of Work Text</Label>
+                        <textarea
+                          value={adhocForm.scopeOfWorkText}
+                          onChange={e => setAdhocForm(f => ({ ...f, scopeOfWorkText: e.target.value }))}
+                          rows={4}
+                          placeholder="Describe the services included in this agreement. Appears in Schedule 1 of the PDF when no phases are defined."
+                          className="w-full border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-y rounded-md"
+                        />
+                      </div>
+                    </>
                   )}
                   <div className="space-y-3">
                     {adhocForm.phases.map((p, i) => (

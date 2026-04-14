@@ -28,6 +28,7 @@ export interface ServiceAgreementPDFProps {
   contactEmail: string;
   companyRegNumber?: string;
   registeredOffice?: string; // pre-formatted address string
+  scopeOfWorkText?: string;
   // Static — from chosen template
   templateSections: TemplateSection[];
   // Signature data — passed at signing time to embed into execution block
@@ -246,6 +247,7 @@ export function ServiceAgreementPDF({
   contactEmail,
   companyRegNumber,
   registeredOffice,
+  scopeOfWorkText,
   templateSections,
   clientSignerName,
   clientSignerTitle,
@@ -318,6 +320,10 @@ export function ServiceAgreementPDF({
                 <Text key={j} style={{ fontSize: 8, color: MID, paddingLeft: 12 }}>• {task}</Text>
               ))}
             </View>
+          ))
+        ) : scopeOfWorkText ? (
+          scopeOfWorkText.split(/\n\n+/).map((para, i) => (
+            <Text key={i} style={[styles.sectionBody, { marginBottom: 6 }]}>{para}</Text>
           ))
         ) : (
           <Text style={styles.sectionBody}>{programmeTitle} — services as described in the Supplier's Proposal.</Text>
@@ -421,7 +427,7 @@ export function ServiceAgreementPDF({
                           </>
                         ) : (
                           <View style={styles.tableRow}>
-                            <Text style={styles.tableDesc}>{startYear > 1 ? `Year ${startYear} — ${label}` : label} ({opt.term} months)</Text>
+                            <Text style={styles.tableDesc}>Year {startYear} — {label} ({opt.term} months)</Text>
                             <Text style={styles.tableAmt}>{fmt(costs[0])} + VAT{freqLabel}</Text>
                           </View>
                         )}

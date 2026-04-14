@@ -25,6 +25,13 @@ interface AdhocContract {
   status: 'pending' | 'signed';
   client_name: string;
   organisation: string;
+  company_reg_number: string | null;
+  registered_address_1: string | null;
+  registered_address_2: string | null;
+  registered_city: string | null;
+  registered_county: string | null;
+  registered_postcode: string | null;
+  scope_of_work_text: string | null;
   programme_title: string;
   agreement_date: string;
   contact_name: string;
@@ -279,6 +286,7 @@ export default function AdhocSign() {
           companyRegNumber: contract.company_reg_number || '',
           registeredOffice: [contract.registered_address_1, contract.registered_address_2, contract.registered_city, contract.registered_county, contract.registered_postcode].filter(Boolean).join(', '),
           templateSections,
+          scopeOfWorkText: contract.scope_of_work_text || '',
           ongoingOptions: contract.ongoing_options,
         })).toBlob();
 
@@ -361,6 +369,7 @@ export default function AdhocSign() {
         companyRegNumber: contract.company_reg_number || '',
         registeredOffice: [contract.registered_address_1, contract.registered_address_2, contract.registered_city, contract.registered_county, contract.registered_postcode].filter(Boolean).join(', '),
         templateSections,
+        scopeOfWorkText: contract.scope_of_work_text || '',
         ongoingOptions: contract.ongoing_options,
         clientSignerName: signerName,
         clientSignerTitle: signerTitle,
