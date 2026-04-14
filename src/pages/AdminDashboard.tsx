@@ -104,6 +104,7 @@ export default function AdminDashboard() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [proposalsLoading, setProposalsLoading] = useState(true);
   const [signedContracts, setSignedContracts] = useState<Record<string, string>>({}); // proposal_id -> signed_contract_url
+  const [proposalViewCounts, setProposalViewCounts] = useState<Record<string, number>>({}); // proposal_id -> view count
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterSector, setFilterSector] = useState<string>('all');
   const [filterUser, setFilterUser] = useState<string>('all');
@@ -688,6 +689,16 @@ export default function AdminDashboard() {
       setSignedContracts(map);
     }
 
+    // Load view counts per proposal (tally client-side; table is small)
+    const { data: views } = await supabase
+      .from("proposal_views" as any)
+      .select("proposal_id");
+    if (views) {
+      const counts: Record<string, number> = {};
+      (views as any[]).forEach(v => { counts[v.proposal_id] = (counts[v.proposal_id] || 0) + 1; });
+      setProposalViewCounts(counts);
+    }
+
     setProposalsLoading(false);
   };
 
@@ -1231,6 +1242,12 @@ export default function AdminDashboard() {
                             <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                               {p.sector && <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{p.sector}</span>}
                               {(p as any).pricing_model === 'dual' && <span className="inline-flex items-center rounded-full bg-cyan-100 dark:bg-cyan-900/30 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 dark:text-cyan-400">Dual</span>}
+                              {(proposalViewCounts[p.id] ?? 0) > 0 && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground" title={`${proposalViewCounts[p.id]} view${proposalViewCounts[p.id] === 1 ? '' : 's'}`}>
+                                  <Eye className="w-3 h-3" />
+                                  {proposalViewCounts[p.id]}
+                                </span>
+                              )}
                               {p.prepared_by && <span className="text-[11px] text-muted-foreground">{p.prepared_by}</span>}
                             </div>
                           </div>
