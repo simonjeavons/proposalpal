@@ -547,11 +547,16 @@ export default function AdminDashboard() {
       if (error) { toast.error('Failed to update draft'); return; }
       toast.success('Draft updated');
     } else {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('adhoc_contracts' as any)
-        .insert(adhocFormPayload('draft'));
+        .insert(adhocFormPayload('draft'))
+        .select('id')
+        .single();
       setSavingDraft(false);
       if (error) { toast.error('Failed to save draft'); return; }
+      // Adopt the freshly-inserted row so repeat saves update it instead of
+      // inserting another duplicate.
+      if (data) setEditingDraftId((data as any).id);
       toast.success('Draft saved — find it in All Agreements');
     }
   };
@@ -569,17 +574,21 @@ export default function AdminDashboard() {
         .single();
       setSavingAdhoc(false);
       if (error) { toast.error('Failed to generate signing link'); return; }
-      setEditingDraftId(null);
+      // Keep editingDraftId so subsequent saves update the same row instead
+      // of inserting a duplicate. User must click "Start New" to unload.
       setAdhocLink(`${window.location.origin}/ac/${(data as any).slug}/sign`);
       toast.success('Contract finalised — share the signing link below');
     } else {
       const { data, error } = await supabase
         .from('adhoc_contracts' as any)
         .insert(adhocFormPayload('pending'))
-        .select('slug')
+        .select('id, slug')
         .single();
       setSavingAdhoc(false);
       if (error) { toast.error('Failed to create contract'); return; }
+      // Adopt the freshly-inserted row so repeat clicks update it instead of
+      // inserting another duplicate.
+      setEditingDraftId((data as any).id);
       setAdhocLink(`${window.location.origin}/ac/${(data as any).slug}/sign`);
       toast.success('Contract created — share the signing link below');
     }
