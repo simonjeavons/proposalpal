@@ -245,14 +245,16 @@ Deno.serve(async (req: Request) => {
   const projectName = (proposal as any).programme_title || "(Untitled)";
   const clientName = (proposal as any).organisation || (proposal as any).client_name || "(Unknown)";
   const typeLabel = (proposal as any).sector || "Not specified";
-  const retainerOptions = ((proposal as any).retainer_options as { monthlyPrice?: number }[]) || [];
-  const monthlies = retainerOptions.map(r => r.monthlyPrice ?? 0).filter(p => p > 0);
-  const minMonthly = monthlies.length > 0 ? Math.min(...monthlies) : 0;
-  const valueStr = minMonthly > 0
-    ? "from " + fmt(minMonthly) + "/month"
-    : ((proposal as any).upfront_total as number) > 0
-      ? fmt((proposal as any).upfront_total as number)
-      : "N/A";
+  // Sum retainer options using the same formula the admin list uses:
+  // (discounted_price ?? price) * (quantity ?? 1)
+  const retainerOptions = ((proposal as any).retainer_options as Array<{
+    price?: number; discounted_price?: number; quantity?: number;
+  }>) || [];
+  const monthlyFee = retainerOptions.reduce(
+    (s, r) => s + ((r.discounted_price ?? r.price ?? 0) * (r.quantity ?? 1)),
+    0
+  );
+  const upfrontTotalVal = ((proposal as any).upfront_total as number) || 0;
 
   if (type === "viewed") {
     await supabase.from("proposal_views").insert({
@@ -282,10 +284,11 @@ Deno.serve(async (req: Request) => {
       "",
       "A customer has just opened your proposal.",
       "",
-      "Project:  " + projectName,
-      "Customer: " + clientName,
-      "Type:     " + typeLabel,
-      "Value:    " + valueStr,
+      "Project:     " + projectName,
+      "Customer:    " + clientName,
+      "Type:        " + typeLabel,
+      "Upfront:     " + fmt(upfrontTotalVal),
+      "Monthly fee: " + fmt(monthlyFee) + "/month",
       "",
       "You'll receive another notification when they sign it.",
       "",
