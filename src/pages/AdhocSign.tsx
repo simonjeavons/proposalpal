@@ -205,6 +205,20 @@ export default function AdhocSign() {
         }
         setContract(c);
 
+        // Fire view-tracking event (skip for logged-in internal users)
+        (async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) return;
+          fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-proposal`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '',
+            },
+            body: JSON.stringify({ type: 'adhoc-viewed', contractId: (c as any).id, userAgent: navigator.userAgent }),
+          }).catch(() => { /* fire-and-forget */ });
+        })();
+
         // If already signed, show confirmation immediately
         if (c.status === 'signed') { setSubmitted(true); }
 

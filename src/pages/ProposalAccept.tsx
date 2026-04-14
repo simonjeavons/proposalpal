@@ -422,11 +422,16 @@ export default function ProposalAccept() {
   const [pdfError, setPdfError] = useState<string | null>(null);
   const generatedPdfBytesRef = useRef<Uint8Array | null>(null);
 
-  const notifyEdgeFunction = (type: 'viewed' | 'signed', proposalId: string) => {
+  const notifyEdgeFunction = async (type: 'viewed' | 'signed', proposalId: string) => {
+    // Skip view tracking entirely for logged-in (internal) users
+    if (type === 'viewed') {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) return;
+    }
     fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-proposal`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '' },
-      body: JSON.stringify({ type, proposalId }),
+      body: JSON.stringify({ type, proposalId, userAgent: navigator.userAgent }),
     }).catch(() => {/* fire-and-forget */});
   };
 

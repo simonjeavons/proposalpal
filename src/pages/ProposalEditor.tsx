@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Challenge, Phase, RetainerOption, UpfrontItem, SaasConfig } from "@/types/proposal";
 import { DEFAULT_CHALLENGES, DEFAULT_PHASES, DEFAULT_RETAINER_OPTIONS, DEFAULT_SAAS_SELLING_POINTS } from "@/types/proposal";
 import SaasConfigEditor from "@/components/SaasConfigEditor";
+import ViewHistoryPanel from "@/components/ViewHistoryPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -505,6 +506,13 @@ export default function ProposalEditor() {
             ))}
           </div>
         </Section>
+
+        {/* View History (existing proposals only) */}
+        {!isNew && id && (
+          <Section title="View History">
+            <ViewHistoryPanel documentType="proposal" documentId={id} />
+          </Section>
+        )}
 
         {/* Proposal Details */}
         <Section title="Proposal Details">

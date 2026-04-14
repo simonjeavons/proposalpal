@@ -7,6 +7,7 @@ import { UpfrontItemsEditor } from "@/components/UpfrontItemsEditor";
 import { RetainerOptionsEditor } from "@/components/RetainerOptionsEditor";
 import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Target, Download, GitBranch, ShoppingBag, Scale, UserCircle2, Link as LinkIcon } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
+import ViewHistoryPanel from "@/components/ViewHistoryPanel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -178,6 +179,7 @@ export default function AdminDashboard() {
     paymentTerms: '50% on commencement / 50% on delivery',
     templateId: '',
     scopeOfWorkText: '',
+    preparedByUserId: '',
     phases: [] as Phase[],
     upfrontItems: [] as UpfrontItem[],
     retainerOptions: [] as RetainerOption[],
@@ -456,6 +458,7 @@ export default function AdminDashboard() {
     contact_email: adhocForm.contactEmail,
     payment_terms: adhocForm.paymentTerms,
     template_id: adhocForm.templateId || null,
+    prepared_by_user_id: adhocForm.preparedByUserId || null,
     scope_of_work_text: adhocForm.scopeOfWorkText || null,
     phases: adhocForm.phases,
     upfront_items: adhocForm.upfrontItems,
@@ -469,7 +472,7 @@ export default function AdminDashboard() {
       agreementDate: new Date().toISOString().split('T')[0],
       contactName: '', contactEmail: '',
       paymentTerms: '50% on commencement / 50% on delivery',
-      templateId: '', scopeOfWorkText: '', phases: [], upfrontItems: [], retainerOptions: [],
+      templateId: '', scopeOfWorkText: '', preparedByUserId: '', phases: [], upfrontItems: [], retainerOptions: [],
     });
     setEditingDraftId(null);
     setAdhocLink(null);
@@ -499,6 +502,7 @@ export default function AdminDashboard() {
       paymentTerms: d.payment_terms || '50% on commencement / 50% on delivery',
       templateId: d.template_id || '',
       scopeOfWorkText: d.scope_of_work_text || '',
+      preparedByUserId: d.prepared_by_user_id || '',
       phases: Array.isArray(d.phases) ? d.phases : [],
       upfrontItems: Array.isArray(d.upfront_items) ? d.upfront_items : [],
       retainerOptions: Array.isArray(d.retainer_options) && d.retainer_options.length > 0
@@ -1871,6 +1875,11 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
+                {/* View history (existing drafts only) */}
+                {editingDraftId && (
+                  <ViewHistoryPanel documentType="contract" documentId={editingDraftId} />
+                )}
+
                 {/* Client Details */}
                 <div className="bg-card border border-border p-5">
                   <h2 className="text-xs font-bold uppercase tracking-wider text-foreground mb-4">Client Details</h2>
@@ -1926,6 +1935,7 @@ export default function AdminDashboard() {
                             ...f,
                             contactName: profile?.full_name ?? e.target.value,
                             contactEmail: profile?.email ?? f.contactEmail,
+                            preparedByUserId: profile?.id ?? f.preparedByUserId,
                           }));
                         }}
                         className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm w-full"

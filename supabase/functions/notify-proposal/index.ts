@@ -6,6 +6,10 @@ const CC_NAME = "Simon Jeavons";
 const FROM_EMAIL = "proposals@shoothill.com";
 const FROM_NAME = "Shoothill Proposal Manager";
 
+// Email throttle: max one view-notification email per document per this window.
+// Views are still recorded in *_views tables regardless.
+const VIEW_EMAIL_THROTTLE_MS = 30 * 60 * 1000;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -38,7 +42,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const body = await req.json();
-  const { type, proposalId, contractId } = body;
+  const { type, proposalId, contractId, userAgent } = body;
 
   if (!type || (!proposalId && !contractId)) {
     return new Response(JSON.stringify({ error: "type and either proposalId or contractId required" }), {
@@ -46,11 +50,127 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // Best-effort IP capture for view records
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || req.headers.get("cf-connecting-ip")
+    || null;
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
+
+  // ── AD-HOC AGREEMENT VIEWED ──────────────────────────────────────────────────
+  if (type === "adhoc-viewed") {
+    if (!contractId) {
+      return new Response(JSON.stringify({ error: "contractId required for adhoc-viewed" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Always record the view
+    await supabase.from("contract_views").insert({
+      contract_id: contractId,
+      user_agent: userAgent ?? null,
+      ip: clientIp,
+    });
+
+    // Fetch contract + owner profile
+    const { data: contract, error: contractErr } = await supabase
+      .from("adhoc_contracts")
+      .select(`
+        id, programme_title, client_name, organisation, last_view_email_at,
+        profiles:prepared_by_user_id (email, full_name)
+      `)
+      .eq("id", contractId)
+      .single();
+
+    if (contractErr || !contract) {
+      return new Response(JSON.stringify({ ok: true, recorded: true, emailSkipped: "contract-not-found" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Throttle
+    const lastEmailAt = (contract as any).last_view_email_at as string | null;
+    const nowMs = Date.now();
+    if (lastEmailAt && (nowMs - new Date(lastEmailAt).getTime() < VIEW_EMAIL_THROTTLE_MS)) {
+      return new Response(JSON.stringify({ ok: true, recorded: true, emailSkipped: "throttled" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const profile = (contract as any).profiles as { email: string; full_name: string } | null;
+    const recipientEmail = profile?.email;
+    const recipientName = profile?.full_name || "Team";
+
+    if (!recipientEmail) {
+      // No owner set — record-only, no email
+      return new Response(JSON.stringify({ ok: true, recorded: true, emailSkipped: "no-owner" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    await supabase
+      .from("adhoc_contracts")
+      .update({ last_view_email_at: new Date().toISOString() })
+      .eq("id", contractId);
+
+    const programmeTitle = (contract as any).programme_title as string || "(Untitled)";
+    const adhocClientName = (contract as any).organisation as string || (contract as any).client_name as string || "(Unknown)";
+
+    const subject = `Agreement viewed: ${programmeTitle} — ${adhocClientName}`;
+    const emailBody = [
+      `Hi ${recipientName},`,
+      "",
+      `A customer has just opened an ad-hoc agreement.`,
+      "",
+      `Programme: ${programmeTitle}`,
+      `Customer:  ${adhocClientName}`,
+      "",
+      "You'll receive another notification when they sign it.",
+      "(Further view notifications are throttled to once every 30 minutes.)",
+      "",
+      "— Shoothill Proposal Manager",
+    ].join("\n");
+
+    const sendgridApiKey = Deno.env.get("SENDGRID_API_KEY");
+    if (!sendgridApiKey) {
+      console.error("SENDGRID_API_KEY secret not set");
+      return new Response(JSON.stringify({ ok: true, recorded: true, emailSkipped: "no-api-key" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const ccList = recipientEmail.toLowerCase() !== CC_EMAIL.toLowerCase()
+      ? [{ email: CC_EMAIL, name: CC_NAME }]
+      : [];
+
+    const sgPayload = {
+      personalizations: [{
+        to: [{ email: recipientEmail, name: recipientName }],
+        ...(ccList.length > 0 ? { cc: ccList } : {}),
+      }],
+      from: { email: FROM_EMAIL, name: FROM_NAME },
+      subject,
+      content: [{ type: "text/plain", value: emailBody }],
+    };
+
+    const sgRes = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sendgridApiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(sgPayload),
+    });
+
+    if (!sgRes.ok) {
+      console.error("SendGrid error:", sgRes.status, await sgRes.text());
+    }
+
+    return new Response(JSON.stringify({ ok: true, recorded: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   // ── AD-HOC AGREEMENT SIGNED ──────────────────────────────────────────────────
   if (type === "adhoc-signed") {
@@ -189,7 +309,7 @@ Deno.serve(async (req: Request) => {
     .from("proposals")
     .select(`
       id, programme_title, client_name, organisation, sector,
-      upfront_total, retainer_options, viewed_at,
+      upfront_total, retainer_options, viewed_at, last_view_email_at,
       profiles:prepared_by_user_id (email, full_name)
     `)
     .eq("id", proposalId)
@@ -230,20 +350,37 @@ Deno.serve(async (req: Request) => {
 
   // ── VIEWED ──────────────────────────────────────────────────────────────────
   if (type === "viewed") {
-    // Atomic: only mark viewed (and send email) once
-    const { data: updated } = await supabase
-      .from("proposals")
-      .update({ viewed_at: new Date().toISOString() })
-      .eq("id", proposalId)
-      .is("viewed_at", null)
-      .select("id");
+    // Always record the view
+    await supabase.from("proposal_views").insert({
+      proposal_id: proposalId,
+      user_agent: userAgent ?? null,
+      ip: clientIp,
+    });
 
-    if (!updated || updated.length === 0) {
-      // Already notified — skip silently
-      return new Response(JSON.stringify({ ok: true, skipped: true }), {
+    // Throttle email: only send if no email has been sent within the window
+    const lastEmailAt = (proposal as any).last_view_email_at as string | null;
+    const now = Date.now();
+    const throttled = lastEmailAt && (now - new Date(lastEmailAt).getTime() < VIEW_EMAIL_THROTTLE_MS);
+
+    // Keep viewed_at set (first view wins for "first seen" semantics)
+    if (!(proposal as any).viewed_at) {
+      await supabase
+        .from("proposals")
+        .update({ viewed_at: new Date().toISOString() })
+        .eq("id", proposalId);
+    }
+
+    if (throttled) {
+      return new Response(JSON.stringify({ ok: true, recorded: true, emailSkipped: "throttled" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Mark email-sent time atomically (best-effort; worst case one extra email)
+    await supabase
+      .from("proposals")
+      .update({ last_view_email_at: new Date().toISOString() })
+      .eq("id", proposalId);
 
     subject = `Proposal viewed: ${projectName} — ${clientName}`;
     body = [
@@ -303,7 +440,7 @@ Deno.serve(async (req: Request) => {
     ].join("\n");
 
   } else {
-    return new Response(JSON.stringify({ error: "type must be 'viewed', 'signed', or 'adhoc-signed'" }), {
+    return new Response(JSON.stringify({ error: "type must be 'viewed', 'signed', 'adhoc-viewed', or 'adhoc-signed'" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

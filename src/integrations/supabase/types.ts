@@ -23,11 +23,13 @@ export type Database = {
           contact_name: string
           created_at: string
           id: string
+          last_view_email_at: string | null
           monthly_fee: number
           ongoing_options: Json
           organisation: string
           payment_terms: string
           phases: Json
+          prepared_by_user_id: string | null
           programme_title: string
           registered_address_1: string
           registered_address_2: string
@@ -36,6 +38,7 @@ export type Database = {
           registered_postcode: string
           retainer_name: string
           retainer_options: Json
+          scope_of_work_text: string | null
           signed_at: string | null
           signed_contract_url: string | null
           signer_name: string | null
@@ -54,11 +57,13 @@ export type Database = {
           contact_name?: string
           created_at?: string
           id?: string
+          last_view_email_at?: string | null
           monthly_fee?: number
           ongoing_options?: Json
           organisation?: string
           payment_terms?: string
           phases?: Json
+          prepared_by_user_id?: string | null
           programme_title?: string
           registered_address_1?: string
           registered_address_2?: string
@@ -67,6 +72,7 @@ export type Database = {
           registered_postcode?: string
           retainer_name?: string
           retainer_options?: Json
+          scope_of_work_text?: string | null
           signed_at?: string | null
           signed_contract_url?: string | null
           signer_name?: string | null
@@ -85,11 +91,13 @@ export type Database = {
           contact_name?: string
           created_at?: string
           id?: string
+          last_view_email_at?: string | null
           monthly_fee?: number
           ongoing_options?: Json
           organisation?: string
           payment_terms?: string
           phases?: Json
+          prepared_by_user_id?: string | null
           programme_title?: string
           registered_address_1?: string
           registered_address_2?: string
@@ -98,6 +106,7 @@ export type Database = {
           registered_postcode?: string
           retainer_name?: string
           retainer_options?: Json
+          scope_of_work_text?: string | null
           signed_at?: string | null
           signed_contract_url?: string | null
           signer_name?: string | null
@@ -110,10 +119,49 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "adhoc_contracts_prepared_by_user_id_fkey"
+            columns: ["prepared_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "adhoc_contracts_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "service_agreement_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_views: {
+        Row: {
+          contract_id: string
+          id: string
+          ip: string | null
+          user_agent: string | null
+          viewed_at: string
+        }
+        Insert: {
+          contract_id: string
+          id?: string
+          ip?: string | null
+          user_agent?: string | null
+          viewed_at?: string
+        }
+        Update: {
+          contract_id?: string
+          id?: string
+          ip?: string | null
+          user_agent?: string | null
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_views_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "adhoc_contracts"
             referencedColumns: ["id"]
           },
         ]
@@ -271,6 +319,38 @@ export type Database = {
           },
         ]
       }
+      proposal_views: {
+        Row: {
+          id: string
+          ip: string | null
+          proposal_id: string
+          user_agent: string | null
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          ip?: string | null
+          proposal_id: string
+          user_agent?: string | null
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          ip?: string | null
+          proposal_id?: string
+          user_agent?: string | null
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_views_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       proposals: {
         Row: {
           challenge_intro: string
@@ -289,6 +369,7 @@ export type Database = {
           created_at: string
           hide_phase_durations: boolean | null
           id: string
+          last_view_email_at: string | null
           launch_phase: Json | null
           lead_team_member_id: string | null
           next_steps: Json | null
@@ -344,6 +425,7 @@ export type Database = {
           created_at?: string
           hide_phase_durations?: boolean | null
           id?: string
+          last_view_email_at?: string | null
           launch_phase?: Json | null
           lead_team_member_id?: string | null
           next_steps?: Json | null
@@ -399,6 +481,7 @@ export type Database = {
           created_at?: string
           hide_phase_durations?: boolean | null
           id?: string
+          last_view_email_at?: string | null
           launch_phase?: Json | null
           lead_team_member_id?: string | null
           next_steps?: Json | null
