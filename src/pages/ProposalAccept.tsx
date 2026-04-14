@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import type { Proposal, Challenge, Phase, RetainerOption } from "@/types/proposal";
+import type { Proposal, Challenge, Phase, RetainerOption, SaasConfig, SaasTier } from "@/types/proposal";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const formatCurrency = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -383,6 +383,7 @@ export default function ProposalAccept() {
   const [searchParams] = useSearchParams();
   const standardIndex = Number(searchParams.get('standard') ?? 0);
   const extrasParam = searchParams.get('extras');
+  const pricingOption = (searchParams.get('pricing') as 'traditional' | 'saas') || 'traditional';
   // Initialise from URL param immediately; when extrasParam is null (direct nav)
   // we'll default to recommended extras once the proposal loads.
   const [selectedExtrasIndices, setSelectedExtrasIndices] = useState<number[]>(() =>
@@ -418,6 +419,7 @@ export default function ProposalAccept() {
   const [templateSections, setTemplateSections] = useState<{ heading: string; body: string }[]>([]);
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState<string | null>(null);
   const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const generatedPdfBytesRef = useRef<Uint8Array | null>(null);
 
   const notifyEdgeFunction = (type: 'viewed' | 'signed', proposalId: string) => {
@@ -472,6 +474,7 @@ export default function ProposalAccept() {
 
     (async () => {
       try {
+        const coreOpts = proposal.retainer_options.filter(r => r.option_type === 'core');
         const stdOpts = proposal.retainer_options.filter(r => r.option_type === 'standard');
         const optExtras = proposal.retainer_options.filter(r => r.option_type === 'optional_extra');
         const selStandard = stdOpts[standardIndex] || null;
@@ -508,6 +511,8 @@ export default function ProposalAccept() {
           companyRegNumber: (proposal as any).company_reg_number || '',
           registeredOffice: [(proposal as any).registered_address_1, (proposal as any).registered_address_2, (proposal as any).registered_city, (proposal as any).registered_county, (proposal as any).registered_postcode].filter(Boolean).join(', '),
           templateSections,
+          pricingOption,
+          saasConfig: (proposal as any).saas_config || undefined,
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -520,6 +525,7 @@ export default function ProposalAccept() {
         setGeneratedPdfUrl(url);
       } catch (err) {
         console.error('PDF generation failed:', err);
+        if (!cancelled) setPdfError(err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err));
       } finally {
         if (!cancelled) setPdfGenerating(false);
       }
@@ -552,18 +558,53 @@ export default function ProposalAccept() {
   const extrasPrice = selectedExtras.reduce((sum, r) => sum + optionTotal(r), 0);
   const ongoingTotal = corePrice + standardPrice + extrasPrice;
 
-  // Frequency-aware annual calculation
-  const annualMultiplier = (r: RetainerOption) => {
-    if (r.frequency === 'weekly') return 52;
-    if (r.frequency === 'annual') return 1;
-    return 12;
-  };
+  // Frequency-aware per-year calculation respecting term lengths
   const allSelectedOptions: RetainerOption[] = [
     ...coreOptions,
     ...(selectedStandard ? [selectedStandard] : []),
     ...selectedExtras,
   ];
-  const annualOngoing = allSelectedOptions.reduce((sum, r) => sum + optionTotal(r) * annualMultiplier(r), 0);
+  const ongoingForYear = (yearIndex: number) =>
+    allSelectedOptions.reduce((sum, r) => {
+      const freq = r.frequency ?? 'monthly';
+      const yearStartMonth = yearIndex * 12;
+      const yearEndMonth = (yearIndex + 1) * 12;
+
+      // Annual-frequency items bill the full amount in the year each 12-month
+      // billing period begins — not prorated across calendar years.
+      if (freq === 'annual') {
+        if (r.rolling_monthly) {
+          return sum + optionTotal(r);
+        }
+        const offset = r.starts_after_months ?? 0;
+        const term = r.term_months ?? 12;
+        let count = 0;
+        for (let start = offset; start < offset + term; start += 12) {
+          if (start >= yearStartMonth && start < yearEndMonth) count += 1;
+        }
+        return sum + optionTotal(r) * count;
+      }
+
+      if (r.rolling_monthly) {
+        const activeMonths = 12;
+        const periods = freq === 'weekly' ? activeMonths * 4.33 : activeMonths;
+        return sum + optionTotal(r) * periods;
+      }
+
+      const offset = r.starts_after_months ?? 0;
+      const term = r.term_months ?? 12;
+      const startMonth = offset;
+      const endMonth = offset + term;
+      const overlapStart = Math.max(yearStartMonth, startMonth);
+      const overlapEnd = Math.min(yearEndMonth, endMonth);
+      if (overlapEnd <= overlapStart) return sum;
+      // Year 1 can be partial; Years 2+ always bill as a full 12-month year.
+      const rawMonths = overlapEnd - overlapStart;
+      const activeMonths = yearIndex === 0 ? rawMonths : 12;
+      const periods = freq === 'weekly' ? activeMonths * 4.33 : activeMonths;
+      return sum + optionTotal(r) * periods;
+    }, 0);
+  const annualOngoing = ongoingForYear(0);
   const frequencies = allSelectedOptions.map(r => r.frequency ?? 'monthly');
   const dominantFreq = frequencies.length > 0 && frequencies.every(f => f === frequencies[0]) ? frequencies[0] : 'mixed';
   const FREQ_LABEL: Record<string, string> = { weekly: '/wk', monthly: '/mo', annual: '/yr' };
@@ -571,10 +612,11 @@ export default function ProposalAccept() {
   const ongoingLabel = dominantFreq === 'annual' ? 'Annual Ongoing' : dominantFreq === 'weekly' ? 'Weekly Ongoing' : 'Monthly Ongoing';
 
   // Max term for multi-year breakdown
-  const maxTermMonths = Math.max(...allSelectedOptions.map(r => r.term_months ?? 12), 12);
+  const hasRolling = allSelectedOptions.some(r => r.rolling_monthly);
+  const maxTermMonths = Math.max(...allSelectedOptions.filter(r => !r.rolling_monthly).map(r => (r.term_months ?? 12) + (r.starts_after_months ?? 0)), hasRolling ? 36 : 12);
   const totalYears = Math.min(Math.ceil(maxTermMonths / 12), 5);
   const firstYearTotal = upfront + annualOngoing;
-  const contractTotal = upfront + annualOngoing * totalYears;
+  const contractTotal = Array.from({ length: totalYears }, (_, y) => (y === 0 ? upfront : 0) + ongoingForYear(y)).reduce((a, b) => a + b, 0);
 
   const contractFileUrl = (proposal as any).contract_file_url as string | null;
 
@@ -638,6 +680,8 @@ export default function ProposalAccept() {
           companyRegNumber: (proposal as any).company_reg_number || '',
           registeredOffice: [(proposal as any).registered_address_1, (proposal as any).registered_address_2, (proposal as any).registered_city, (proposal as any).registered_county, (proposal as any).registered_postcode].filter(Boolean).join(', '),
           templateSections,
+          pricingOption,
+          saasConfig: (proposal as any).saas_config || undefined,
           // Embed signatures directly into the execution block of the PDF
           clientSignerName: signerName,
           clientSignerTitle: signerTitle,
@@ -682,15 +726,26 @@ export default function ProposalAccept() {
 
     // Save acceptance record
     setSubmitState('saving');
+    // For SaaS pricing, compute totals from saas_config
+    const isSaas = pricingOption === 'saas' && (proposal as any).pricing_model === 'dual';
+    const saasConfig = (proposal as any).saas_config as SaasConfig | undefined;
+    const saasTiers = saasConfig?.tiers || [];
+    const saasMonthlyPrice = saasTiers.length > 0 ? saasTiers[0].monthly_price : 0;
+    const saasFirstYear = saasTiers.reduce((sum: number, t: SaasTier) => {
+      const months = Math.min(t.duration_months, 12);
+      return sum + t.monthly_price * months;
+    }, 0);
+
     const { error } = await supabase.from("proposal_acceptances" as any).insert({
       proposal_id: proposal.id,
       signer_name: signerName,
       signer_title: signerTitle,
-      selected_retainer_index: standardIndex,
-      selected_extras: selectedExtrasIndices,
-      upfront_total: upfront,
-      retainer_price: ongoingTotal,
-      first_year_total: contractTotal,
+      selected_retainer_index: isSaas ? -1 : standardIndex,
+      selected_extras: isSaas ? [] : selectedExtrasIndices,
+      upfront_total: isSaas ? 0 : upfront,
+      retainer_price: isSaas ? saasMonthlyPrice : ongoingTotal,
+      first_year_total: isSaas ? saasFirstYear : contractTotal,
+      pricing_option: pricingOption,
       signature_data: signatureData,
       signed_contract_url: signedContractUrl,
       signing_error: signingError || null,
@@ -755,77 +810,107 @@ export default function ProposalAccept() {
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Pricing Summary</h2>
           </div>
           <div style={{ padding: isMobile ? '16px' : '24px 28px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: ongoingTotal > 0 ? '1fr 1fr' : '1fr', gap: 16, marginBottom: 20 }}>
-              {upfront > 0 && (
-                <div style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 6 }}>One-Time Project</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(upfront)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT</span></div>
-                </div>
-              )}
-              {ongoingTotal > 0 && (
-                <div style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 6 }}>
-                    {ongoingLabel}{selectedStandard ? ` — ${selectedStandard.name || selectedStandard.type}` : ''}
+            {/* SaaS pricing summary */}
+            {pricingOption === 'saas' && (proposal as any).pricing_model === 'dual' ? (() => {
+              const sc = (proposal as any).saas_config as SaasConfig | undefined;
+              const tiers = sc?.tiers || [];
+              const saasTotal = tiers.reduce((s: number, t: SaasTier) => s + t.monthly_price * t.duration_months, 0);
+              return (
+                <>
+                  <div style={{ background: 'linear-gradient(135deg, #043D5D 0%, #065A87 100%)', padding: '16px 20px', marginBottom: 16, color: 'white' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#00D4FF', marginBottom: 4 }}>Shoothill as a Service</div>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,.7)' }}>{sc?.custom_intro || 'Everything you need, one simple monthly fee'}</div>
                   </div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(ongoingTotal)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT {freqSuffix}</span></div>
-                  {selectedExtras.length > 0 && (
-                    <div style={{ fontSize: 12, color: '#3A6278', marginTop: 4 }}>
-                      Includes: {selectedExtras.map(r => r?.name || r?.type).filter(Boolean).join(', ')}
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(tiers.length, 3)}, 1fr)`, gap: 12, marginBottom: 20 }}>
+                    {tiers.map((tier: SaasTier, i: number) => (
+                      <div key={i} style={{ background: '#F4F7FA', border: i === 0 ? '2px solid #009FE3' : '1px solid #DDE8EE', padding: '18px 20px' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#009FE3', marginBottom: 6 }}>{tier.label}</div>
+                        <div style={{ fontSize: 24, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(tier.monthly_price)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> /mo + VAT</span></div>
+                        <div style={{ fontSize: 11, color: '#AAAAAA', marginTop: 2 }}>{tier.duration_months} months · {formatCurrency(tier.monthly_price * tier.duration_months)} total</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ background: '#043D5D', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Total Contract Value</span>
+                    <span style={{ fontSize: 24, fontWeight: 800, color: '#009FE3', letterSpacing: '-.02em' }}>{formatCurrency(saasTotal)}<span style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,.4)' }}> + VAT</span></span>
+                  </div>
+                </>
+              );
+            })() : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: ongoingTotal > 0 ? '1fr 1fr' : '1fr', gap: 16, marginBottom: 20 }}>
+                  {upfront > 0 && (
+                    <div style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 6 }}>One-Time Project</div>
+                      <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(upfront)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT</span></div>
                     </div>
                   )}
-                  {dominantFreq !== 'annual' && <div style={{ fontSize: 12, color: '#AAAAAA', marginTop: 2 }}>Annual: {formatCurrency(annualOngoing)}</div>}
-                </div>
-              )}
-            </div>
-            {/* Optional extras toggle */}
-            {optionalExtras.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 8 }}>Optional Add-ons</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {optionalExtras.map((extra, i) => {
-                    const checked = selectedExtrasIndices.includes(i);
-                    return (
-                      <div
-                        key={i}
-                        onClick={() => toggleExtra(i)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 12,
-                          padding: '10px 14px',
-                          background: checked ? '#F0FAFF' : '#F9FAFB',
-                          border: `1.5px solid ${checked ? '#009FE3' : '#DDE8EE'}`,
-                          cursor: 'pointer',
-                          transition: 'all .2s',
-                        }}
-                      >
-                        <div style={{
-                          width: 18, height: 18, borderRadius: 3, flexShrink: 0,
-                          background: checked ? '#009FE3' : 'transparent',
-                          border: checked ? 'none' : '1.5px solid #AAAAAA',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          transition: 'all .2s',
-                        }}>
-                          {checked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                        </div>
-                        <span style={{ flex: 1, fontSize: 13, color: '#1A2E3B', fontWeight: 600 }}>
-                          {extra.name || extra.type}
-                          {extra.recommended && (
-                            <span style={{ marginLeft: 8, fontSize: 9, background: '#FDE68A', color: '#92400E', padding: '1px 5px', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Recommended</span>
-                          )}
-                        </span>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#043D5D', flexShrink: 0 }}>
-                          +{formatCurrency((extra.quantity ?? 1) * (extra.discounted_price ?? extra.price))}{FREQ_LABEL[extra.frequency ?? 'monthly'] ?? '/mo'}
-                        </span>
+                  {ongoingTotal > 0 && (
+                    <div style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 6 }}>
+                        {ongoingLabel}{selectedStandard ? ` — ${selectedStandard.name || selectedStandard.type}` : ''}
                       </div>
-                    );
-                  })}
+                      <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(ongoingTotal)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT {freqSuffix}</span></div>
+                      {selectedExtras.length > 0 && (
+                        <div style={{ fontSize: 12, color: '#3A6278', marginTop: 4 }}>
+                          Includes: {selectedExtras.map(r => r?.name || r?.type).filter(Boolean).join(', ')}
+                        </div>
+                      )}
+                      {dominantFreq !== 'annual' && <div style={{ fontSize: 12, color: '#AAAAAA', marginTop: 2 }}>Annual: {formatCurrency(annualOngoing)}</div>}
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+                {/* Optional extras toggle */}
+                {optionalExtras.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 8 }}>Optional Add-ons</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {optionalExtras.map((extra, i) => {
+                        const checked = selectedExtrasIndices.includes(i);
+                        return (
+                          <div
+                            key={i}
+                            onClick={() => toggleExtra(i)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 12,
+                              padding: '10px 14px',
+                              background: checked ? '#F0FAFF' : '#F9FAFB',
+                              border: `1.5px solid ${checked ? '#009FE3' : '#DDE8EE'}`,
+                              cursor: 'pointer',
+                              transition: 'all .2s',
+                            }}
+                          >
+                            <div style={{
+                              width: 18, height: 18, borderRadius: 3, flexShrink: 0,
+                              background: checked ? '#009FE3' : 'transparent',
+                              border: checked ? 'none' : '1.5px solid #AAAAAA',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              transition: 'all .2s',
+                            }}>
+                              {checked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </div>
+                            <span style={{ flex: 1, fontSize: 13, color: '#1A2E3B', fontWeight: 600 }}>
+                              {extra.name || extra.type}
+                              {extra.recommended && (
+                                <span style={{ marginLeft: 8, fontSize: 9, background: '#FDE68A', color: '#92400E', padding: '1px 5px', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Recommended</span>
+                              )}
+                            </span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#043D5D', flexShrink: 0 }}>
+                              +{formatCurrency((extra.quantity ?? 1) * (extra.discounted_price ?? extra.price))}{FREQ_LABEL[extra.frequency ?? 'monthly'] ?? '/mo'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
-            <div style={{ background: '#043D5D', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Total Contract Value{totalYears > 1 ? ` (${totalYears} years)` : ''}</span>
-              <span style={{ fontSize: 24, fontWeight: 800, color: '#009FE3', letterSpacing: '-.02em' }}>{formatCurrency(contractTotal)}<span style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,.4)' }}> + VAT</span></span>
-            </div>
+                <div style={{ background: '#043D5D', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Total Contract Value{totalYears > 1 ? ` (${totalYears} years)` : ''}</span>
+                  <span style={{ fontSize: 24, fontWeight: 800, color: '#009FE3', letterSpacing: '-.02em' }}>{formatCurrency(contractTotal)}<span style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,.4)' }}> + VAT</span></span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -841,6 +926,11 @@ export default function ProposalAccept() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '24px 0', color: '#3A6278' }}>
                   <div style={{ width: 24, height: 24, border: '3px solid #009FE3', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', flexShrink: 0 }} />
                   <span style={{ fontSize: 14 }}>Generating your service agreement…</span>
+                </div>
+              ) : pdfError ? (
+                <div style={{ padding: 16, background: '#FFF4F4', border: '1px solid #F5C2C2', color: '#8B1A1A', fontSize: 12, whiteSpace: 'pre-wrap', fontFamily: 'monospace', overflow: 'auto', maxHeight: 300 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>Service agreement generation failed</div>
+                  {pdfError}
                 </div>
               ) : displayPdfUrl ? (
                 <>

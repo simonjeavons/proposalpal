@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import type { Challenge, Phase, RetainerOption, UpfrontItem } from "@/types/proposal";
-import { DEFAULT_CHALLENGES, DEFAULT_PHASES, DEFAULT_RETAINER_OPTIONS } from "@/types/proposal";
+import type { Challenge, Phase, RetainerOption, UpfrontItem, SaasConfig } from "@/types/proposal";
+import { DEFAULT_CHALLENGES, DEFAULT_PHASES, DEFAULT_RETAINER_OPTIONS, DEFAULT_SAAS_SELLING_POINTS } from "@/types/proposal";
+import SaasConfigEditor from "@/components/SaasConfigEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -108,6 +109,8 @@ interface FormData {
   team_member_ids: string[];
   next_steps: { title: string; description: string }[];
   status: string;
+  pricing_model: 'traditional' | 'dual';
+  saas_config: SaasConfig;
 }
 
 const DEFAULT_NEXT_STEPS: { title: string; description: string }[] = [
@@ -208,6 +211,8 @@ export default function ProposalEditor() {
     team_member_ids: [],
     next_steps: [...DEFAULT_NEXT_STEPS],
     status: 'draft',
+    pricing_model: 'traditional' as const,
+    saas_config: { tiers: [], selling_points: [...DEFAULT_SAAS_SELLING_POINTS] },
   });
 
   const sensors = useSensors(
@@ -297,6 +302,8 @@ export default function ProposalEditor() {
             team_member_ids: ((data as any).team_member_ids as string[]) || [],
             next_steps: ((data as any).next_steps as { title: string; description: string }[]) || [...DEFAULT_NEXT_STEPS],
             status: data.status,
+            pricing_model: ((data as any).pricing_model as 'traditional' | 'dual') || 'traditional',
+            saas_config: ((data as any).saas_config as SaasConfig) || { tiers: [], selling_points: [...DEFAULT_SAAS_SELLING_POINTS] },
           });
           setSlug(data.slug);
           setContractFileUrl((data as any).contract_file_url || null);
@@ -793,6 +800,32 @@ export default function ProposalEditor() {
           </div>
         </Section>
 
+        {/* Pricing Model Toggle */}
+        <Section title="Pricing Structure" defaultOpen>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">Choose whether to offer a single pricing structure or let the client compare traditional and subscription-based options.</p>
+            <div className="flex gap-2">
+              {(['traditional', 'dual'] as const).map(opt => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => updateField('pricing_model', opt)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${form.pricing_model === opt ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:border-primary/50'}`}
+                >
+                  {opt === 'traditional' ? 'Traditional only' : 'Dual pricing (Traditional + SaaS)'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </Section>
+
+        {/* Option A label when dual pricing */}
+        {form.pricing_model === 'dual' && (
+          <div className="px-4 py-2 bg-primary/5 border border-primary/20 rounded-lg">
+            <span className="text-xs font-bold uppercase tracking-wider text-primary">Option A — Traditional</span>
+          </div>
+        )}
+
         {/* Upfront Items */}
         <UpfrontItemsEditor
           items={form.upfront_items}
@@ -817,6 +850,16 @@ export default function ProposalEditor() {
           onSaveToLibrary={(name, price) => saveItemToLibrary(name, price, '', 'ongoing')}
           showFrequency
         />
+
+        {/* Option B: SaaS Config (only when dual pricing) */}
+        {form.pricing_model === 'dual' && (
+          <Section title="Option B — Shoothill as a Service" defaultOpen>
+            <SaasConfigEditor
+              config={form.saas_config}
+              onChange={v => updateField('saas_config', v)}
+            />
+          </Section>
+        )}
 
         {/* Project Team */}
         <Section title="Project Team">

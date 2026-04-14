@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import type { Proposal, Challenge, Phase, RetainerOption, UpfrontItem, TeamMember } from "@/types/proposal";
+import type { Proposal, Challenge, Phase, RetainerOption, UpfrontItem, TeamMember, SaasConfig, SaasTier } from "@/types/proposal";
 
 const ShootHillMark = () => (
   <svg className="absolute -right-[120px] -bottom-[120px] w-[560px] h-[560px] opacity-10 pointer-events-none z-0" viewBox="0 0 199 198" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -45,6 +45,7 @@ export default function ProposalView() {
   const [selectedOptionalItems, setSelectedOptionalItems] = useState<Set<number>>(new Set());
   const [teamCards, setTeamCards] = useState<TeamMember[]>([]);
   const [showStickyBar, setShowStickyBar] = useState(false);
+  const [selectedPricingOption, setSelectedPricingOption] = useState<'traditional' | 'saas'>('saas');
   const w = useWindowWidth();
   const isMobile = w < 640;
   const isTablet = w < 960;
@@ -152,10 +153,16 @@ export default function ProposalView() {
   const FREQ_LABEL: Record<string, string> = { weekly: '/week', monthly: '/month', annual: '/year' };
   const freqLabel = (r: RetainerOption) => FREQ_LABEL[r.frequency ?? 'monthly'] ?? '/month';
   const optionContractTotal = (r: RetainerOption) => {
-    if (!r.term_months) return null;
+    if (r.rolling_monthly || !r.term_months) return null;
     const freq = r.frequency ?? 'monthly';
     const periods = freq === 'annual' ? r.term_months / 12 : freq === 'weekly' ? r.term_months * 4.33 : r.term_months;
     return optionTotal(r) * periods;
+  };
+  const termLabel = (r: RetainerOption) => {
+    if (r.rolling_monthly) return `Monthly rolling · ${r.notice_days ?? 30} days notice`;
+    if (!r.term_months) return null;
+    const base = `${r.term_months}-month term`;
+    return r.starts_after_months && r.starts_after_months > 0 ? `${base} · begins after project delivery` : base;
   };
   const annualMultiplier = (r: RetainerOption) => {
     if (r.frequency === 'weekly') return 52;
@@ -181,8 +188,55 @@ export default function ProposalView() {
   const ongoingLabel = dominantFreq === 'monthly' ? 'Monthly ongoing' : dominantFreq === 'annual' ? 'Annual ongoing' : dominantFreq === 'weekly' ? 'Weekly ongoing' : 'Ongoing';
   const ongoingFreqSuffix = dominantFreq !== 'mixed' ? (FREQ_LABEL[dominantFreq] ?? '/month') : '/year';
 
-  // Annual cost for first-year calculation
-  const annualOngoing = allSelectedOptions.reduce((sum, r) => sum + optionTotal(r) * annualMultiplier(r), 0);
+  // Per-year ongoing cost respecting each retainer's term length
+  const ongoingForYear = (yearIndex: number) =>
+    allSelectedOptions.reduce((sum, r) => {
+      const freq = r.frequency ?? 'monthly';
+      const yearStartMonth = yearIndex * 12;
+      const yearEndMonth = (yearIndex + 1) * 12;
+
+      // Annual-frequency items bill the full amount in the year each 12-month
+      // billing period begins — not prorated across calendar years.
+      if (freq === 'annual') {
+        if (r.rolling_monthly) {
+          // Rolling annual: bill once per year, in every year
+          return sum + optionTotal(r);
+        }
+        const offset = r.starts_after_months ?? 0;
+        const term = r.term_months ?? 12;
+        // Billing periods start at offset, offset+12, offset+24, ... while < offset+term
+        let count = 0;
+        for (let start = offset; start < offset + term; start += 12) {
+          if (start >= yearStartMonth && start < yearEndMonth) count += 1;
+        }
+        return sum + optionTotal(r) * count;
+      }
+
+      if (r.rolling_monthly) {
+        // Rolling monthly/weekly options contribute to every year — 12 months always
+        const activeMonths = 12;
+        const periods = freq === 'weekly' ? activeMonths * 4.33 : activeMonths;
+        return sum + optionTotal(r) * periods;
+      }
+
+      const offset = r.starts_after_months ?? 0;
+      const term = r.term_months ?? 12;
+      const startMonth = offset;
+      const endMonth = offset + term;
+      const overlapStart = Math.max(yearStartMonth, startMonth);
+      const overlapEnd = Math.min(yearEndMonth, endMonth);
+      if (overlapEnd <= overlapStart) return sum;
+      // Year 1 can be partial (e.g. retainer starts mid-year). Years 2+ are
+      // always billed as full 12-month years whenever the retainer is active
+      // at all, even if the term's tail only covers part of the calendar year.
+      const rawMonths = overlapEnd - overlapStart;
+      const activeMonths = yearIndex === 0 ? rawMonths : 12;
+      const periods = freq === 'weekly' ? activeMonths * 4.33 : activeMonths;
+      return sum + optionTotal(r) * periods;
+    }, 0);
+
+  // Annual cost for first-year (used in summary headline)
+  const annualOngoing = ongoingForYear(0);
 
   const optionalUpfrontItems = (proposal.upfront_items || []).map((item, i) => ({ item, index: i })).filter(({ item }) => (item as any).optional);
   const optionalUpfrontAddOn = [...selectedOptionalItems].reduce((sum, i) => {
@@ -193,11 +247,12 @@ export default function ProposalView() {
   const firstYearTotal = displayUpfrontTotal + annualOngoing;
 
   // Multi-year totals based on max term
-  const maxTermMonths = Math.max(...allSelectedOptions.map(r => r.term_months ?? 12), 12);
+  const hasRolling = allSelectedOptions.some(r => r.rolling_monthly);
+  const maxTermMonths = Math.max(...allSelectedOptions.filter(r => !r.rolling_monthly).map(r => (r.term_months ?? 12) + (r.starts_after_months ?? 0)), hasRolling ? 36 : 12);
   const totalYears = Math.min(Math.ceil(maxTermMonths / 12), 5);
   const yearTotals = Array.from({ length: totalYears }, (_, y) => ({
     year: y + 1,
-    total: (y === 0 ? displayUpfrontTotal : 0) + annualOngoing,
+    total: (y === 0 ? displayUpfrontTotal : 0) + ongoingForYear(y),
   }));
   const contractTotal = yearTotals.reduce((sum, y) => sum + y.total, 0);
 
@@ -441,7 +496,7 @@ export default function ProposalView() {
             </div>
           ) : (
             /* Desktop/tablet: alternating above/below timeline */
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(proposal.phases.length, 4)}, 1fr)`, gap: 0, position: 'relative' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${proposal.phases.length}, 1fr)`, gap: 0, position: 'relative' }}>
               {/* Rail */}
               <div style={{ gridColumn: '1 / -1', gridRow: 2, alignSelf: 'center', height: 4, background: 'linear-gradient(90deg, #009FE3, rgba(0,159,227,.45))', zIndex: 0, pointerEvents: 'none' as const }} />
               {proposal.phases.map((phase, i) => {
@@ -600,8 +655,157 @@ export default function ProposalView() {
               <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Investment &amp; Pricing</h2>
             </div>
           </div>
+          {/* Dual pricing tab toggle */}
+          {(proposal as any).pricing_model === 'dual' && (
+            <div style={{ padding: isMobile ? '12px 16px' : '16px 32px', borderBottom: '1px solid #DDE8EE', display: 'flex', gap: 8 }}>
+              {([['saas', 'Option A: Shoothill as a Service'], ['traditional', 'Option B: Traditional']] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setSelectedPricingOption(key)}
+                  style={{
+                    padding: '10px 20px',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    letterSpacing: '.02em',
+                    border: selectedPricingOption === key ? '2px solid #009FE3' : '2px solid #DDE8EE',
+                    background: selectedPricingOption === key ? '#F0FAFF' : 'white',
+                    color: selectedPricingOption === key ? '#009FE3' : '#6B7B8D',
+                    cursor: 'pointer',
+                    transition: 'all .2s',
+                    flex: 1,
+                    textAlign: 'center' as const,
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div style={{ padding: isMobile ? '16px 16px' : '28px 32px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+            {/* SaaS pricing view */}
+            {(proposal as any).pricing_model === 'dual' && selectedPricingOption === 'saas' && (() => {
+              const saasConfig = (proposal as any).saas_config as SaasConfig | undefined;
+              const tiers = saasConfig?.tiers || [];
+              const sellingPoints = saasConfig?.selling_points || [];
+              const customIntro = saasConfig?.custom_intro;
+
+              // Calculate SaaS totals
+              const saasMonthly = tiers.length > 0 ? tiers[0].monthly_price : 0;
+              const saasContractTotal = tiers.reduce((sum: number, t: SaasTier) => sum + t.monthly_price * t.duration_months, 0);
+              const saasMaxMonths = tiers.reduce((sum: number, t: SaasTier) => sum + t.duration_months, 0);
+              const saasTotalYears = Math.min(Math.ceil(saasMaxMonths / 12), 5);
+
+              // Build year-by-year breakdown from tiers
+              const saasYearTotals: { year: number; total: number }[] = [];
+              for (let y = 0; y < saasTotalYears; y++) {
+                const yearStart = y * 12;
+                const yearEnd = (y + 1) * 12;
+                let yearTotal = 0;
+                let monthsCovered = 0;
+                for (const tier of tiers) {
+                  const tierStart = tiers.slice(0, tiers.indexOf(tier)).reduce((s: number, t: SaasTier) => s + t.duration_months, 0);
+                  const tierEnd = tierStart + tier.duration_months;
+                  const overlapStart = Math.max(yearStart, tierStart);
+                  const overlapEnd = Math.min(yearEnd, tierEnd);
+                  if (overlapEnd > overlapStart) {
+                    yearTotal += tier.monthly_price * (overlapEnd - overlapStart);
+                    monthsCovered += overlapEnd - overlapStart;
+                  }
+                }
+                if (monthsCovered > 0) saasYearTotals.push({ year: y + 1, total: yearTotal });
+              }
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+                  {/* SaaS info block */}
+                  <div style={{ background: 'linear-gradient(135deg, #043D5D 0%, #065A87 100%)', padding: isMobile ? 20 : 32, color: 'white' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#00D4FF', marginBottom: 8 }}>Shoothill as a Service</div>
+                    <h3 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-.02em' }}>{customIntro || 'Everything you need, one simple monthly fee'}</h3>
+                    <p style={{ fontSize: 13, color: 'rgba(255,255,255,.7)', margin: '0 0 20px', lineHeight: 1.6 }}>
+                      Bespoke software built around your business — no upfront capital, no surprise invoices. Development, hosting, support, and ongoing improvements all included in a single predictable monthly subscription.
+                    </p>
+                    {sellingPoints.length > 0 && (
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '10px 24px' }}>
+                        {sellingPoints.map((point: string, i: number) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'rgba(255,255,255,.9)' }}>
+                            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0 }}><circle cx="10" cy="10" r="10" fill="#00D4FF" opacity=".2"/><path d="M6 10l3 3 5-5" stroke="#00D4FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            {point}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SaaS pricing tiers */}
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 16 }}>Subscription pricing</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${Math.min(tiers.length, 3)}, 1fr)`, gap: 12 }}>
+                      {tiers.map((tier: SaasTier, i: number) => (
+                        <div key={i} style={{ border: i === 0 ? '2px solid #009FE3' : '1px solid #DDE8EE', background: i === 0 ? '#F0FAFF' : 'white', padding: 20, position: 'relative' }}>
+                          {i === 0 && (
+                            <div style={{ position: 'absolute', top: 10, right: 10, background: '#009FE3', color: 'white', fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const, padding: '3px 8px' }}>Current</div>
+                          )}
+                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 8 }}>{tier.label}</div>
+                          <div style={{ fontSize: 28, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1 }}>
+                            £{tier.monthly_price.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                            <span style={{ fontSize: 14, fontWeight: 500, color: '#6B7B8D' }}> / month</span>
+                          </div>
+                          <div style={{ fontSize: 11, color: '#AAAAAA', marginTop: 4 }}>{tier.duration_months}-month term · £{(tier.monthly_price * tier.duration_months).toLocaleString('en-GB', { minimumFractionDigits: 2 })} total</div>
+                          {tier.features.length > 0 && (
+                            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {tier.features.map((f: string, fi: number) => (
+                                <div key={fi} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12, color: '#3D5A6E', lineHeight: 1.4 }}>
+                                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0, marginTop: 1 }}><path d="M6 10l3 3 5-5" stroke="#009FE3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  {f}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* SaaS investment summary */}
+                  <div style={{ background: '#043D5D', padding: isMobile ? '24px 16px' : '32px 36px', color: 'white' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.4)', marginBottom: 16 }}>Investment summary</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 20 : 0, alignItems: 'end' }}>
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.4)', marginBottom: 6 }}>Monthly ongoing</div>
+                        <div style={{ fontSize: isMobile ? 36 : 42, fontWeight: 900, color: '#00D4FF', letterSpacing: '-.04em', lineHeight: 1 }}>£{saasMonthly.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', marginTop: 6 }}>+ VAT @ 20% /month</div>
+                      </div>
+                      <div style={{ textAlign: isMobile ? 'left' : 'right' }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.4)', marginBottom: 6 }}>One-time project</div>
+                        <div style={{ fontSize: 28, fontWeight: 800, color: '#00D4FF', letterSpacing: '-.02em', lineHeight: 1 }}>£0.00</div>
+                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', marginTop: 6 }}>No upfront cost</div>
+                      </div>
+                    </div>
+                    {/* Year-by-year */}
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', marginTop: 24, paddingTop: 24, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : `repeat(${Math.min(saasYearTotals.length + (saasYearTotals.length > 1 ? 1 : 0), 6)}, 1fr)`, gap: isMobile ? '16px 0' : 0, alignItems: 'baseline' }}>
+                      {saasYearTotals.map(({ year, total }) => (
+                        <div key={year} style={{ borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,.08)', paddingRight: isMobile ? 0 : 24, paddingLeft: isMobile || year === 1 ? 0 : 24 }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.4)', marginBottom: 6 }}>Year {year}</div>
+                          <div style={{ fontSize: isMobile ? 20 : 22, fontWeight: 700, color: 'rgba(255,255,255,.65)', letterSpacing: '-.02em', lineHeight: 1 }}>£{total.toLocaleString('en-GB')}</div>
+                          <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', marginTop: 4, minHeight: 16 }}>+ VAT</div>
+                        </div>
+                      ))}
+                      {saasYearTotals.length > 1 && (
+                        <div style={{ paddingLeft: isMobile ? 0 : 24 }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: '#00D4FF', opacity: 0.7, marginBottom: 6 }}>Total contract value</div>
+                          <div style={{ fontSize: isMobile ? 24 : 28, fontWeight: 900, color: '#00D4FF', letterSpacing: '-.03em', lineHeight: 1 }}>£{saasContractTotal.toLocaleString('en-GB')}</div>
+                          <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', marginTop: 4 }}>+ VAT @ 20%</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Traditional pricing view */}
+            {((proposal as any).pricing_model !== 'dual' || selectedPricingOption === 'traditional') && <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
               {/* Upfront */}
               {(proposal.upfront_items || []).length > 0 && <div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 16 }}>{(proposal as any).upfront_section_title || 'Part 1: One-time project delivery'}</div>
@@ -729,7 +933,7 @@ export default function ProposalView() {
                             <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}</span></div>
                           )}
                           {(r.quantity ?? 1) > 1 && <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each {freqLabel(r).replace('/', '/ ')}</div>}
-                          {r.term_months && <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.term_months}-month term{optionContractTotal(r) != null && <> · £{optionContractTotal(r)!.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total</>}</div>}
+                          {termLabel(r) && <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{termLabel(r)}{optionContractTotal(r) != null && <> · £{optionContractTotal(r)!.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total</>}</div>}
                         </div>
                       </div>
                     ))}
@@ -787,7 +991,7 @@ export default function ProposalView() {
                           </div>
                         )}
                         {(r.quantity ?? 1) > 1 && <div style={{ fontSize: 11, color: '#AAAAAA', marginBottom: 2 }}>{r.quantity} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each {freqLabel(r).replace('/', '/ ')}</div>}
-                        {r.term_months && <div style={{ fontSize: 11, color: '#AAAAAA', marginBottom: 4 }}>{r.term_months}-month term{optionContractTotal(r) != null && <> · £{optionContractTotal(r)!.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total</>}</div>}
+                        {termLabel(r) && <div style={{ fontSize: 11, color: '#AAAAAA', marginBottom: 4 }}>{termLabel(r)}{optionContractTotal(r) != null && <> · £{optionContractTotal(r)!.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total</>}</div>}
                         {r.features.filter(f => f.trim()).length > 0 && (
                           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12, paddingTop: 12, borderTop: '1px solid #DDE8EE', padding: 0 }}>
                             {r.features.filter(f => f.trim()).map((f, j) => (
@@ -860,7 +1064,7 @@ export default function ProposalView() {
                               <div style={{ fontSize: 18, fontWeight: 800, color: '#043D5D' }}>£{optionTotal(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel(r).replace('/', '/ ')}</span></div>
                             )}
                             {(r.quantity ?? 1) > 1 && <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.quantity} × £{effectivePrice(r).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each {freqLabel(r).replace('/', '/ ')}</div>}
-                            {r.term_months && <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{r.term_months}-month term{optionContractTotal(r) != null && <> · £{optionContractTotal(r)!.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total</>}</div>}
+                            {termLabel(r) && <div style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>{termLabel(r)}{optionContractTotal(r) != null && <> · £{optionContractTotal(r)!.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total</>}</div>}
                           </div>
                         </div>
                       );
@@ -879,7 +1083,7 @@ export default function ProposalView() {
                     <div style={{ borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,.12)', paddingRight: isMobile ? 0 : 32 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)', marginBottom: 8 }}>{ongoingLabel}</div>
                       <div style={{ fontSize: isMobile ? 36 : 42, fontWeight: 900, color: '#00D4FF', letterSpacing: '-.04em', lineHeight: 1, transition: 'all .3s' }}>£{ongoingTotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>+ VAT @ 20% {ongoingFreqSuffix}{selectedStandardOption?.term_months ? ` · ${selectedStandardOption.term_months} month term` : ''}</div>
+                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>+ VAT @ 20% {ongoingFreqSuffix}{selectedStandardOption ? (selectedStandardOption.rolling_monthly ? ` · Monthly rolling · ${selectedStandardOption.notice_days ?? 30} days notice` : selectedStandardOption.term_months ? ` · ${selectedStandardOption.term_months} month term${selectedStandardOption.starts_after_months ? ' · begins after project delivery' : ''}` : '') : ''}</div>
                     </div>
                   )}
                   {displayUpfrontTotal > 0 && (
@@ -909,7 +1113,7 @@ export default function ProposalView() {
                   )}
                 </div>
               </div>
-            </div>
+            </div>}
           </div>
         </div>
       </div>
@@ -1145,7 +1349,44 @@ export default function ProposalView() {
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
             <button
-              onClick={() => window.print()}
+              onClick={async () => {
+                if (!proposal) return;
+                try {
+                  const [{ pdf }, { ProposalPDF }] = await Promise.all([
+                    import('@react-pdf/renderer'),
+                    import('../components/ProposalPDF'),
+                  ]);
+                  const selectedOptionalUpfrontItems = [...selectedOptionalItems]
+                    .map(i => proposal.upfront_items?.[i])
+                    .filter(Boolean) as UpfrontItem[];
+                  const blob = await pdf(
+                    <ProposalPDF
+                      proposal={proposal}
+                      selectedStandardOption={selectedStandardOption}
+                      selectedExtras={[...checkedExtras].map(i => optionalExtras[i]).filter(Boolean)}
+                      coreOptions={coreOptions}
+                      selectedOptionalUpfrontItems={selectedOptionalUpfrontItems}
+                      displayUpfrontTotal={displayUpfrontTotal}
+                      annualOngoing={annualOngoing}
+                      firstYearTotal={firstYearTotal}
+                      contractTotal={contractTotal}
+                      yearTotals={yearTotals}
+                    />
+                  ).toBlob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  const safeClient = (proposal.client_name || 'proposal').replace(/[^a-z0-9-_ ]/gi, '').trim();
+                  a.download = `Shoothill Proposal - ${safeClient}.pdf`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                } catch (err) {
+                  console.error('PDF generation failed', err);
+                  alert('Sorry, something went wrong generating the PDF.');
+                }
+              }}
               style={{ padding: '9px 16px', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.25)', color: 'rgba(255,255,255,.85)', fontSize: 12, fontWeight: 600, cursor: 'pointer', letterSpacing: '.04em', display: 'flex', alignItems: 'center', gap: 6 }}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
@@ -1153,7 +1394,7 @@ export default function ProposalView() {
             </button>
             <button
               className="cta-pulse"
-              onClick={() => navigate(`/p/${slug}/accept?standard=${selectedStandard}&extras=${[...checkedExtras].join(',')}`)}
+              onClick={() => navigate(`/p/${slug}/accept?standard=${selectedStandard}&extras=${[...checkedExtras].join(',')}&pricing=${selectedPricingOption}`)}
               style={{ background: '#009FE3', color: 'white', fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' as const, padding: '9px 18px', border: 'none', cursor: 'pointer' }}
             >
               Sign agreement →

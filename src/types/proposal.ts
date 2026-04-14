@@ -37,7 +37,31 @@ export interface RetainerOption {
   option_type: 'standard' | 'optional_extra' | 'core';
   recommended: boolean;
   frequency?: 'weekly' | 'monthly' | 'annual';
+  rolling_monthly?: boolean;
+  notice_days?: number;
+  starts_after_months?: number;
 }
+
+export interface SaasTier {
+  label: string;
+  monthly_price: number;
+  duration_months: number;
+  features: string[];
+}
+
+export interface SaasConfig {
+  tiers: SaasTier[];
+  selling_points: string[];
+  custom_intro?: string;
+}
+
+export const DEFAULT_SAAS_SELLING_POINTS: string[] = [
+  '£0 upfront cost',
+  'Rapid deployment',
+  '100% UK-based in-house team',
+  'Ongoing improvements included in subscription',
+  'Development, hosting & support in one monthly fee',
+];
 
 export interface TeamMember {
   id: string;
@@ -90,6 +114,8 @@ export interface Proposal {
   working_together?: string;
   team_member_ids?: string[];
   hide_phase_durations?: boolean;
+  pricing_model?: 'traditional' | 'dual';
+  saas_config?: SaasConfig;
   created_at: string;
   updated_at: string;
 }

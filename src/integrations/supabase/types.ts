@@ -14,74 +14,251 @@ export type Database = {
   }
   public: {
     Tables: {
+      adhoc_contracts: {
+        Row: {
+          agreement_date: string
+          client_name: string
+          company_reg_number: string
+          contact_email: string
+          contact_name: string
+          created_at: string
+          id: string
+          monthly_fee: number
+          ongoing_options: Json
+          organisation: string
+          payment_terms: string
+          phases: Json
+          programme_title: string
+          registered_address_1: string
+          registered_address_2: string
+          registered_city: string
+          registered_county: string
+          registered_postcode: string
+          retainer_name: string
+          retainer_options: Json
+          signed_at: string | null
+          signed_contract_url: string | null
+          signer_name: string | null
+          signer_title: string | null
+          slug: string
+          status: string
+          template_id: string | null
+          updated_at: string
+          upfront_items: Json
+        }
+        Insert: {
+          agreement_date?: string
+          client_name?: string
+          company_reg_number?: string
+          contact_email?: string
+          contact_name?: string
+          created_at?: string
+          id?: string
+          monthly_fee?: number
+          ongoing_options?: Json
+          organisation?: string
+          payment_terms?: string
+          phases?: Json
+          programme_title?: string
+          registered_address_1?: string
+          registered_address_2?: string
+          registered_city?: string
+          registered_county?: string
+          registered_postcode?: string
+          retainer_name?: string
+          retainer_options?: Json
+          signed_at?: string | null
+          signed_contract_url?: string | null
+          signer_name?: string | null
+          signer_title?: string | null
+          slug?: string
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+          upfront_items?: Json
+        }
+        Update: {
+          agreement_date?: string
+          client_name?: string
+          company_reg_number?: string
+          contact_email?: string
+          contact_name?: string
+          created_at?: string
+          id?: string
+          monthly_fee?: number
+          ongoing_options?: Json
+          organisation?: string
+          payment_terms?: string
+          phases?: Json
+          programme_title?: string
+          registered_address_1?: string
+          registered_address_2?: string
+          registered_city?: string
+          registered_county?: string
+          registered_postcode?: string
+          retainer_name?: string
+          retainer_options?: Json
+          signed_at?: string | null
+          signed_contract_url?: string | null
+          signer_name?: string | null
+          signer_title?: string | null
+          slug?: string
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+          upfront_items?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adhoc_contracts_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "service_agreement_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          created_at: string
+          default_price: number
+          description: string | null
+          id: string
+          is_ongoing: boolean
+          is_upfront: boolean
+          name: string
+          service_type_id: string | null
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          default_price?: number
+          description?: string | null
+          id?: string
+          is_ongoing?: boolean
+          is_upfront?: boolean
+          name: string
+          service_type_id?: string | null
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          default_price?: number
+          description?: string | null
+          id?: string
+          is_ongoing?: boolean
+          is_upfront?: boolean
+          name?: string
+          service_type_id?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
-          id: string
+          created_at: string
           email: string
           full_name: string
+          id: string
           job_title: string
+          office_phone: string | null
           phone_number: string
-          role: "admin" | "user"
-          created_at: string
+          role: string
+          team_member_id: string | null
           updated_at: string
         }
         Insert: {
-          id: string
+          created_at?: string
           email: string
           full_name?: string
+          id: string
           job_title?: string
+          office_phone?: string | null
           phone_number?: string
-          role?: "admin" | "user"
-          created_at?: string
+          role?: string
+          team_member_id?: string | null
           updated_at?: string
         }
         Update: {
-          id?: string
+          created_at?: string
           email?: string
           full_name?: string
+          id?: string
           job_title?: string
+          office_phone?: string | null
           phone_number?: string
-          role?: "admin" | "user"
-          created_at?: string
+          role?: string
+          team_member_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       proposal_acceptances: {
         Row: {
           created_at: string
           first_year_total: number
           id: string
+          pricing_option: string | null
           proposal_id: string
           retainer_price: number
+          selected_extras: Json
           selected_retainer_index: number
+          signature_data: string | null
           signed_at: string
+          signed_contract_url: string | null
           signer_name: string
           signer_title: string
+          signing_error: string | null
           upfront_total: number
         }
         Insert: {
           created_at?: string
           first_year_total?: number
           id?: string
+          pricing_option?: string | null
           proposal_id: string
           retainer_price?: number
+          selected_extras?: Json
           selected_retainer_index?: number
+          signature_data?: string | null
           signed_at?: string
+          signed_contract_url?: string | null
           signer_name: string
           signer_title?: string
+          signing_error?: string | null
           upfront_total?: number
         }
         Update: {
           created_at?: string
           first_year_total?: number
           id?: string
+          pricing_option?: string | null
           proposal_id?: string
           retainer_price?: number
+          selected_extras?: Json
           selected_retainer_index?: number
+          signature_data?: string | null
           signed_at?: string
+          signed_contract_url?: string | null
           signer_name?: string
           signer_title?: string
+          signing_error?: string | null
           upfront_total?: number
         }
         Relationships: [
@@ -98,101 +275,432 @@ export type Database = {
         Row: {
           challenge_intro: string
           challenges: Json
+          client_email: string | null
+          client_logo_url: string | null
           client_name: string
+          commercial_opportunity: string
+          company_reg_number: string
           contact_email: string
           contact_mobile: string
           contact_name: string
           contact_phone: string
           contract_file_url: string | null
+          core_section_title: string | null
           created_at: string
-          default_retainer_index: number
+          hide_phase_durations: boolean | null
           id: string
+          launch_phase: Json | null
+          lead_team_member_id: string | null
+          next_steps: Json | null
+          ongoing_section_title: string | null
           organisation: string
-          payment_terms: string
+          partnership_overview: string
+          payment_terms: string | null
           phases: Json
           prepared_by: string
           prepared_by_user_id: string | null
+          pricing_model: string
           programme_title: string
           proposal_date: string
+          registered_address_1: string
+          registered_address_2: string
+          registered_city: string
+          registered_county: string
+          registered_postcode: string
           retainer_options: Json
+          saas_config: Json | null
           sector: string
+          service_agreement_template_id: string | null
           slug: string
           staff: string
           status: string
+          strategic_focus: string
+          team_member_ids: Json | null
           tech_stack: string
-          timeline: string
           updated_at: string
+          upfront_items: Json
+          upfront_notes: string | null
+          upfront_section_title: string | null
           upfront_total: number
           valid_until: string
+          viewed_at: string | null
+          whats_needed: string
+          working_together: string
         }
         Insert: {
           challenge_intro?: string
           challenges?: Json
+          client_email?: string | null
+          client_logo_url?: string | null
           client_name?: string
+          commercial_opportunity?: string
+          company_reg_number?: string
           contact_email?: string
           contact_mobile?: string
           contact_name?: string
           contact_phone?: string
           contract_file_url?: string | null
+          core_section_title?: string | null
           created_at?: string
-          default_retainer_index?: number
+          hide_phase_durations?: boolean | null
           id?: string
+          launch_phase?: Json | null
+          lead_team_member_id?: string | null
+          next_steps?: Json | null
+          ongoing_section_title?: string | null
           organisation?: string
-          payment_terms?: string
+          partnership_overview?: string
+          payment_terms?: string | null
           phases?: Json
           prepared_by?: string
           prepared_by_user_id?: string | null
+          pricing_model?: string
           programme_title?: string
           proposal_date?: string
+          registered_address_1?: string
+          registered_address_2?: string
+          registered_city?: string
+          registered_county?: string
+          registered_postcode?: string
           retainer_options?: Json
+          saas_config?: Json | null
           sector?: string
+          service_agreement_template_id?: string | null
           slug?: string
           staff?: string
           status?: string
+          strategic_focus?: string
+          team_member_ids?: Json | null
           tech_stack?: string
-          timeline?: string
           updated_at?: string
+          upfront_items?: Json
+          upfront_notes?: string | null
+          upfront_section_title?: string | null
           upfront_total?: number
           valid_until?: string
+          viewed_at?: string | null
+          whats_needed?: string
+          working_together?: string
         }
         Update: {
           challenge_intro?: string
           challenges?: Json
+          client_email?: string | null
+          client_logo_url?: string | null
           client_name?: string
+          commercial_opportunity?: string
+          company_reg_number?: string
           contact_email?: string
           contact_mobile?: string
           contact_name?: string
           contact_phone?: string
           contract_file_url?: string | null
+          core_section_title?: string | null
           created_at?: string
-          default_retainer_index?: number
+          hide_phase_durations?: boolean | null
           id?: string
+          launch_phase?: Json | null
+          lead_team_member_id?: string | null
+          next_steps?: Json | null
+          ongoing_section_title?: string | null
           organisation?: string
-          payment_terms?: string
+          partnership_overview?: string
+          payment_terms?: string | null
           phases?: Json
           prepared_by?: string
           prepared_by_user_id?: string | null
+          pricing_model?: string
           programme_title?: string
           proposal_date?: string
+          registered_address_1?: string
+          registered_address_2?: string
+          registered_city?: string
+          registered_county?: string
+          registered_postcode?: string
           retainer_options?: Json
+          saas_config?: Json | null
           sector?: string
+          service_agreement_template_id?: string | null
           slug?: string
           staff?: string
           status?: string
+          strategic_focus?: string
+          team_member_ids?: Json | null
           tech_stack?: string
-          timeline?: string
           updated_at?: string
+          upfront_items?: Json
+          upfront_notes?: string | null
+          upfront_section_title?: string | null
           upfront_total?: number
           valid_until?: string
+          viewed_at?: string | null
+          whats_needed?: string
+          working_together?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposals_lead_team_member_id_fkey"
+            columns: ["lead_team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_prepared_by_user_id_fkey"
+            columns: ["prepared_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_service_agreement_template_id_fkey"
+            columns: ["service_agreement_template_id"]
+            isOneToOne: false
+            referencedRelation: "service_agreement_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_agreement_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          sections: Json
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          sections?: Json
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          sections?: Json
+          sort_order?: number
+          updated_at?: string
         }
         Relationships: []
+      }
+      service_type_challenges: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          service_type_id: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          service_type_id: string
+          sort_order?: number
+          title?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          service_type_id?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_type_challenges_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_type_phases: {
+        Row: {
+          created_at: string
+          duration: string
+          id: string
+          label: string
+          price: string
+          service_type_id: string
+          sort_order: number
+          tasks: Json
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          duration?: string
+          id?: string
+          label?: string
+          price?: string
+          service_type_id: string
+          sort_order?: number
+          tasks?: Json
+          title?: string
+        }
+        Update: {
+          created_at?: string
+          duration?: string
+          id?: string
+          label?: string
+          price?: string
+          service_type_id?: string
+          sort_order?: number
+          tasks?: Json
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_type_phases_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_types: {
+        Row: {
+          commercial_opportunity_template: string
+          created_at: string
+          id: string
+          is_ongoing: boolean
+          is_upfront: boolean
+          name: string
+          partnership_overview_template: string
+          sort_order: number
+          strategic_focus_template: string
+          whats_needed_template: string
+          working_together_template: string
+        }
+        Insert: {
+          commercial_opportunity_template?: string
+          created_at?: string
+          id?: string
+          is_ongoing?: boolean
+          is_upfront?: boolean
+          name: string
+          partnership_overview_template?: string
+          sort_order?: number
+          strategic_focus_template?: string
+          whats_needed_template?: string
+          working_together_template?: string
+        }
+        Update: {
+          commercial_opportunity_template?: string
+          created_at?: string
+          id?: string
+          is_ongoing?: boolean
+          is_upfront?: boolean
+          name?: string
+          partnership_overview_template?: string
+          sort_order?: number
+          strategic_focus_template?: string
+          whats_needed_template?: string
+          working_together_template?: string
+        }
+        Relationships: []
+      }
+      team_members: {
+        Row: {
+          bio: string | null
+          created_at: string | null
+          full_name: string
+          id: string
+          is_active: boolean | null
+          job_title: string | null
+          linkedin_url: string | null
+          photo_url: string | null
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string | null
+          full_name: string
+          id?: string
+          is_active?: boolean | null
+          job_title?: string | null
+          linkedin_url?: string | null
+          photo_url?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean | null
+          job_title?: string | null
+          linkedin_url?: string | null
+          photo_url?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      template_phases: {
+        Row: {
+          created_at: string
+          duration: string
+          id: string
+          label: string
+          price: string
+          service_type_id: string
+          sort_order: number
+          tasks: Json
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          duration?: string
+          id?: string
+          label?: string
+          price?: string
+          service_type_id: string
+          sort_order?: number
+          tasks?: Json
+          title?: string
+        }
+        Update: {
+          created_at?: string
+          duration?: string
+          id?: string
+          label?: string
+          price?: string
+          service_type_id?: string
+          sort_order?: number
+          tasks?: Json
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_phases_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
