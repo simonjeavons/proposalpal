@@ -8,6 +8,7 @@ import { RetainerOptionsEditor } from "@/components/RetainerOptionsEditor";
 import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut, Check, X, Target, Download, GitBranch, ShoppingBag, Scale, UserCircle2, Link as LinkIcon } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import ViewHistoryPanel from "@/components/ViewHistoryPanel";
+import DocumentListRow, { type DocumentChip } from "@/components/DocumentListRow";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -105,6 +106,7 @@ export default function AdminDashboard() {
   const [proposalsLoading, setProposalsLoading] = useState(true);
   const [signedContracts, setSignedContracts] = useState<Record<string, string>>({}); // proposal_id -> signed_contract_url
   const [proposalViewCounts, setProposalViewCounts] = useState<Record<string, number>>({}); // proposal_id -> view count
+  const [contractViewCounts, setContractViewCounts] = useState<Record<string, number>>({}); // contract_id -> view count
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterSector, setFilterSector] = useState<string>('all');
   const [filterUser, setFilterUser] = useState<string>('all');
@@ -382,6 +384,16 @@ export default function AdminDashboard() {
       .from('adhoc_contracts' as any)
       .select('id, slug, status, client_name, organisation, programme_title, contact_name, signer_name, signer_title, signed_at, signed_contract_url, created_at')
       .order('created_at', { ascending: false });
+
+    // 1b. Contract view counts
+    const { data: contractViews } = await supabase
+      .from('contract_views' as any)
+      .select('contract_id');
+    if (contractViews) {
+      const counts: Record<string, number> = {};
+      (contractViews as any[]).forEach(v => { counts[v.contract_id] = (counts[v.contract_id] || 0) + 1; });
+      setContractViewCounts(counts);
+    }
 
     // 2. Proposal acceptances
     const { data: acceptances } = await supabase
@@ -1239,70 +1251,64 @@ export default function AdminDashboard() {
                   <div className="bg-card border border-border divide-y divide-border">
                     {filtered.map(p => {
                       const mo = monthlyTotal(p);
+                      const chips: DocumentChip[] = [];
+                      if (p.sector) chips.push({ label: p.sector, variant: 'primary' });
+                      if ((p as any).pricing_model === 'dual') chips.push({ label: 'Dual', variant: 'cyan' });
+                      chips.push({ label: 'Proposal', variant: 'purple' });
                       return (
-                        <div key={p.id} className="px-6 py-4 flex items-center gap-4 hover:bg-muted/50 transition-colors">
-                          {/* Main info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3 mb-1">
-                              <h3 className="text-sm font-bold text-foreground truncate">{p.client_name || 'Untitled'}</h3>
-                              <Badge className={`${getStatusColor(p.status)} text-[10px] font-bold uppercase tracking-wider`}>{p.status}</Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground truncate">{p.programme_title || 'Untitled project'} · {new Date(p.created_at).toLocaleDateString('en-GB')}</p>
-                            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                              {p.sector && <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{p.sector}</span>}
-                              {(p as any).pricing_model === 'dual' && <span className="inline-flex items-center rounded-full bg-cyan-100 dark:bg-cyan-900/30 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 dark:text-cyan-400">Dual</span>}
-                              {(proposalViewCounts[p.id] ?? 0) > 0 && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground" title={`${proposalViewCounts[p.id]} view${proposalViewCounts[p.id] === 1 ? '' : 's'}`}>
-                                  <Eye className="w-3 h-3" />
-                                  {proposalViewCounts[p.id]}
-                                </span>
-                              )}
-                              {p.prepared_by && <span className="text-[11px] text-muted-foreground">{p.prepared_by}</span>}
-                            </div>
-                          </div>
-                          {/* Financials */}
-                          <div className="hidden sm:flex flex-col items-end gap-0.5 shrink-0 min-w-[120px] text-right">
-                            <div className="text-sm font-bold text-foreground">{fmtGbp(p.upfront_total || 0)} <span className="text-[10px] font-normal text-muted-foreground">upfront</span></div>
-                            {mo > 0 && <div className="text-xs text-muted-foreground">{fmtGbp(mo)}<span className="text-[10px]">/mo</span></div>}
-                          </div>
-                          {/* Actions */}
-                          <div className="flex items-center gap-1 shrink-0">
-                            <Link to={`/p/${p.slug}`} target="_blank">
-                              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Preview">
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                            </Link>
-                            <Button
-                              variant="ghost" size="sm"
-                              className="text-muted-foreground hover:text-primary"
-                              title="Copy link"
-                              onClick={() => {
-                                navigator.clipboard.writeText(`${window.location.origin}/p/${p.slug}`);
-                                toast.success("Link copied!");
-                              }}
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </Button>
-                            <Link to={`/admin/proposals/${p.id}`}>
-                              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Edit">
-                                <Pencil className="w-4 h-4" />
-                              </Button>
-                            </Link>
-                            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Duplicate" onClick={() => duplicateProposal(p)}>
-                              <Copy className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" title="Delete" onClick={() => deleteProposal(p.id)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                            {signedContracts[p.id] && (
-                              <a href={`/contracts/${signedContracts[p.id]}`} target="_blank" rel="noopener noreferrer" title="Download signed contract">
-                                <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
-                                  <Download className="w-4 h-4" />
+                        <DocumentListRow
+                          key={p.id}
+                          statusLabel={p.status}
+                          statusClassName={getStatusColor(p.status)}
+                          clientName={p.client_name || 'Untitled'}
+                          organisation={p.organisation}
+                          programmeTitle={p.programme_title || 'Untitled project'}
+                          dateStr={new Date(p.created_at).toLocaleDateString('en-GB')}
+                          chips={chips}
+                          viewCount={proposalViewCounts[p.id]}
+                          preparedBy={p.prepared_by}
+                          upfrontTotal={p.upfront_total || 0}
+                          monthlyFee={mo}
+                          formatCurrency={fmtGbp}
+                          actions={
+                            <>
+                              <Link to={`/p/${p.slug}`} target="_blank">
+                                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Preview">
+                                  <Eye className="w-4 h-4" />
                                 </Button>
-                              </a>
-                            )}
-                          </div>
-                        </div>
+                              </Link>
+                              <Button
+                                variant="ghost" size="sm"
+                                className="text-muted-foreground hover:text-primary"
+                                title="Copy link"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(`${window.location.origin}/p/${p.slug}`);
+                                  toast.success("Link copied!");
+                                }}
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </Button>
+                              <Link to={`/admin/proposals/${p.id}`}>
+                                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Edit">
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                              </Link>
+                              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Duplicate" onClick={() => duplicateProposal(p)}>
+                                <Copy className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" title="Delete" onClick={() => deleteProposal(p.id)}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                              {signedContracts[p.id] && (
+                                <a href={`/contracts/${signedContracts[p.id]}`} target="_blank" rel="noopener noreferrer" title="Download signed contract">
+                                  <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
+                                    <Download className="w-4 h-4" />
+                                  </Button>
+                                </a>
+                              )}
+                            </>
+                          }
+                        />
                       );
                     })}
                   </div>
@@ -2133,89 +2139,85 @@ export default function AdminDashboard() {
                     <p className="text-muted-foreground">No agreements yet.</p>
                   </div>
                 ) : (
-                  <div className="bg-card border border-border overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border bg-muted/50">
-                          <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status</th>
-                          <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Source</th>
-                          <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Client</th>
-                          <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Programme</th>
-                          <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Signed By</th>
-                          <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Contact</th>
-                          <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Date</th>
-                          <th className="px-4 py-2.5"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {allAgreements.map((c: any, i: number) => {
-                          const statusBadge = c.status === 'draft'
-                            ? <span className="inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-muted text-muted-foreground">Draft</span>
-                            : c.status === 'pending'
-                            ? <span className="inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Sent</span>
-                            : <span className="inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">Signed</span>;
-                          const sourceBadge = c.source === 'proposal'
-                            ? <span className="inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">Proposal</span>
-                            : <span className="inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">Ad-Hoc</span>;
-                          const dateStr = c.date ? new Date(c.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-                          const signingLink = c.slug ? `${window.location.origin}/ac/${c.slug}/sign` : null;
-                          return (
-                            <tr key={c._key} className={`border-b border-border last:border-0 ${i % 2 === 0 ? '' : 'bg-muted/20'}`}>
-                              <td className="px-4 py-3">{statusBadge}</td>
-                              <td className="px-4 py-3">{sourceBadge}</td>
-                              <td className="px-4 py-3">
-                                <div className="font-semibold text-foreground">{c.client_name}</div>
-                                {c.organisation && <div className="text-xs text-muted-foreground">{c.organisation}</div>}
-                              </td>
-                              <td className="px-4 py-3 text-muted-foreground">{c.programme_title || '—'}</td>
-                              <td className="px-4 py-3">
-                                <div className="font-medium text-foreground">{c.signer_name || '—'}</div>
-                                {c.signer_title && <div className="text-xs text-muted-foreground">{c.signer_title}</div>}
-                              </td>
-                              <td className="px-4 py-3 text-muted-foreground text-xs">{c.contact_name || '—'}</td>
-                              <td className="px-4 py-3 text-muted-foreground text-xs">{dateStr}</td>
-                              <td className="px-4 py-3 text-right">
-                                <div className="flex items-center gap-2 justify-end">
-                                  {c.status === 'signed' && c.signed_contract_url && (
-                                    <a
-                                      href={supabase.storage.from('contracts').getPublicUrl(c.signed_contract_url).data.publicUrl}
-                                      target="_blank" rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-                                    >
-                                      <Download className="w-3.5 h-3.5" /> Download
-                                    </a>
-                                  )}
-                                  {c.status === 'pending' && signingLink && (
-                                    <button
-                                      onClick={() => { navigator.clipboard.writeText(signingLink); toast.success('Signing link copied!'); }}
-                                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-                                    >
-                                      <LinkIcon className="w-3.5 h-3.5" /> Copy Link
-                                    </button>
-                                  )}
-                                  {c.source === 'adhoc' && (c.status === 'draft' || c.status === 'pending') && (
-                                    <>
-                                      <button
-                                        onClick={() => loadDraftForEditing(c.id)}
-                                        className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-                                      >
-                                        <Pencil className="w-3.5 h-3.5" /> Edit
-                                      </button>
-                                      <button
-                                        onClick={() => deleteAdhocContract(c.id, c.status)}
-                                        className="inline-flex items-center gap-1 text-xs font-semibold text-destructive hover:underline"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" /> Delete
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                  <div className="bg-card border border-border divide-y divide-border">
+                    {allAgreements.map((c: any) => {
+                      const statusClassName = c.status === 'draft'
+                        ? 'bg-muted text-muted-foreground'
+                        : c.status === 'pending'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                          : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
+                      const statusLabel = c.status === 'pending' ? 'sent' : c.status;
+                      const chips: DocumentChip[] = [
+                        c.source === 'proposal'
+                          ? { label: 'Proposal', variant: 'purple' }
+                          : { label: 'Ad-Hoc', variant: 'sky' },
+                      ];
+                      const dateStr = c.date
+                        ? new Date(c.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : '';
+                      const signingLink = c.slug ? `${window.location.origin}/ac/${c.slug}/sign` : null;
+                      return (
+                        <DocumentListRow
+                          key={c._key}
+                          statusLabel={statusLabel}
+                          statusClassName={statusClassName}
+                          clientName={c.client_name || 'Untitled'}
+                          organisation={c.organisation}
+                          programmeTitle={c.programme_title || 'Untitled project'}
+                          dateStr={dateStr}
+                          chips={chips}
+                          viewCount={c.source === 'adhoc' ? contractViewCounts[c.id] : undefined}
+                          preparedBy={c.contact_name}
+                          signedBy={c.status === 'signed' ? c.signer_name : undefined}
+                          signedByTitle={c.status === 'signed' ? c.signer_title : undefined}
+                          actions={
+                            <>
+                              {c.status === 'pending' && signingLink && (
+                                <Button
+                                  variant="ghost" size="sm"
+                                  className="text-muted-foreground hover:text-primary"
+                                  title="Copy signing link"
+                                  onClick={() => { navigator.clipboard.writeText(signingLink); toast.success('Signing link copied!'); }}
+                                >
+                                  <LinkIcon className="w-4 h-4" />
+                                </Button>
+                              )}
+                              {c.source === 'adhoc' && (c.status === 'draft' || c.status === 'pending') && (
+                                <>
+                                  <Button
+                                    variant="ghost" size="sm"
+                                    className="text-muted-foreground hover:text-primary"
+                                    title="Edit"
+                                    onClick={() => loadDraftForEditing(c.id)}
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost" size="sm"
+                                    className="text-muted-foreground hover:text-destructive"
+                                    title="Delete"
+                                    onClick={() => deleteAdhocContract(c.id, c.status)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
+                              {c.status === 'signed' && c.signed_contract_url && (
+                                <a
+                                  href={supabase.storage.from('contracts').getPublicUrl(c.signed_contract_url).data.publicUrl}
+                                  target="_blank" rel="noopener noreferrer"
+                                  title="Download signed contract"
+                                >
+                                  <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
+                                    <Download className="w-4 h-4" />
+                                  </Button>
+                                </a>
+                              )}
+                            </>
+                          }
+                        />
+                      );
+                    })}
                   </div>
                 )}
               </div>
