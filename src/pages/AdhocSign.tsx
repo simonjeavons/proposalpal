@@ -64,6 +64,42 @@ const getOptionTotal = (opt: OngoingOption) => {
   }, 0);
 };
 
+// Per-contract-year billings for a non-rolling option, respecting starts_after_months.
+// Month-by-month walk: bills each active month at the rate for that option-year and
+// bucketed into the contract year it falls in. Returns [] for rolling options (open-ended).
+const getFixedOptionContractYearCosts = (opt: OngoingOption): number[] => {
+  if (opt.rolling_monthly) return [];
+  const startMonth = opt.starts_after_months ?? 0;
+  const termMonths = Math.max(opt.term, 1);
+  const endMonth = startMonth + termMonths;
+  const numContractYears = Math.ceil(endMonth / 12);
+  const costs = new Array(numContractYears).fill(0);
+  const fallbackRate = opt.yearlyCosts[opt.yearlyCosts.length - 1] ?? 0;
+  for (let m = startMonth; m < endMonth; m++) {
+    const optionMonth = m - startMonth;
+    const optionYear = Math.floor(optionMonth / 12);
+    const contractYear = Math.floor(m / 12);
+    const yearRate = opt.yearlyCosts[optionYear] ?? fallbackRate;
+    if (opt.frequency === 'monthly') {
+      costs[contractYear] += yearRate;
+    } else if (opt.frequency === 'weekly') {
+      costs[contractYear] += yearRate * 52 / 12;
+    } else if (opt.frequency === 'annual') {
+      if (optionMonth % 12 === 0) costs[contractYear] += yearRate;
+    }
+  }
+  return costs;
+};
+
+// Sum per-option year costs into a single contract-year subtotal array.
+const computeContractYearSubtotals = (options: OngoingOption[]): number[] => {
+  const perOption = options.filter(o => !o.rolling_monthly).map(getFixedOptionContractYearCosts);
+  const numYears = perOption.reduce((n, arr) => Math.max(n, arr.length), 0);
+  return Array.from({ length: numYears }, (_, y) =>
+    perOption.reduce((s, arr) => s + (arr[y] ?? 0), 0)
+  );
+};
+
 // New retainer option total (price × quantity, annualised based on frequency)
 const getRetainerAnnualTotal = (r: RetainerOption) => {
   const unitPrice = r.discounted_price ?? r.price;
@@ -250,6 +286,7 @@ export default function AdhocSign() {
         const totalAnnualOngoing = allAnnualTotals.reduce((s, t) => s + t, 0);
         const monthlyTotal = totalAnnualOngoing / 12;
         const firstYearTotal = upfrontTotal + totalAnnualOngoing;
+        const contractYearSubtotals = computeContractYearSubtotals(contract.ongoing_options);
         const [firstOpt, ...extraOpts] = contract.ongoing_options;
         const selectedStandard = firstOpt ? {
           type: 'Retainer',
@@ -302,6 +339,7 @@ export default function AdhocSign() {
           templateSections,
           scopeOfWorkText: contract.scope_of_work_text || '',
           ongoingOptions: contract.ongoing_options,
+          contractYearSubtotals,
         })).toBlob();
 
         if (cancelled) return;
@@ -331,6 +369,7 @@ export default function AdhocSign() {
     const totalAnnualOngoing = allAnnualTotals.reduce((s, t) => s + t, 0);
     const monthlyTotal = totalAnnualOngoing / 12;
     const firstYearTotal = upfrontTotal + totalAnnualOngoing;
+    const contractYearSubtotals = computeContractYearSubtotals(contract.ongoing_options);
     const [firstOpt, ...extraOpts] = contract.ongoing_options;
     const selectedStandard = firstOpt ? {
       type: 'Retainer',
@@ -385,6 +424,7 @@ export default function AdhocSign() {
         templateSections,
         scopeOfWorkText: contract.scope_of_work_text || '',
         ongoingOptions: contract.ongoing_options,
+        contractYearSubtotals,
         clientSignerName: signerName,
         clientSignerTitle: signerTitle,
         clientSignatureUri: signatureData,

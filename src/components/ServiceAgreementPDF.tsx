@@ -46,6 +46,8 @@ export interface ServiceAgreementPDFProps {
     notice_days?: number;
     starts_after_months?: number;
   }>;
+  // Fixed-term billings per contract year (honouring starts_after_months) — drives multi-year subtotal rows.
+  contractYearSubtotals?: number[];
   // SaaS pricing — when pricingOption is 'saas', show SaaS tiers instead of traditional pricing
   pricingOption?: 'traditional' | 'saas';
   saasConfig?: { tiers: Array<{ label: string; monthly_price: number; duration_months: number; features: string[] }>; selling_points?: string[]; custom_intro?: string };
@@ -254,6 +256,7 @@ export function ServiceAgreementPDF({
   clientSignatureUri,
   signingDate,
   ongoingOptions,
+  contractYearSubtotals,
   pricingOption,
   saasConfig,
 }: ServiceAgreementPDFProps) {
@@ -395,11 +398,14 @@ export function ServiceAgreementPDF({
           return (
             <>
               {/* Fixed-term items */}
-              {fixedOpts.length > 0 && (
+              {fixedOpts.length > 0 && (() => {
+                const yearSubtotals = contractYearSubtotals ?? [];
+                const isMultiYear = yearSubtotals.length > 1;
+                return (
                 <>
                   <View style={{ height: 6 }} />
                   <View style={styles.tableRow}>
-                    <Text style={[styles.tableDesc, { fontFamily: 'Helvetica-Bold', fontSize: 9 }]}>Annual Commitments</Text>
+                    <Text style={[styles.tableDesc, { fontFamily: 'Helvetica-Bold', fontSize: 9 }]}>{isMultiYear ? 'Fixed-Term Commitments' : 'Annual Commitments'}</Text>
                     <Text style={styles.tableAmt} />
                   </View>
                   {fixedOpts.map((opt, i) => {
@@ -439,12 +445,19 @@ export function ServiceAgreementPDF({
                     );
                   })}
                   <View style={{ height: 2 }} />
+                  {isMultiYear && yearSubtotals.map((subtotal, y) => (
+                    <View key={`year-sub-${y}`} style={styles.tableRowBold}>
+                      <Text style={styles.tableDescBold}>Year {y + 1} Subtotal</Text>
+                      <Text style={styles.tableAmtBold}>{fmt(subtotal)} + VAT</Text>
+                    </View>
+                  ))}
                   <View style={styles.tableRowBold}>
-                    <Text style={styles.tableDescBold}>Annual Commitments Total</Text>
+                    <Text style={styles.tableDescBold}>{isMultiYear ? 'Total Fixed-Term Commitment' : 'Annual Commitments Total'}</Text>
                     <Text style={styles.tableAmtBold}>{fmt(fixedTotal)} + VAT</Text>
                   </View>
                 </>
-              )}
+                );
+              })()}
 
               {/* Monthly rolling items */}
               {rollingOpts.length > 0 && (
