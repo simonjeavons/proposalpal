@@ -293,10 +293,57 @@ export function RetainerOptionsEditor({
                           type="number"
                           min={1}
                           placeholder="e.g. 12"
-                          className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                          className={`w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm ${r.rolling_monthly ? 'opacity-40 pointer-events-none' : ''}`}
                           value={r.term_months ?? ''}
                           onChange={e => updateOption(i, 'term_months', e.target.value ? Number(e.target.value) : undefined)}
+                          disabled={!!r.rolling_monthly}
                         />
+                        <div className="flex items-center gap-3 mt-2">
+                          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={!!r.rolling_monthly}
+                              onChange={() => {
+                                const updated = [...options];
+                                updated[i] = {
+                                  ...updated[i],
+                                  rolling_monthly: !r.rolling_monthly,
+                                  ...(r.rolling_monthly ? {} : { term_months: undefined, notice_days: r.notice_days ?? 30 }),
+                                };
+                                onChange(updated);
+                              }}
+                              className="w-3.5 h-3.5 accent-cyan-500"
+                            />
+                            <span className="text-xs text-muted-foreground">Monthly rolling</span>
+                          </label>
+                          {r.rolling_monthly && (
+                            <select
+                              value={r.notice_days ?? 30}
+                              onChange={e => updateOption(i, 'notice_days', Number(e.target.value))}
+                              className="h-7 text-xs border border-border bg-background rounded px-2"
+                            >
+                              <option value={30}>30 days notice</option>
+                              <option value={60}>60 days notice</option>
+                              <option value={90}>90 days notice</option>
+                              <option value={120}>120 days notice</option>
+                            </select>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Starts in year</Label>
+                        <select
+                          className={`w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm ${r.rolling_monthly ? 'opacity-40 pointer-events-none' : ''}`}
+                          value={Math.floor((r.starts_after_months ?? 0) / 12) + 1}
+                          onChange={e => {
+                            const year = Number(e.target.value);
+                            updateOption(i, 'starts_after_months', year === 1 ? undefined : (year - 1) * 12);
+                          }}
+                          disabled={!!r.rolling_monthly}
+                        >
+                          {[1, 2, 3, 4, 5].map(y => <option key={y} value={y}>Year {y}</option>)}
+                        </select>
+                        <div className="text-[10px] text-muted-foreground mt-1">Pick the year of the contract this option represents.</div>
                       </div>
                       <div>
                         <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Quantity</Label>

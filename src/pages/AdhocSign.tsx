@@ -14,6 +14,9 @@ interface OngoingOption {
   yearlyCosts: number[];
   term: number;
   frequency: 'weekly' | 'monthly' | 'annual';
+  rolling_monthly?: boolean;
+  notice_days?: number;
+  starts_after_months?: number;
 }
 
 interface AdhocContract {
@@ -185,8 +188,11 @@ export default function AdhocSign() {
             return {
               name: r.name || r.type || 'Ongoing Option',
               yearlyCosts: [perPeriod],
-              term: r.term_months ?? 12,
+              term: r.rolling_monthly ? 12 : (r.term_months ?? 12),
               frequency: freq,
+              rolling_monthly: r.rolling_monthly,
+              notice_days: r.notice_days,
+              starts_after_months: r.starts_after_months,
             };
           });
         }
@@ -233,6 +239,8 @@ export default function AdhocSign() {
           features: [],
           option_type: 'standard' as const,
           recommended: false,
+          rolling_monthly: firstOpt.rolling_monthly,
+          notice_days: firstOpt.notice_days,
         } : null;
         const selectedExtras = extraOpts.map(opt => ({
           type: 'Retainer',
@@ -243,6 +251,8 @@ export default function AdhocSign() {
           features: [],
           option_type: 'standard' as const,
           recommended: false,
+          rolling_monthly: opt.rolling_monthly,
+          notice_days: opt.notice_days,
         }));
 
         const [{ pdf }, { ServiceAgreementPDF }] = await Promise.all([
@@ -309,6 +319,8 @@ export default function AdhocSign() {
       features: [],
       option_type: 'standard' as const,
       recommended: false,
+      rolling_monthly: (firstOpt as any).rolling_monthly,
+      notice_days: (firstOpt as any).notice_days,
     } : null;
     const selectedExtras = extraOpts.map(opt => ({
       type: 'Retainer',
@@ -319,6 +331,8 @@ export default function AdhocSign() {
       features: [],
       option_type: 'standard' as const,
       recommended: false,
+      rolling_monthly: (opt as any).rolling_monthly,
+      notice_days: (opt as any).notice_days,
     }));
 
     let signedContractUrl: string | null = null;
@@ -578,12 +592,15 @@ export default function AdhocSign() {
                 <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(upfrontTotal)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT</span></div>
               </div>
               {contract.ongoing_options.map((opt, i) => {
-                const numYears = Math.ceil(Math.max(opt.term, 1) / 12);
+                const isRolling = opt.rolling_monthly;
+                const noticeDays = opt.notice_days ?? 30;
+                const numYears = isRolling ? 1 : Math.ceil(Math.max(opt.term, 1) / 12);
                 const costs: number[] = Array.from({ length: numYears }, (_, y) =>
                   opt.yearlyCosts[y] ?? (opt.yearlyCosts[opt.yearlyCosts.length - 1] ?? 0)
                 );
-                const optTotal = getOptionTotal(opt);
+                const optTotal = isRolling ? null : getOptionTotal(opt);
                 const freqLabel = opt.frequency === 'annual' ? '/yr' : opt.frequency === 'weekly' ? '/wk' : '/mo';
+                const startYear = Math.floor((opt.starts_after_months ?? 0) / 12) + 1;
                 return (
                   <div key={i} style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 10 }}>
@@ -591,15 +608,15 @@ export default function AdhocSign() {
                     </div>
                     {costs.map((c, y) => (
                       <div key={y} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                        <span style={{ fontSize: 11, color: '#AAAAAA' }}>Year {y + 1}</span>
+                        <span style={{ fontSize: 11, color: '#AAAAAA' }}>{isRolling ? 'Monthly' : `Year ${startYear + y}`}</span>
                         <span style={{ fontSize: 15, fontWeight: 700, color: '#043D5D' }}>
                           {formatCurrency(c)}<span style={{ fontSize: 10, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel}</span>
                         </span>
                       </div>
                     ))}
                     <div style={{ borderTop: '1px solid #DDE8EE', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 10, color: '#AAAAAA' }}>Total over {opt.term} months</span>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: '#009FE3' }}>{formatCurrency(optTotal)}</span>
+                      <span style={{ fontSize: 10, color: '#AAAAAA' }}>{isRolling ? `Monthly rolling · ${noticeDays} days notice` : `Total over ${opt.term} months`}</span>
+                      {optTotal != null && <span style={{ fontSize: 16, fontWeight: 800, color: '#009FE3' }}>{formatCurrency(optTotal)}</span>}
                     </div>
                   </div>
                 );

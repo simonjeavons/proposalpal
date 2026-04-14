@@ -1,6 +1,6 @@
 import { Document, Image, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 
-const SHOOTHILL_LOGO_URI = 'data:image/png;base64,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';
+export const SHOOTHILL_LOGO_URI = 'data:image/png;base64,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';
 import type { Phase, RetainerOption, UpfrontItem } from '@/types/proposal';
 
 interface TemplateSection {
@@ -41,7 +41,13 @@ export interface ServiceAgreementPDFProps {
     yearlyCosts: number[];
     term: number;
     frequency: 'weekly' | 'monthly' | 'annual';
+    rolling_monthly?: boolean;
+    notice_days?: number;
+    starts_after_months?: number;
   }>;
+  // SaaS pricing — when pricingOption is 'saas', show SaaS tiers instead of traditional pricing
+  pricingOption?: 'traditional' | 'saas';
+  saasConfig?: { tiers: Array<{ label: string; monthly_price: number; duration_months: number; features: string[] }>; selling_points?: string[]; custom_intro?: string };
 }
 
 const NAVY = '#043D5D';
@@ -246,6 +252,8 @@ export function ServiceAgreementPDF({
   clientSignatureUri,
   signingDate,
   ongoingOptions,
+  pricingOption,
+  saasConfig,
 }: ServiceAgreementPDFProps) {
   const entityName = organisation || clientName;
 
@@ -276,10 +284,10 @@ export function ServiceAgreementPDF({
             <Text style={styles.metaLabel}>Programme</Text>
             <Text style={styles.metaValue}>{programmeTitle}</Text>
           </View>
-          {selectedStandard?.term_months && (
+          {(selectedStandard?.rolling_monthly || selectedStandard?.term_months) && (
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>Initial Term</Text>
-              <Text style={styles.metaValue}>{selectedStandard.term_months} months</Text>
+              <Text style={styles.metaValue}>{selectedStandard.rolling_monthly ? `Monthly rolling, ${selectedStandard.notice_days ?? 30} days notice` : `${selectedStandard.term_months} months${selectedStandard.starts_after_months ? ' (begins after project delivery)' : ''}`}</Text>
             </View>
           )}
         </View>
@@ -320,6 +328,32 @@ export function ServiceAgreementPDF({
           <Text style={styles.sectionHeading}>Schedule 2 — Charges and Payment Terms</Text>
         </View>
 
+        {/* SaaS pricing — replaces traditional pricing when SaaS option selected */}
+        {pricingOption === 'saas' && saasConfig && saasConfig.tiers.length > 0 ? (() => {
+          const tiers = saasConfig.tiers;
+          const totalContract = tiers.reduce((s, t) => s + t.monthly_price * t.duration_months, 0);
+          return (
+            <>
+              <View style={styles.tableRow}>
+                <Text style={[styles.tableDesc, { fontFamily: 'Helvetica-Bold' }]}>Shoothill as a Service — Subscription Pricing</Text>
+                <Text style={styles.tableAmt} />
+              </View>
+              {tiers.map((tier, i) => (
+                <View key={i}>
+                  <View style={styles.tableRow}>
+                    <Text style={[styles.tableDesc, { paddingLeft: 14 }]}>{tier.label} ({tier.duration_months} months @ {fmt(tier.monthly_price)}/mo)</Text>
+                    <Text style={styles.tableAmt}>{fmt(tier.monthly_price * tier.duration_months)} + VAT</Text>
+                  </View>
+                </View>
+              ))}
+              <View style={styles.tableRowBold}>
+                <Text style={styles.tableDescBold}>Total Contract Value</Text>
+                <Text style={styles.tableAmtBold}>{fmt(totalContract)} + VAT</Text>
+              </View>
+            </>
+          );
+        })() : (
+          <>
         {/* Upfront items */}
         {upfrontItems.map((item, i) => (
           <View key={i} style={styles.tableRow}>
@@ -348,45 +382,91 @@ export function ServiceAgreementPDF({
               return s + c * periods;
             }, 0);
           };
+          const fixedOpts = ongoingOptions.filter(o => !o.rolling_monthly);
+          const rollingOpts = ongoingOptions.filter(o => o.rolling_monthly);
+          const fixedTotal = fixedOpts.reduce((s, o) => s + getTotal(o), 0);
+          const rollingMonthlyTotal = rollingOpts.reduce((s, o) => s + (o.yearlyCosts[0] ?? 0), 0);
           return (
             <>
-              <View style={{ height: 6 }} />
-              {ongoingOptions.map((opt, i) => {
-                const numYears = Math.ceil(Math.max(opt.term, 1) / 12);
-                const costs = Array.from({ length: numYears }, (_, y) =>
-                  opt.yearlyCosts[y] ?? (opt.yearlyCosts[opt.yearlyCosts.length - 1] ?? 0)
-                );
-                const freqLabel = opt.frequency === 'annual' ? '/yr' : opt.frequency === 'weekly' ? '/wk' : '/mo';
-                const label = opt.name || `Ongoing Option ${i + 1}`;
-                return (
-                  <View key={i}>
-                    {numYears > 1 ? (
-                      <>
-                        <View style={styles.tableRow}>
-                          <Text style={[styles.tableDesc, { fontFamily: 'Helvetica-Bold' }]}>{label} ({opt.term} months)</Text>
-                          <Text style={styles.tableAmt} />
-                        </View>
-                        {costs.map((cost, y) => (
-                          <View key={y} style={styles.tableRow}>
-                            <Text style={[styles.tableDesc, { paddingLeft: 14 }]}>Year {y + 1}</Text>
-                            <Text style={styles.tableAmt}>{fmt(cost)} + VAT{freqLabel}</Text>
-                          </View>
-                        ))}
-                      </>
-                    ) : (
-                      <View style={styles.tableRow}>
-                        <Text style={styles.tableDesc}>{label} ({opt.term} months)</Text>
-                        <Text style={styles.tableAmt}>{fmt(costs[0])} + VAT{freqLabel}</Text>
-                      </View>
-                    )}
-                    <View style={styles.tableRowBold}>
-                      <Text style={styles.tableDescBold}>{label} Total</Text>
-                      <Text style={styles.tableAmtBold}>{fmt(getTotal(opt))} + VAT</Text>
-                    </View>
+              {/* Fixed-term items */}
+              {fixedOpts.length > 0 && (
+                <>
+                  <View style={{ height: 6 }} />
+                  <View style={styles.tableRow}>
+                    <Text style={[styles.tableDesc, { fontFamily: 'Helvetica-Bold', fontSize: 9 }]}>Annual Commitments</Text>
+                    <Text style={styles.tableAmt} />
                   </View>
-                );
-              })}
-              <View style={{ height: 4 }} />
+                  {fixedOpts.map((opt, i) => {
+                    const numYears = Math.ceil(Math.max(opt.term, 1) / 12);
+                    const costs = Array.from({ length: numYears }, (_, y) =>
+                      opt.yearlyCosts[y] ?? (opt.yearlyCosts[opt.yearlyCosts.length - 1] ?? 0)
+                    );
+                    const freqLabel = opt.frequency === 'annual' ? '/yr' : opt.frequency === 'weekly' ? '/wk' : '/mo';
+                    const startYear = Math.floor((opt.starts_after_months ?? 0) / 12) + 1;
+                    const label = opt.name || `Ongoing Option ${i + 1}`;
+                    return (
+                      <View key={`fixed-${i}`}>
+                        {numYears > 1 ? (
+                          <>
+                            <View style={styles.tableRow}>
+                              <Text style={[styles.tableDesc, { fontFamily: 'Helvetica-Bold' }]}>{label} ({opt.term} months)</Text>
+                              <Text style={styles.tableAmt} />
+                            </View>
+                            {costs.map((cost, y) => (
+                              <View key={y} style={styles.tableRow}>
+                                <Text style={[styles.tableDesc, { paddingLeft: 14 }]}>Year {startYear + y}</Text>
+                                <Text style={styles.tableAmt}>{fmt(cost)} + VAT{freqLabel}</Text>
+                              </View>
+                            ))}
+                          </>
+                        ) : (
+                          <View style={styles.tableRow}>
+                            <Text style={styles.tableDesc}>{startYear > 1 ? `Year ${startYear} — ${label}` : label} ({opt.term} months)</Text>
+                            <Text style={styles.tableAmt}>{fmt(costs[0])} + VAT{freqLabel}</Text>
+                          </View>
+                        )}
+                        <View style={styles.tableRowBold}>
+                          <Text style={styles.tableDescBold}>{label} Total</Text>
+                          <Text style={styles.tableAmtBold}>{fmt(getTotal(opt))} + VAT</Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                  <View style={{ height: 2 }} />
+                  <View style={styles.tableRowBold}>
+                    <Text style={styles.tableDescBold}>Annual Commitments Total</Text>
+                    <Text style={styles.tableAmtBold}>{fmt(fixedTotal)} + VAT</Text>
+                  </View>
+                </>
+              )}
+
+              {/* Monthly rolling items */}
+              {rollingOpts.length > 0 && (
+                <>
+                  <View style={{ height: 10 }} />
+                  <View style={styles.tableRow}>
+                    <Text style={[styles.tableDesc, { fontFamily: 'Helvetica-Bold', fontSize: 9 }]}>Monthly Rolling ({rollingOpts[0]?.notice_days ?? 30} days notice)</Text>
+                    <Text style={styles.tableAmt} />
+                  </View>
+                  {rollingOpts.map((opt, i) => {
+                    const freqLabel = opt.frequency === 'annual' ? '/yr' : opt.frequency === 'weekly' ? '/wk' : '/mo';
+                    const label = opt.name || `Ongoing Option ${i + 1}`;
+                    return (
+                      <View key={`rolling-${i}`} style={styles.tableRow}>
+                        <Text style={styles.tableDesc}>{label}</Text>
+                        <Text style={styles.tableAmt}>{fmt(opt.yearlyCosts[0] ?? 0)} + VAT{freqLabel}</Text>
+                      </View>
+                    );
+                  })}
+                  <View style={{ height: 2 }} />
+                  <View style={styles.tableRowBold}>
+                    <Text style={styles.tableDescBold}>Monthly Rolling Total</Text>
+                    <Text style={styles.tableAmtBold}>{fmt(rollingMonthlyTotal)} + VAT/mo</Text>
+                  </View>
+                </>
+              )}
+
+              <View style={{ height: 6 }} />
               <View style={styles.tableRowBold}>
                 <Text style={styles.tableDescBold}>Grand Total</Text>
                 <Text style={styles.tableAmtBold}>{fmt(firstYearTotal)} + VAT</Text>
@@ -401,13 +481,13 @@ export function ServiceAgreementPDF({
             <View style={{ height: 6 }} />
             {selectedStandard && (
               <View style={styles.tableRow}>
-                <Text style={styles.tableDesc}>{selectedStandard.name || selectedStandard.type} /month{selectedStandard.term_months ? ` (${selectedStandard.term_months} months)` : ''}</Text>
+                <Text style={styles.tableDesc}>{selectedStandard.name || selectedStandard.type} /month{selectedStandard.rolling_monthly ? ' (Monthly rolling)' : selectedStandard.term_months ? ` (${selectedStandard.term_months} months${selectedStandard.starts_after_months ? ', begins after project delivery' : ''})` : ''}</Text>
                 <Text style={styles.tableAmt}>{fmt(optionTotal(selectedStandard))} + VAT/month</Text>
               </View>
             )}
             {selectedExtras.map((extra, i) => (
               <View key={i} style={styles.tableRow}>
-                <Text style={styles.tableDesc}>{extra.name || extra.type} /month{extra.term_months ? ` (${extra.term_months} months)` : ''}</Text>
+                <Text style={styles.tableDesc}>{extra.name || extra.type} /month{extra.rolling_monthly ? ' (Monthly rolling)' : extra.term_months ? ` (${extra.term_months} months${extra.starts_after_months ? ', begins after project delivery' : ''})` : ''}</Text>
                 <Text style={styles.tableAmt}>{fmt(optionTotal(extra))} + VAT/month</Text>
               </View>
             ))}
@@ -420,6 +500,8 @@ export function ServiceAgreementPDF({
               <Text style={styles.tableDescBold}>Grand Total</Text>
               <Text style={styles.tableAmtBold}>{fmt(firstYearTotal)} + VAT</Text>
             </View>
+          </>
+        )}
           </>
         )}
 
