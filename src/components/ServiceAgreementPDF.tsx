@@ -152,6 +152,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     marginTop: 2,
   },
+  // Intermediate bold row: same typography as tableRowBold but no navy divider —
+  // used when multiple bold rows stack (per-option and per-year subtotals) so the
+  // page doesn't end up with a run of heavy blue lines.
+  tableRowBoldQuiet: {
+    flexDirection: 'row',
+    paddingVertical: 3,
+  },
   tableDesc: {
     flex: 1,
     fontSize: 9,
@@ -437,20 +444,24 @@ export function ServiceAgreementPDF({
                             <Text style={styles.tableAmt}>{fmt(costs[0])} + VAT{freqLabel}</Text>
                           </View>
                         )}
-                        <View style={styles.tableRowBold}>
+                        <View style={styles.tableRowBoldQuiet}>
                           <Text style={styles.tableDescBold}>{label} Total</Text>
                           <Text style={styles.tableAmtBold}>{fmt(getTotal(opt))} + VAT</Text>
                         </View>
                       </View>
                     );
                   })}
-                  <View style={{ height: 2 }} />
-                  {isMultiYear && yearSubtotals.map((subtotal, y) => (
-                    <View key={`year-sub-${y}`} style={styles.tableRowBold}>
-                      <Text style={styles.tableDescBold}>Year {y + 1} Subtotal</Text>
-                      <Text style={styles.tableAmtBold}>{fmt(subtotal)} + VAT</Text>
-                    </View>
-                  ))}
+                  {isMultiYear && (
+                    <>
+                      <View style={{ height: 4 }} />
+                      {yearSubtotals.map((subtotal, y) => (
+                        <View key={`year-sub-${y}`} style={styles.tableRowBoldQuiet}>
+                          <Text style={styles.tableDescBold}>Year {y + 1} Subtotal</Text>
+                          <Text style={styles.tableAmtBold}>{fmt(subtotal)} + VAT</Text>
+                        </View>
+                      ))}
+                    </>
+                  )}
                   <View style={styles.tableRowBold}>
                     <Text style={styles.tableDescBold}>{isMultiYear ? 'Total Fixed-Term Commitment' : 'Annual Commitments Total'}</Text>
                     <Text style={styles.tableAmtBold}>{fmt(fixedTotal)} + VAT</Text>
