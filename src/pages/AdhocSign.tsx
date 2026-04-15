@@ -648,43 +648,57 @@ export default function AdhocSign() {
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Investment</h2>
           </div>
           <div style={{ padding: isMobile ? '16px' : '24px 28px' }}>
-            {/* Summary cards: one-time + each ongoing option */}
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${Math.min(1 + contract.ongoing_options.length, 3)}, 1fr)`, gap: 16, marginBottom: 20 }}>
-              <div style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 6 }}>One-Time</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(upfrontTotal)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT</span></div>
-              </div>
-              {contract.ongoing_options.map((opt, i) => {
-                const isRolling = opt.rolling_monthly;
-                const noticeDays = opt.notice_days ?? 30;
-                const numYears = isRolling ? 1 : Math.ceil(Math.max(opt.term, 1) / 12);
-                const costs: number[] = Array.from({ length: numYears }, (_, y) =>
-                  opt.yearlyCosts[y] ?? (opt.yearlyCosts[opt.yearlyCosts.length - 1] ?? 0)
-                );
-                const optTotal = isRolling ? null : getOptionTotal(opt);
-                const freqLabel = opt.frequency === 'annual' ? '/yr' : opt.frequency === 'weekly' ? '/wk' : '/mo';
-                const startYear = Math.floor((opt.starts_after_months ?? 0) / 12) + 1;
-                return (
-                  <div key={i} style={{ background: '#F4F7FA', border: '1px solid #DDE8EE', padding: '18px 20px' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA', marginBottom: 10 }}>
-                      {opt.name || `Ongoing Option ${i + 1}`}
-                    </div>
-                    {costs.map((c, y) => (
-                      <div key={y} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                        <span style={{ fontSize: 11, color: '#AAAAAA' }}>{isRolling ? 'Monthly' : `Year ${startYear + y}`}</span>
-                        <span style={{ fontSize: 15, fontWeight: 700, color: '#043D5D' }}>
-                          {formatCurrency(c)}<span style={{ fontSize: 10, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel}</span>
-                        </span>
-                      </div>
-                    ))}
-                    <div style={{ borderTop: '1px solid #DDE8EE', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 10, color: '#AAAAAA' }}>{isRolling ? `Monthly rolling · ${noticeDays} days notice` : `Total over ${opt.term} months`}</span>
-                      {optTotal != null && <span style={{ fontSize: 16, fontWeight: 800, color: '#009FE3' }}>{formatCurrency(optTotal)}</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            {/* Investment table: one-time + each ongoing option (row per year) */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #DDE8EE' }}>
+                  <th style={{ textAlign: 'left', padding: '8px 0', fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA' }}>Item</th>
+                  <th style={{ textAlign: 'right', padding: '8px 0', fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA' }}>Rate</th>
+                  <th style={{ textAlign: 'right', padding: '8px 0', fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA' }}>Annual Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style={{ borderBottom: '1px solid #F4F7FA' }}>
+                  <td style={{ padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#043D5D' }}>One-Time</td>
+                  <td colSpan={2} style={{ textAlign: 'right', padding: '12px 0', fontSize: 15, fontWeight: 800, color: '#043D5D' }}>
+                    {formatCurrency(upfrontTotal)}<span style={{ fontSize: 11, fontWeight: 500, color: '#AAAAAA' }}> + VAT</span>
+                  </td>
+                </tr>
+                {contract.ongoing_options.flatMap((opt, i) => {
+                  const isRolling = opt.rolling_monthly;
+                  const noticeDays = opt.notice_days ?? 30;
+                  const numYears = isRolling ? 1 : Math.ceil(Math.max(opt.term, 1) / 12);
+                  const costs: number[] = Array.from({ length: numYears }, (_, y) =>
+                    opt.yearlyCosts[y] ?? (opt.yearlyCosts[opt.yearlyCosts.length - 1] ?? 0)
+                  );
+                  const freqLabel = opt.frequency === 'annual' ? '/yr' : opt.frequency === 'weekly' ? '/wk' : '/mo';
+                  const startYear = Math.floor((opt.starts_after_months ?? 0) / 12) + 1;
+                  const name = opt.name || `Ongoing Option ${i + 1}`;
+                  const yearAnnualTotal = (rate: number, yearIdx: number): number | null => {
+                    if (isRolling) return null;
+                    const months = yearIdx === numYears - 1 ? (opt.term % 12 || 12) : 12;
+                    if (opt.frequency === 'annual') return rate;
+                    if (opt.frequency === 'weekly') return rate * Math.round(months * 52 / 12);
+                    return rate * months;
+                  };
+                  return costs.map((c, y) => (
+                    <tr key={`${i}-${y}`} style={{ borderBottom: '1px solid #F4F7FA' }}>
+                      <td style={{ padding: '12px 0', fontSize: 13, color: '#043D5D' }}>
+                        <span style={{ fontWeight: 700 }}>{name}</span>
+                        {numYears > 1 && <span style={{ color: '#AAAAAA', fontWeight: 500 }}> — Year {startYear + y}</span>}
+                        {isRolling && <span style={{ color: '#AAAAAA', fontWeight: 500 }}> — monthly rolling · {noticeDays} days notice</span>}
+                      </td>
+                      <td style={{ textAlign: 'right', padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#043D5D', whiteSpace: 'nowrap' as const }}>
+                        {formatCurrency(c)}<span style={{ fontSize: 11, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel}</span>
+                      </td>
+                      <td style={{ textAlign: 'right', padding: '12px 0', fontSize: 15, fontWeight: 800, color: '#009FE3', whiteSpace: 'nowrap' as const }}>
+                        {isRolling ? '—' : formatCurrency(yearAnnualTotal(c, y) ?? 0)}
+                      </td>
+                    </tr>
+                  ));
+                })}
+              </tbody>
+            </table>
 
             {/* Upfront line items */}
             {contract.upfront_items.length > 0 && (
