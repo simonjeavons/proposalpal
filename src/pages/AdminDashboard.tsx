@@ -770,7 +770,7 @@ export default function AdminDashboard() {
       preparedByUserId: d.prepared_by_user_id || '',
     });
     setEditingNdaId(id);
-    setNdaLink(null);
+    setNdaLink(d.status === 'pending' && d.slug ? `${window.location.origin}/nda/${d.slug}/sign` : null);
     setNdaView('new');
   };
 
@@ -2627,9 +2627,20 @@ export default function AdminDashboard() {
                         ? new Date(nda.agreement_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
                         : '';
                       const signingLink = nda.slug ? `${window.location.origin}/nda/${nda.slug}/sign` : null;
+                      const handleRowClick = () => {
+                        if (nda.status === 'draft' || nda.status === 'pending') {
+                          loadNdaForEditing(nda.id);
+                        } else if (nda.status === 'signed' && signingLink) {
+                          window.open(signingLink, '_blank');
+                        }
+                      };
                       return (
-                        <DocumentListRow
+                        <div
                           key={nda.id}
+                          className="cursor-pointer"
+                          onClick={handleRowClick}
+                        >
+                        <DocumentListRow
                           statusLabel={statusLabel}
                           statusClassName={statusClassName}
                           clientName={nda.company_name || 'Untitled'}
@@ -2638,7 +2649,7 @@ export default function AdminDashboard() {
                           signedBy={nda.status === 'signed' ? nda.signer_name : undefined}
                           signedByTitle={nda.status === 'signed' ? nda.signer_title : undefined}
                           actions={
-                            <>
+                            <div onClick={e => e.stopPropagation()}>
                               {nda.status === 'pending' && signingLink && (
                                 <Button
                                   variant="ghost" size="sm"
@@ -2680,9 +2691,10 @@ export default function AdminDashboard() {
                                   </Button>
                                 </a>
                               )}
-                            </>
+                            </div>
                           }
                         />
+                        </div>
                       );
                     })}
                   </div>
