@@ -199,6 +199,7 @@ export default function AdminDashboard() {
   const [savingNdaDraft, setSavingNdaDraft] = useState(false);
   const [editingNdaId, setEditingNdaId] = useState<string | null>(null);
   const [ndaLink, setNdaLink] = useState<string | null>(null);
+  const [previewNdaSlug, setPreviewNdaSlug] = useState<string | null>(null);
   const [ndaForm, setNdaForm] = useState({
     companyName: '',
     companyRegNumber: '',
@@ -2628,11 +2629,7 @@ export default function AdminDashboard() {
                         : '';
                       const signingLink = nda.slug ? `${window.location.origin}/nda/${nda.slug}/sign` : null;
                       const handleRowClick = () => {
-                        if (nda.status === 'draft' || nda.status === 'pending') {
-                          loadNdaForEditing(nda.id);
-                        } else if (nda.status === 'signed' && signingLink) {
-                          window.open(signingLink, '_blank');
-                        }
+                        if (nda.slug) setPreviewNdaSlug(nda.slug);
                       };
                       return (
                         <div
@@ -2701,6 +2698,43 @@ export default function AdminDashboard() {
                 )}
               </div>
             )}
+          </>
+        )}
+
+        {/* NDA Preview Panel */}
+        {previewNdaSlug && (
+          <>
+            <div className="fixed inset-0 bg-black/40 z-50" onClick={() => setPreviewNdaSlug(null)} />
+            <div className="fixed inset-y-0 right-0 w-full max-w-3xl bg-background shadow-2xl z-50 flex flex-col">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-card">
+                <h2 className="text-sm font-bold text-foreground">NDA Preview</h2>
+                <div className="flex items-center gap-2">
+                  <a href={`${window.location.origin}/nda/${previewNdaSlug}/sign`} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+                      <ExternalLink className="w-3 h-3" /> Open in new tab
+                    </Button>
+                  </a>
+                  <Button
+                    variant="outline" size="sm"
+                    className="h-7 text-xs gap-1.5"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/nda/${previewNdaSlug}/sign`);
+                      toast.success('Link copied!');
+                    }}
+                  >
+                    <LinkIcon className="w-3 h-3" /> Copy link
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setPreviewNdaSlug(null)}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              <iframe
+                src={`/nda/${previewNdaSlug}/sign`}
+                className="flex-1 w-full border-0"
+                title="NDA Preview"
+              />
+            </div>
           </>
         )}
 
