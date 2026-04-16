@@ -27,7 +27,7 @@ interface Profile {
   created_at: string;
 }
 
-type Tab = "dashboard" | "proposals" | "users" | "team" | "solutions" | "services" | "agreements";
+type Tab = "dashboard" | "proposals" | "users" | "team" | "solutions" | "services" | "agreements" | "ndas";
 
 interface TeamMember {
   id: string;
@@ -186,6 +186,34 @@ export default function AdminDashboard() {
     phases: [] as Phase[],
     upfrontItems: [] as UpfrontItem[],
     retainerOptions: [] as RetainerOption[],
+  });
+
+  // NDA tab state
+  type NdaView = 'new' | 'all';
+  const [ndaView, setNdaView] = useState<NdaView>('all');
+  const [ndaTemplates, setNdaTemplates] = useState<AgreementTemplate[]>([]);
+  const [ndaTemplatesLoading, setNdaTemplatesLoading] = useState(true);
+  const [allNdas, setAllNdas] = useState<any[]>([]);
+  const [allNdasLoading, setAllNdasLoading] = useState(false);
+  const [savingNda, setSavingNda] = useState(false);
+  const [savingNdaDraft, setSavingNdaDraft] = useState(false);
+  const [editingNdaId, setEditingNdaId] = useState<string | null>(null);
+  const [ndaLink, setNdaLink] = useState<string | null>(null);
+  const [ndaForm, setNdaForm] = useState({
+    companyName: '',
+    companyRegNumber: '',
+    registeredAddress1: '',
+    registeredAddress2: '',
+    registeredCity: '',
+    registeredCounty: '',
+    registeredPostcode: '',
+    contactName: '',
+    contactEmail: '',
+    purpose: 'potential business collaboration opportunities',
+    confidentialityYears: 5 as number | null,
+    agreementDate: new Date().toISOString().split('T')[0],
+    templateId: '',
+    preparedByUserId: '',
   });
 
   const fetchServiceTypes = async () => {
@@ -606,6 +634,159 @@ export default function AdminDashboard() {
     }
   };
 
+  // ── NDA fetch functions ──
+  const fetchNdaTemplates = async () => {
+    setNdaTemplatesLoading(true);
+    const { data } = await supabase
+      .from('nda_templates' as any)
+      .select('id, name, description, sections, sort_order')
+      .order('sort_order');
+    if (data) setNdaTemplates((data as any[]).map(t => ({
+      id: t.id, name: t.name, description: t.description || '',
+      sections: Array.isArray(t.sections) ? t.sections : [],
+      sort_order: t.sort_order,
+    })));
+    setNdaTemplatesLoading(false);
+  };
+
+  const fetchAllNdas = async () => {
+    setAllNdasLoading(true);
+    const { data } = await supabase
+      .from('ndas' as any)
+      .select('id, slug, status, company_name, contact_name, contact_email, purpose, confidentiality_years, agreement_date, signer_name, signer_title, signed_at, signed_nda_url, created_at, template_id, prepared_by_user_id')
+      .order('created_at', { ascending: false });
+    setAllNdas(data || []);
+    setAllNdasLoading(false);
+  };
+
+  // ── NDA CRUD functions ──
+  const ndaFormPayload = (status: 'draft' | 'pending') => ({
+    status,
+    company_name: ndaForm.companyName,
+    company_reg_number: ndaForm.companyRegNumber || null,
+    registered_address_1: ndaForm.registeredAddress1 || null,
+    registered_address_2: ndaForm.registeredAddress2 || null,
+    registered_city: ndaForm.registeredCity || null,
+    registered_county: ndaForm.registeredCounty || null,
+    registered_postcode: ndaForm.registeredPostcode || null,
+    contact_name: ndaForm.contactName || null,
+    contact_email: ndaForm.contactEmail || null,
+    purpose: ndaForm.purpose,
+    confidentiality_years: ndaForm.confidentialityYears,
+    agreement_date: ndaForm.agreementDate,
+    template_id: ndaForm.templateId || null,
+    prepared_by_user_id: ndaForm.preparedByUserId || null,
+  });
+
+  const resetNdaForm = () => {
+    setNdaForm({
+      companyName: '', companyRegNumber: '', registeredAddress1: '', registeredAddress2: '',
+      registeredCity: '', registeredCounty: '', registeredPostcode: '',
+      contactName: '', contactEmail: '',
+      purpose: 'potential business collaboration opportunities',
+      confidentialityYears: 5,
+      agreementDate: new Date().toISOString().split('T')[0],
+      templateId: '', preparedByUserId: user?.id || '',
+    });
+    setEditingNdaId(null);
+    setNdaLink(null);
+  };
+
+  const saveDraftNda = async () => {
+    if (!ndaForm.companyName.trim()) { toast.error('Enter a company name first'); return; }
+    setSavingNdaDraft(true);
+    if (editingNdaId) {
+      const { error } = await supabase
+        .from('ndas' as any)
+        .update(ndaFormPayload('draft'))
+        .eq('id', editingNdaId);
+      setSavingNdaDraft(false);
+      if (error) { toast.error('Failed to update draft'); return; }
+      toast.success('Draft updated');
+    } else {
+      const { data, error } = await supabase
+        .from('ndas' as any)
+        .insert(ndaFormPayload('draft'))
+        .select('id')
+        .single();
+      setSavingNdaDraft(false);
+      if (error) { toast.error('Failed to save draft'); return; }
+      if (data) setEditingNdaId((data as any).id);
+      toast.success('Draft saved — find it in All NDAs');
+    }
+  };
+
+  const saveNda = async () => {
+    if (!ndaForm.companyName.trim()) { toast.error('Enter a company name first'); return; }
+    if (!ndaForm.contactEmail.trim()) { toast.error('Enter a contact email — needed for the signing link'); return; }
+    setSavingNda(true);
+    if (editingNdaId) {
+      const { data, error } = await supabase
+        .from('ndas' as any)
+        .update(ndaFormPayload('pending'))
+        .eq('id', editingNdaId)
+        .select('slug')
+        .single();
+      setSavingNda(false);
+      if (error) { toast.error('Failed to generate signing link'); return; }
+      setNdaLink(`${window.location.origin}/nda/${(data as any).slug}/sign`);
+      toast.success('NDA finalised — share the signing link below');
+    } else {
+      const { data, error } = await supabase
+        .from('ndas' as any)
+        .insert(ndaFormPayload('pending'))
+        .select('id, slug')
+        .single();
+      setSavingNda(false);
+      if (error) { toast.error('Failed to create NDA'); return; }
+      setEditingNdaId((data as any).id);
+      setNdaLink(`${window.location.origin}/nda/${(data as any).slug}/sign`);
+      toast.success('NDA created — share the signing link below');
+    }
+  };
+
+  const loadNdaForEditing = async (id: string) => {
+    const { data, error } = await supabase
+      .from('ndas' as any)
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error || !data) { toast.error('Could not load NDA'); return; }
+    const d = data as any;
+    setNdaForm({
+      companyName: d.company_name || '',
+      companyRegNumber: d.company_reg_number || '',
+      registeredAddress1: d.registered_address_1 || '',
+      registeredAddress2: d.registered_address_2 || '',
+      registeredCity: d.registered_city || '',
+      registeredCounty: d.registered_county || '',
+      registeredPostcode: d.registered_postcode || '',
+      contactName: d.contact_name || '',
+      contactEmail: d.contact_email || '',
+      purpose: d.purpose || 'potential business collaboration opportunities',
+      confidentialityYears: d.confidentiality_years ?? 5,
+      agreementDate: d.agreement_date || new Date().toISOString().split('T')[0],
+      templateId: d.template_id || '',
+      preparedByUserId: d.prepared_by_user_id || '',
+    });
+    setEditingNdaId(id);
+    setNdaLink(null);
+    setNdaView('new');
+  };
+
+  const deleteNda = async (id: string, status: string) => {
+    const label = status === 'draft' ? 'draft' : 'NDA';
+    if (!window.confirm(`Delete this ${label}? This cannot be undone.`)) return;
+    const { error } = await supabase
+      .from('ndas' as any)
+      .delete()
+      .eq('id', id);
+    if (error) { toast.error('Failed to delete'); return; }
+    toast.success('Deleted');
+    setAllNdas(prev => prev.filter((n: any) => n.id !== id));
+    if (editingNdaId === id) resetNdaForm();
+  };
+
   const addServiceType = async () => {
     const name = newServiceName.trim();
     if (!name) return;
@@ -749,6 +930,21 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeTab === 'agreements' && adhocView === 'all') fetchAllAgreements();
   }, [activeTab, adhocView]);
+
+  // Fetch NDA data when switching to NDAs tab
+  useEffect(() => {
+    if (activeTab === 'ndas') {
+      fetchNdaTemplates();
+      fetchAllNdas();
+    }
+  }, [activeTab]);
+
+  // Set preparedByUserId for NDA form when user is available
+  useEffect(() => {
+    if (user?.id && !ndaForm.preparedByUserId) {
+      setNdaForm(f => ({ ...f, preparedByUserId: user.id }));
+    }
+  }, [user?.id]);
 
   const duplicateProposal = async (p: Proposal) => {
     const { id: _id, slug: _slug, created_at: _ca, updated_at: _ua, ...rest } = p as any;
@@ -915,6 +1111,8 @@ export default function AdminDashboard() {
         onSignOut={signOut}
         adhocView={adhocView}
         onAdhocViewChange={setAdhocView}
+        ndaView={ndaView}
+        onNdaViewChange={setNdaView}
       />
 
       <div className="md:ml-56 min-h-screen">
@@ -2207,6 +2405,275 @@ export default function AdminDashboard() {
                                   href={supabase.storage.from('contracts').getPublicUrl(c.signed_contract_url).data.publicUrl}
                                   target="_blank" rel="noopener noreferrer"
                                   title="Download signed contract"
+                                >
+                                  <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
+                                    <Download className="w-4 h-4" />
+                                  </Button>
+                                </a>
+                              )}
+                            </>
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* NDAs Tab */}
+        {activeTab === "ndas" && (
+          <>
+            <div className="mb-6">
+              <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">
+                {ndaView === 'new' ? 'New NDA' : 'All NDAs'}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {ndaView === 'new' ? 'Create a new Non-Disclosure Agreement.' : 'View all NDAs and their status.'}
+              </p>
+            </div>
+
+            {/* ── NDA FORM VIEW ── */}
+            {ndaView === 'new' && (
+              <div className="space-y-6 max-w-3xl">
+
+                {/* Editing draft banner */}
+                {editingNdaId && (
+                  <div className="flex items-center justify-between bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-700 rounded-md px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Pencil className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">Editing draft NDA</span>
+                    </div>
+                    <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={resetNdaForm}>
+                      <Plus className="w-3.5 h-3.5" /> Start New
+                    </Button>
+                  </div>
+                )}
+
+                {/* NDA Template */}
+                <div className="bg-card border border-border p-5">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-foreground mb-3">NDA Template</h2>
+                  {ndaTemplatesLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <select
+                      value={ndaForm.templateId}
+                      onChange={e => setNdaForm(f => ({ ...f, templateId: e.target.value }))}
+                      className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm w-full"
+                    >
+                      <option value="">— Select a template (optional) —</option>
+                      {ndaTemplates.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-2">The template's clauses will be included in the NDA.</p>
+                </div>
+
+                {/* Company Details */}
+                <div className="bg-card border border-border p-5">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-foreground mb-4">Company Details</h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Company Name <span className="text-destructive">*</span></Label>
+                      <Input value={ndaForm.companyName} onChange={e => setNdaForm(f => ({ ...f, companyName: e.target.value }))} className="h-8 text-sm" placeholder="e.g. Acme Corp Ltd" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Company Reg Number</Label>
+                      <Input value={ndaForm.companyRegNumber} onChange={e => setNdaForm(f => ({ ...f, companyRegNumber: e.target.value }))} className="h-8 text-sm" placeholder="e.g. 12345678" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Registered Address Line 1</Label>
+                      <Input value={ndaForm.registeredAddress1} onChange={e => setNdaForm(f => ({ ...f, registeredAddress1: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Address Line 2</Label>
+                      <Input value={ndaForm.registeredAddress2} onChange={e => setNdaForm(f => ({ ...f, registeredAddress2: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Town / City</Label>
+                      <Input value={ndaForm.registeredCity} onChange={e => setNdaForm(f => ({ ...f, registeredCity: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">County</Label>
+                      <Input value={ndaForm.registeredCounty} onChange={e => setNdaForm(f => ({ ...f, registeredCounty: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Postcode</Label>
+                      <Input value={ndaForm.registeredPostcode} onChange={e => setNdaForm(f => ({ ...f, registeredPostcode: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact Details */}
+                <div className="bg-card border border-border p-5">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-foreground mb-4">Contact Details</h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Contact Name</Label>
+                      <Input value={ndaForm.contactName} onChange={e => setNdaForm(f => ({ ...f, contactName: e.target.value }))} className="h-8 text-sm" placeholder="e.g. Jane Smith" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Contact Email <span className="text-destructive">*</span></Label>
+                      <Input type="email" value={ndaForm.contactEmail} onChange={e => setNdaForm(f => ({ ...f, contactEmail: e.target.value }))} className="h-8 text-sm" placeholder="e.g. jane@acme.com" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* NDA Details */}
+                <div className="bg-card border border-border p-5">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-foreground mb-4">NDA Details</h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2 space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Purpose</Label>
+                      <Textarea
+                        value={ndaForm.purpose}
+                        onChange={e => setNdaForm(f => ({ ...f, purpose: e.target.value }))}
+                        rows={3}
+                        className="text-sm"
+                        placeholder="e.g. potential business collaboration opportunities"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Confidentiality Duration</Label>
+                      <select
+                        value={ndaForm.confidentialityYears === null ? 'indefinite' : String(ndaForm.confidentialityYears)}
+                        onChange={e => setNdaForm(f => ({ ...f, confidentialityYears: e.target.value === 'indefinite' ? null : Number(e.target.value) }))}
+                        className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm w-full"
+                      >
+                        <option value="2">2 years</option>
+                        <option value="3">3 years</option>
+                        <option value="5">5 years</option>
+                        <option value="indefinite">Indefinite</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Agreement Date</Label>
+                      <Input type="date" value={ndaForm.agreementDate} onChange={e => setNdaForm(f => ({ ...f, agreementDate: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Save buttons */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="outline"
+                    className="h-10 text-sm font-bold uppercase tracking-wide"
+                    onClick={saveDraftNda}
+                    disabled={savingNdaDraft || savingNda}
+                  >
+                    {savingNdaDraft ? (
+                      <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />Saving…</>
+                    ) : 'Save as Draft'}
+                  </Button>
+                  <Button
+                    className="h-10 text-sm font-bold uppercase tracking-wide"
+                    onClick={saveNda}
+                    disabled={savingNda || savingNdaDraft}
+                  >
+                    {savingNda ? (
+                      <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />Saving…</>
+                    ) : 'Send for Signature'}
+                  </Button>
+                </div>
+
+                {/* Generated link */}
+                {ndaLink && (
+                  <div className="bg-card border border-primary p-4 space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-primary">Signing Link Ready</p>
+                    <div className="flex items-center gap-2">
+                      <input readOnly value={ndaLink} className="flex-1 h-8 border border-border bg-muted px-3 text-xs font-mono rounded-md" />
+                      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 flex-shrink-0"
+                        onClick={() => { navigator.clipboard.writeText(ndaLink); toast.success('Copied!'); }}>
+                        <LinkIcon className="w-3.5 h-3.5" /> Copy
+                      </Button>
+                      <a href={ndaLink} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 flex-shrink-0">
+                          <ExternalLink className="w-3.5 h-3.5" /> Open
+                        </Button>
+                      </a>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Share this link with the other party for signing.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── ALL NDAs VIEW ── */}
+            {ndaView === 'all' && (
+              <div>
+                {allNdasLoading ? (
+                  <div className="flex items-center justify-center py-20">
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : allNdas.length === 0 ? (
+                  <div className="bg-card border border-border p-12 text-center">
+                    <p className="text-muted-foreground">No NDAs yet.</p>
+                  </div>
+                ) : (
+                  <div className="bg-card border border-border divide-y divide-border">
+                    {allNdas.map((nda: any) => {
+                      const statusClassName = nda.status === 'draft'
+                        ? 'bg-muted text-muted-foreground'
+                        : nda.status === 'pending'
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                          : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
+                      const statusLabel = nda.status === 'pending' ? 'awaiting' : nda.status;
+                      const dateStr = nda.agreement_date
+                        ? new Date(nda.agreement_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : '';
+                      const signingLink = nda.slug ? `${window.location.origin}/nda/${nda.slug}/sign` : null;
+                      return (
+                        <DocumentListRow
+                          key={nda.id}
+                          statusLabel={statusLabel}
+                          statusClassName={statusClassName}
+                          clientName={nda.company_name || 'Untitled'}
+                          programmeTitle="Mutual NDA"
+                          dateStr={dateStr}
+                          signedBy={nda.status === 'signed' ? nda.signer_name : undefined}
+                          signedByTitle={nda.status === 'signed' ? nda.signer_title : undefined}
+                          actions={
+                            <>
+                              {nda.status === 'pending' && signingLink && (
+                                <Button
+                                  variant="ghost" size="sm"
+                                  className="text-muted-foreground hover:text-primary"
+                                  title="Copy signing link"
+                                  onClick={() => { navigator.clipboard.writeText(signingLink); toast.success('Signing link copied!'); }}
+                                >
+                                  <LinkIcon className="w-4 h-4" />
+                                </Button>
+                              )}
+                              {(nda.status === 'draft' || nda.status === 'pending') && (
+                                <>
+                                  <Button
+                                    variant="ghost" size="sm"
+                                    className="text-muted-foreground hover:text-primary"
+                                    title="Edit"
+                                    onClick={() => loadNdaForEditing(nda.id)}
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost" size="sm"
+                                    className="text-muted-foreground hover:text-destructive"
+                                    title="Delete"
+                                    onClick={() => deleteNda(nda.id, nda.status)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
+                              {nda.status === 'signed' && nda.signed_nda_url && (
+                                <a
+                                  href={supabase.storage.from('ndas').getPublicUrl(nda.signed_nda_url).data.publicUrl}
+                                  target="_blank" rel="noopener noreferrer"
+                                  title="Download signed NDA"
                                 >
                                   <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
                                     <Download className="w-4 h-4" />
