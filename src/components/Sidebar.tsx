@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { LayoutDashboard, FileText, Users, UserCircle2, Target, ShoppingBag, Scale, LogOut, Plus, Menu, X, FileStack, Wand2, FolderOpen, ChevronDown } from "lucide-react";
 
-type Tab = "dashboard" | "proposals" | "users" | "team" | "solutions" | "services" | "agreements";
+type Tab = "dashboard" | "proposals" | "users" | "team" | "solutions" | "services" | "agreements" | "ndas";
 type AdhocView = "templates" | "adhoc" | "all";
+type NdaView = "new" | "all";
 
 interface SidebarProps {
   activeTab: Tab;
@@ -13,6 +14,8 @@ interface SidebarProps {
   onSignOut: () => void;
   adhocView?: AdhocView;
   onAdhocViewChange?: (view: AdhocView) => void;
+  ndaView?: NdaView;
+  onNdaViewChange?: (view: NdaView) => void;
 }
 
 const ADMIN_ITEMS: { tab: Tab; label: string; icon: React.ElementType }[] = [
@@ -26,6 +29,11 @@ const AGREEMENT_SUBS: { view: AdhocView; label: string; icon: React.ElementType 
   { view: "templates", label: "Templates", icon: FileStack },
   { view: "adhoc", label: "Ad-Hoc Generator", icon: Wand2 },
   { view: "all", label: "All Agreements", icon: FolderOpen },
+];
+
+const NDA_SUBS: { view: NdaView; label: string; icon: React.ElementType }[] = [
+  { view: "new", label: "New NDA", icon: Plus },
+  { view: "all", label: "All NDAs", icon: FolderOpen },
 ];
 
 function NavItem({ label, icon: Icon, active, onClick, extra }: {
@@ -65,7 +73,7 @@ function SubNavItem({ label, icon: Icon, active, onClick }: {
   );
 }
 
-export function Sidebar({ activeTab, onTabChange, onServicesClick, userEmail, onSignOut, adhocView = 'templates', onAdhocViewChange }: SidebarProps) {
+export function Sidebar({ activeTab, onTabChange, onServicesClick, userEmail, onSignOut, adhocView = 'templates', onAdhocViewChange, ndaView = 'all', onNdaViewChange }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleTabClick = (tab: Tab) => {
@@ -83,7 +91,14 @@ export function Sidebar({ activeTab, onTabChange, onServicesClick, userEmail, on
     setMobileOpen(false);
   };
 
+  const handleNdaSubClick = (view: NdaView) => {
+    onTabChange("ndas");
+    onNdaViewChange?.(view);
+    setMobileOpen(false);
+  };
+
   const agreementsActive = activeTab === "agreements";
+  const ndasActive = activeTab === "ndas";
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
@@ -141,6 +156,28 @@ export function Sidebar({ activeTab, onTabChange, onServicesClick, userEmail, on
                 icon={sub.icon}
                 active={adhocView === sub.view}
                 onClick={() => handleAdhocSubClick(sub.view)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* NDAs with sub-items */}
+        <NavItem
+          label="NDAs"
+          icon={FileText}
+          active={ndasActive}
+          onClick={() => handleNdaSubClick(ndaView)}
+          extra={ndasActive ? <ChevronDown className="w-3 h-3 text-white/30" /> : undefined}
+        />
+        {ndasActive && (
+          <div className="space-y-0.5 pb-1">
+            {NDA_SUBS.map(sub => (
+              <SubNavItem
+                key={sub.view}
+                label={sub.label}
+                icon={sub.icon}
+                active={ndaView === sub.view}
+                onClick={() => handleNdaSubClick(sub.view)}
               />
             ))}
           </div>
