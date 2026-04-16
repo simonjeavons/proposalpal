@@ -72,10 +72,10 @@ Deno.serve(async (req: Request) => {
   }
 
   const body = await req.json();
-  const { type, proposalId, contractId, userAgent } = body;
+  const { type, proposalId, contractId, ndaId, userAgent } = body;
 
-  if (!type || (!proposalId && !contractId)) {
-    return new Response(JSON.stringify({ error: "type and either proposalId or contractId required" }), {
+  if (!type || (!proposalId && !contractId && !ndaId)) {
+    return new Response(JSON.stringify({ error: "type and one of proposalId, contractId, or ndaId required" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -219,6 +219,134 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // NDA VIEWED
+  if (type === "nda-viewed") {
+    const ndaId = body.ndaId;
+    if (!ndaId) {
+      return new Response(JSON.stringify({ error: "ndaId required for nda-viewed" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    await supabase.from("nda_views").insert({
+      nda_id: ndaId,
+      user_agent: userAgent ?? null,
+      ip: clientIp,
+    });
+    const { data: nda } = await supabase
+      .from("ndas")
+      .select("id, company_name, last_view_email_at, profiles:prepared_by_user_id (email, full_name)")
+      .eq("id", ndaId)
+      .single();
+    if (!nda) {
+      return new Response(JSON.stringify({ ok: true, recorded: true, emailSkipped: "nda-not-found" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const lastEmailAt = (nda as any).last_view_email_at as string | null;
+    if (lastEmailAt && (Date.now() - new Date(lastEmailAt).getTime() < VIEW_EMAIL_THROTTLE_MS)) {
+      return new Response(JSON.stringify({ ok: true, recorded: true, emailSkipped: "throttled" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const profile = (nda as any).profiles as { email: string; full_name: string } | null;
+    if (!profile?.email) {
+      return new Response(JSON.stringify({ ok: true, recorded: true, emailSkipped: "no-owner" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    await supabase.from("ndas").update({ last_view_email_at: new Date().toISOString() }).eq("id", ndaId);
+    const companyName = (nda as any).company_name || "(Unknown)";
+    const subject = "NDA viewed: Mutual NDA - " + companyName;
+    const emailBody = [
+      "Hi " + (profile.full_name || "Team") + ",",
+      "",
+      "A customer has just opened an NDA.",
+      "",
+      "Company: " + companyName,
+      "",
+      "You'll receive another notification when they sign it.",
+      "(Further view notifications are throttled to once every 30 minutes.)",
+      "",
+      "- Shoothill Proposal Manager",
+    ].join("\n");
+    await sendSendgrid(profile.email, profile.full_name || "Team", subject, emailBody);
+    return new Response(JSON.stringify({ ok: true, recorded: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // NDA SIGNED
+  if (type === "nda-signed") {
+    const ndaId = body.ndaId;
+    if (!ndaId) {
+      return new Response(JSON.stringify({ error: "ndaId required for nda-signed" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: nda } = await supabase
+      .from("ndas")
+      .select("id, company_name, contact_name, contact_email, signer_name, signer_title, signed_at, purpose, profiles:prepared_by_user_id (email, full_name)")
+      .eq("id", ndaId)
+      .single();
+    if (!nda) {
+      return new Response(JSON.stringify({ error: "NDA not found" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const companyName = (nda as any).company_name || "(Unknown)";
+    const signerName = (nda as any).signer_name || "Unknown";
+    const signerTitle = (nda as any).signer_title || "";
+    const signedAt = (nda as any).signed_at
+      ? new Date((nda as any).signed_at).toLocaleString("en-GB", { timeZone: "Europe/London" })
+      : new Date().toLocaleString("en-GB", { timeZone: "Europe/London" });
+
+    // Email to customer
+    const customerEmail = (nda as any).contact_email as string | null;
+    const customerName = (nda as any).contact_name || "Team";
+    if (customerEmail) {
+      const subject = "[NDA] Signed: Mutual NDA - " + companyName;
+      const emailBody = [
+        "Hi " + customerName + ",",
+        "",
+        "A Mutual Non-Disclosure Agreement has been signed.",
+        "",
+        "Company:    " + companyName,
+        "Signed by:  " + signerName + (signerTitle ? ", " + signerTitle : ""),
+        "Signed at:  " + signedAt,
+        "",
+        "A copy of the signed NDA is attached to this agreement.",
+        "You can also download it from the signing page.",
+        "",
+        "- Shoothill Proposal Manager",
+      ].join("\n");
+      await sendSendgrid(customerEmail, customerName, subject, emailBody);
+    }
+
+    // Email to preparer
+    const profile = (nda as any).profiles as { email: string; full_name: string } | null;
+    if (profile?.email) {
+      const subject = "[NDA] Signed: Mutual NDA - " + companyName;
+      const emailBody = [
+        "Hi " + (profile.full_name || "Team") + ",",
+        "",
+        "An NDA has been signed.",
+        "",
+        "Company:    " + companyName,
+        "Signed by:  " + signerName + (signerTitle ? ", " + signerTitle : ""),
+        "Signed at:  " + signedAt,
+        "",
+        "Log in to Shoothill Proposal Manager to view the signed NDA.",
+        "",
+        "- Shoothill Proposal Manager",
+      ].join("\n");
+      await sendSendgrid(profile.email, profile.full_name || "Team", subject, emailBody);
+    }
+
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   // PROPOSAL VIEWED/SIGNED
   if (!proposalId) {
     return new Response(JSON.stringify({ error: "proposalId required for type viewed/signed" }), {
@@ -353,7 +481,7 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  return new Response(JSON.stringify({ error: "type must be 'viewed', 'signed', 'adhoc-viewed', or 'adhoc-signed'" }), {
+  return new Response(JSON.stringify({ error: "type must be 'viewed', 'signed', 'adhoc-viewed', 'adhoc-signed', 'nda-viewed', or 'nda-signed'" }), {
     status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
