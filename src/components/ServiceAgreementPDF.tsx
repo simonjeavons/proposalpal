@@ -18,6 +18,7 @@ export interface ServiceAgreementPDFProps {
   agreementDate: string;
   phases: Phase[];
   upfrontItems: UpfrontItem[];
+  coreOptions?: RetainerOption[];
   selectedStandard: RetainerOption | null;
   selectedExtras: RetainerOption[];
   upfrontTotal: number;
@@ -246,6 +247,7 @@ export function ServiceAgreementPDF({
   agreementDate,
   phases,
   upfrontItems,
+  coreOptions = [],
   selectedStandard,
   selectedExtras,
   upfrontTotal,
@@ -506,9 +508,15 @@ export function ServiceAgreementPDF({
         })()}
 
         {/* Proposal ongoing options (retainer) — shown when no ongoingOptions prop */}
-        {(!ongoingOptions || ongoingOptions.length === 0) && (selectedStandard || selectedExtras.length > 0) && (
+        {(!ongoingOptions || ongoingOptions.length === 0) && (coreOptions.length > 0 || selectedStandard || selectedExtras.length > 0) && (
           <>
             <View style={{ height: 6 }} />
+            {coreOptions.map((core, i) => (
+              <View key={`core-${i}`} style={styles.tableRow}>
+                <Text style={styles.tableDesc}>{core.name || core.type} /month{core.rolling_monthly ? ' (Monthly rolling)' : core.term_months ? ` (${core.term_months} months${core.starts_after_months ? ', begins after project delivery' : ''})` : ''}</Text>
+                <Text style={styles.tableAmt}>{fmt(optionTotal(core))} + VAT/month</Text>
+              </View>
+            ))}
             {selectedStandard && (
               <View style={styles.tableRow}>
                 <Text style={styles.tableDesc}>{selectedStandard.name || selectedStandard.type} /month{selectedStandard.rolling_monthly ? ' (Monthly rolling)' : selectedStandard.term_months ? ` (${selectedStandard.term_months} months${selectedStandard.starts_after_months ? ', begins after project delivery' : ''})` : ''}</Text>

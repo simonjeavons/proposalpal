@@ -486,11 +486,12 @@ export default function ProposalAccept() {
         // If no extras param was present in the URL, default to recommended extras
         const selExtras = selectedExtrasIndices.map(i => optExtras[i]).filter(Boolean);
         const upfrontAmt = Number(proposal.upfront_total);
+        const coreAmt = coreOpts.reduce((sum, r) => sum + (r.quantity ?? 1) * (r.discounted_price ?? r.price), 0);
         const stdPrice = selStandard ? (selStandard.quantity ?? 1) * (selStandard.discounted_price ?? selStandard.price) : 0;
         const extrasPrice = selExtras.reduce((sum, r) => sum + (r.quantity ?? 1) * (r.discounted_price ?? r.price), 0);
         const allOpts: RetainerOption[] = [...coreOpts, ...(selStandard ? [selStandard] : []), ...selExtras];
         const annualAmt = allOpts.reduce((sum, r) => sum + (r.quantity ?? 1) * (r.discounted_price ?? r.price) * (r.frequency === 'weekly' ? 52 : r.frequency === 'annual' ? 1 : 12), 0);
-        const ongoingAmt = stdPrice + extrasPrice;
+        const ongoingAmt = coreAmt + stdPrice + extrasPrice;
         const firstYrTotal = upfrontAmt + annualAmt;
 
         const [{ pdf }, { ServiceAgreementPDF }] = await Promise.all([
@@ -505,6 +506,7 @@ export default function ProposalAccept() {
           agreementDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
           phases: proposal.phases || [],
           upfrontItems: (proposal as any).upfront_items || [],
+          coreOptions: coreOpts,
           selectedStandard: selStandard,
           selectedExtras: selExtras,
           upfrontTotal: upfrontAmt,
@@ -674,6 +676,7 @@ export default function ProposalAccept() {
           agreementDate: signingDateStr,
           phases: proposal.phases || [],
           upfrontItems: (proposal as any).upfront_items || [],
+          coreOptions: coreOpts,
           selectedStandard: selStandard,
           selectedExtras: selExtras,
           upfrontTotal: upfrontAmt,
