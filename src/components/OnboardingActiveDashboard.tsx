@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Settings2, AlertTriangle, Search } from "lucide-react";
+import { ArrowRight, Settings2, AlertTriangle, Search, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import OnboardingCreateDialog from "@/components/OnboardingCreateDialog";
 import {
   Select,
   SelectContent,
@@ -137,6 +139,8 @@ export default function OnboardingActiveDashboard() {
   const [search, setSearch] = useState("");
   const [showCompleted, setShowCompleted] = useState(false);
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -180,7 +184,7 @@ export default function OnboardingActiveDashboard() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadKey]);
 
   const computed: RowComputed[] = useMemo(() => {
     if (!settings) return [];
@@ -262,12 +266,23 @@ export default function OnboardingActiveDashboard() {
 
   return (
     <div className="p-6 space-y-6 max-w-6xl">
-      <div>
-        <h1 className="text-2xl font-semibold">Onboarding</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Track new clients through Information capture, Report delivery, and Sign-off.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Onboarding</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Track new clients through Information capture, Report delivery, and Sign-off.
+          </p>
+        </div>
+        <Button onClick={() => setCreateOpen(true)} variant="outline" size="sm">
+          <Plus className="w-4 h-4 mr-1.5" /> Create onboarding
+        </Button>
       </div>
+
+      <OnboardingCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={() => setReloadKey(k => k + 1)}
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <SummaryCard label="Active" value={summary.active} />
