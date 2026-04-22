@@ -30,6 +30,7 @@ export interface ServiceAgreementPDFProps {
   companyRegNumber?: string;
   registeredOffice?: string; // pre-formatted address string
   scopeOfWorkText?: string;
+  additionalTermsText?: string;
   // Static — from chosen template
   templateSections: TemplateSection[];
   // Signature data — passed at signing time to embed into execution block
@@ -46,6 +47,7 @@ export interface ServiceAgreementPDFProps {
     rolling_monthly?: boolean;
     notice_days?: number;
     starts_after_months?: number;
+    discount_note?: string;
   }>;
   // Fixed-term billings per contract year (honouring starts_after_months) — drives multi-year subtotal rows.
   contractYearSubtotals?: number[];
@@ -259,6 +261,7 @@ export function ServiceAgreementPDF({
   companyRegNumber,
   registeredOffice,
   scopeOfWorkText,
+  additionalTermsText,
   templateSections,
   clientSignerName,
   clientSignerTitle,
@@ -375,7 +378,7 @@ export function ServiceAgreementPDF({
         {/* Upfront items */}
         {upfrontItems.map((item, i) => (
           <View key={i} style={styles.tableRow}>
-            <Text style={styles.tableDesc}>{item.name || item.type}</Text>
+            <Text style={styles.tableDesc}>{item.name || item.type}{item.discount_note ? ` (${item.discount_note})` : ''}</Text>
             <Text style={styles.tableAmt}>{fmt(item.discounted_price ?? item.price)} + VAT</Text>
           </View>
         ))}
@@ -424,7 +427,8 @@ export function ServiceAgreementPDF({
                     );
                     const freqLabel = opt.frequency === 'annual' ? '/yr' : opt.frequency === 'weekly' ? '/wk' : '/mo';
                     const startYear = Math.floor((opt.starts_after_months ?? 0) / 12) + 1;
-                    const label = opt.name || `Ongoing Option ${i + 1}`;
+                    const baseLabel = opt.name || `Ongoing Option ${i + 1}`;
+                    const label = opt.discount_note ? `${baseLabel} (${opt.discount_note})` : baseLabel;
                     return (
                       <View key={`fixed-${i}`}>
                         {numYears > 1 ? (
@@ -482,7 +486,8 @@ export function ServiceAgreementPDF({
                   </View>
                   {rollingOpts.map((opt, i) => {
                     const freqLabel = opt.frequency === 'annual' ? '/yr' : opt.frequency === 'weekly' ? '/wk' : '/mo';
-                    const label = opt.name || `Ongoing Option ${i + 1}`;
+                    const baseLabel = opt.name || `Ongoing Option ${i + 1}`;
+                    const label = opt.discount_note ? `${baseLabel} (${opt.discount_note})` : baseLabel;
                     return (
                       <View key={`rolling-${i}`} style={styles.tableRow}>
                         <Text style={styles.tableDesc}>{label}</Text>
@@ -559,6 +564,25 @@ export function ServiceAgreementPDF({
             <Text style={styles.sectionBody}>{section.body}</Text>
           </View>
         ))}
+
+        {/* Additional Terms and Conditions — numbered as next schedule after template-supplied schedules */}
+        {additionalTermsText ? (() => {
+          const scheduleNumbers = templateSections
+            .map(s => s.heading.match(/^Schedule\s+(\d+)/i)?.[1])
+            .filter((n): n is string => !!n)
+            .map(n => parseInt(n, 10));
+          const nextNumber = scheduleNumbers.length > 0 ? Math.max(...scheduleNumbers) + 1 : 3;
+          return (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionHeading}>Schedule {nextNumber} — Additional Terms and Conditions</Text>
+              </View>
+              {additionalTermsText.split(/\n\n+/).map((para, i) => (
+                <Text key={i} style={[styles.sectionBody, { marginBottom: 6 }]}>{para}</Text>
+              ))}
+            </>
+          );
+        })() : null}
 
         {/* Execution block */}
         <View style={styles.sectionHeader}>

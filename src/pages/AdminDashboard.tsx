@@ -182,6 +182,7 @@ export default function AdminDashboard() {
     paymentTerms: '50% on commencement / 50% on delivery',
     templateId: '',
     scopeOfWorkText: '',
+    additionalTermsText: '',
     preparedByUserId: '',
     phases: [] as Phase[],
     upfrontItems: [] as UpfrontItem[],
@@ -502,6 +503,7 @@ export default function AdminDashboard() {
     template_id: adhocForm.templateId || null,
     prepared_by_user_id: adhocForm.preparedByUserId || null,
     scope_of_work_text: adhocForm.scopeOfWorkText || null,
+    additional_terms_text: adhocForm.additionalTermsText || null,
     phases: adhocForm.phases,
     upfront_items: adhocForm.upfrontItems,
     ongoing_options: adhocForm.retainerOptions,
@@ -514,7 +516,7 @@ export default function AdminDashboard() {
       agreementDate: new Date().toISOString().split('T')[0],
       contactName: '', contactEmail: '',
       paymentTerms: '50% on commencement / 50% on delivery',
-      templateId: '', scopeOfWorkText: '', preparedByUserId: '', phases: [], upfrontItems: [], retainerOptions: [],
+      templateId: '', scopeOfWorkText: '', additionalTermsText: '', preparedByUserId: '', phases: [], upfrontItems: [], retainerOptions: [],
     });
     setEditingDraftId(null);
     setAdhocLink(null);
@@ -544,6 +546,7 @@ export default function AdminDashboard() {
       paymentTerms: d.payment_terms || '50% on commencement / 50% on delivery',
       templateId: d.template_id || '',
       scopeOfWorkText: d.scope_of_work_text || '',
+      additionalTermsText: d.additional_terms_text || '',
       preparedByUserId: d.prepared_by_user_id || '',
       phases: Array.isArray(d.phases) ? d.phases : [],
       upfrontItems: Array.isArray(d.upfront_items) ? d.upfront_items : [],
@@ -2266,8 +2269,6 @@ export default function AdminDashboard() {
                   onChange={items => setAdhocForm(f => ({ ...f, upfrontItems: items }))}
                   products={products}
                   currentServiceTypeId={null}
-                  showDiscountControls={false}
-                  hideDiscountPrice
                 />
 
                 {/* Ongoing Options */}
@@ -2277,9 +2278,20 @@ export default function AdminDashboard() {
                   products={products}
                   currentServiceTypeId={null}
                   showFrequency
-                  showDiscountControls={false}
-                  hideDiscountPrice
                 />
+
+                {/* Additional Terms and Conditions */}
+                <div className="bg-card border border-border p-5">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-foreground mb-3">Additional Terms and Conditions</h2>
+                  <textarea
+                    value={adhocForm.additionalTermsText}
+                    onChange={e => setAdhocForm(f => ({ ...f, additionalTermsText: e.target.value }))}
+                    rows={6}
+                    placeholder="Any extra terms specific to this agreement. Appears as the final schedule in the PDF."
+                    className="w-full border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-y rounded-md"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">Added as the next-numbered schedule after the template's schedules. Leave blank to omit.</p>
+                </div>
 
                 {/* Save buttons */}
                 <div className="grid grid-cols-2 gap-3">

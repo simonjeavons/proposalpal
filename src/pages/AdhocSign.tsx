@@ -17,6 +17,7 @@ interface OngoingOption {
   rolling_monthly?: boolean;
   notice_days?: number;
   starts_after_months?: number;
+  discount_note?: string;
 }
 
 interface AdhocContract {
@@ -32,6 +33,7 @@ interface AdhocContract {
   registered_county: string | null;
   registered_postcode: string | null;
   scope_of_work_text: string | null;
+  additional_terms_text: string | null;
   programme_title: string;
   agreement_date: string;
   contact_name: string;
@@ -236,6 +238,7 @@ export default function AdhocSign() {
               rolling_monthly: r.rolling_monthly,
               notice_days: r.notice_days,
               starts_after_months: r.starts_after_months,
+              discount_note: r.discount_note,
             };
           });
         }
@@ -338,6 +341,7 @@ export default function AdhocSign() {
           registeredOffice: [contract.registered_address_1, contract.registered_address_2, contract.registered_city, contract.registered_county, contract.registered_postcode].filter(Boolean).join(', '),
           templateSections,
           scopeOfWorkText: contract.scope_of_work_text || '',
+          additionalTermsText: contract.additional_terms_text || '',
           ongoingOptions: contract.ongoing_options,
           contractYearSubtotals,
         })).toBlob();
@@ -423,6 +427,7 @@ export default function AdhocSign() {
         registeredOffice: [contract.registered_address_1, contract.registered_address_2, contract.registered_city, contract.registered_county, contract.registered_postcode].filter(Boolean).join(', '),
         templateSections,
         scopeOfWorkText: contract.scope_of_work_text || '',
+        additionalTermsText: contract.additional_terms_text || '',
         ongoingOptions: contract.ongoing_options,
         contractYearSubtotals,
         clientSignerName: signerName,

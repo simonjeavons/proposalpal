@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       adhoc_contracts: {
         Row: {
+          additional_terms_text: string | null
           agreement_date: string
           client_name: string
           company_reg_number: string
@@ -50,6 +51,7 @@ export type Database = {
           upfront_items: Json
         }
         Insert: {
+          additional_terms_text?: string | null
           agreement_date?: string
           client_name?: string
           company_reg_number?: string
@@ -84,6 +86,7 @@ export type Database = {
           upfront_items?: Json
         }
         Update: {
+          additional_terms_text?: string | null
           agreement_date?: string
           client_name?: string
           company_reg_number?: string
