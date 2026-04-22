@@ -350,7 +350,7 @@ Deno.serve(async (req: Request) => {
           "Customer: " + orgName,
           "Confirmed at: " + new Date(now).toLocaleString("en-GB", { timeZone: "Europe/London" }),
           "",
-          "They've moved into ongoing monthly support.",
+          "Their account has been moved to the delivery team.",
           "",
           "- Shoothill Proposal Manager",
         ].join("\n");
@@ -366,8 +366,8 @@ Deno.serve(async (req: Request) => {
           "",
           "Thanks for confirming your onboarding with Shoothill.",
           "",
-          "You're now in ongoing monthly support — we'll be in touch with",
-          "the next steps shortly.",
+          "Your account has been moved to our delivery team — we'll be in touch",
+          "with the next steps shortly.",
           "",
           "- Shoothill",
         ].join("\n");

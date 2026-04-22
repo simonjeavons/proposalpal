@@ -108,7 +108,7 @@ export default function OnboardingSignoff() {
             {state.report.signed_off_at && ` Confirmed on ${new Date(state.report.signed_off_at).toLocaleString("en-GB")}.`}
           </p>
           <p className="text-sm text-muted-foreground">
-            Your account moves into ongoing monthly support. We'll be in touch with details.
+            Your account has been moved to the delivery team. We'll be in touch with details.
           </p>
         </div>
       </div>
@@ -127,8 +127,8 @@ export default function OnboardingSignoff() {
 
         <p className="text-sm leading-relaxed">
           By clicking below, you confirm that the onboarding has been completed
-          to your satisfaction and you're ready to transition to ongoing
-          monthly support with Shoothill.
+          to your satisfaction and you're ready for your account to be moved to
+          the Shoothill delivery team.
         </p>
 
         <Button onClick={handleConfirm} disabled={submitting} className="w-full" size="lg">

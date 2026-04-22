@@ -222,7 +222,7 @@ export default function OnboardingReportView() {
             <div className="border rounded-lg p-5 bg-muted/20 space-y-3 text-center">
               <p className="text-sm">
                 Happy with the onboarding? Click below to confirm — we'll be notified immediately
-                and your account moves into ongoing monthly support.
+                and your account will be moved to the delivery team.
               </p>
               <Button onClick={handleAccept} disabled={accepting} size="lg" className="w-full sm:w-auto">
                 <CheckCircle2 className="w-5 h-5 mr-2" />
@@ -238,7 +238,7 @@ export default function OnboardingReportView() {
                 <div className="font-semibold">Thanks — onboarding confirmed.</div>
                 <div className="text-muted-foreground mt-0.5">
                   Accepted on {report.signed_off_at && new Date(report.signed_off_at).toLocaleString("en-GB")}.
-                  You've moved into ongoing monthly support.
+                  Your account has been moved to the delivery team.
                 </div>
               </div>
             </div>
