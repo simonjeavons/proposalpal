@@ -232,21 +232,32 @@ export default function OnboardingDetail() {
         )}
 
         {onboarding.status === "active" && onboarding.current_stage === 2 && (
-          <div className="border rounded-lg p-6">
-            <h2 className="text-lg font-semibold mb-2">Stage 2 — Report delivery</h2>
-            <p className="text-sm text-muted-foreground">
-              Stage 1 is complete. The report editor + send flow ships in the next slice.
-              {onboarding.stage1_completed_at && ` Completed ${new Date(onboarding.stage1_completed_at).toLocaleString("en-GB")}.`}
-            </p>
+          <div className="border rounded-lg p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Stage 2 — Report delivery</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Build the onboarding report and send it to the client via a tokenised link.
+                {onboarding.stage1_completed_at && ` Stage 1 completed ${new Date(onboarding.stage1_completed_at).toLocaleString("en-GB")}.`}
+              </p>
+            </div>
+            <Button onClick={() => navigate(`/onboarding/${onboarding.id}/report`)}>
+              Open report editor
+            </Button>
           </div>
         )}
 
         {onboarding.status === "active" && onboarding.current_stage === 3 && (
-          <div className="border rounded-lg p-6">
-            <h2 className="text-lg font-semibold mb-2">Stage 3 — Awaiting client sign-off</h2>
-            <p className="text-sm text-muted-foreground">
-              The client signoff page ships in the next slice.
-            </p>
+          <div className="border rounded-lg p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Stage 3 — Awaiting client sign-off</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                The report has been sent. The client confirms via the link in their email.
+                {onboarding.stage2_completed_at && ` Sent ${new Date(onboarding.stage2_completed_at).toLocaleString("en-GB")}.`}
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => navigate(`/onboarding/${onboarding.id}/report`)}>
+              View / revise report
+            </Button>
           </div>
         )}
 

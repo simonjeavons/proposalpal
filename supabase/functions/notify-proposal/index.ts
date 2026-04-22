@@ -135,10 +135,22 @@ Deno.serve(async (req: Request) => {
   }
 
   const body = await req.json();
-  const { type, proposalId, contractId, ndaId, userAgent } = body;
+  const { type, proposalId, contractId, ndaId, reportId, signoffToken, userAgent } = body;
 
-  if (!type || (!proposalId && !contractId && !ndaId)) {
-    return new Response(JSON.stringify({ error: "type and one of proposalId, contractId, or ndaId required" }), {
+  if (!type) {
+    return new Response(JSON.stringify({ error: "type is required" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const onboardingTypes = new Set([
+    "onboarding-report-sent",
+    "onboarding-report-viewed",
+    "onboarding-signed-off",
+  ]);
+
+  if (!onboardingTypes.has(type) && !proposalId && !contractId && !ndaId) {
+    return new Response(JSON.stringify({ error: "one of proposalId, contractId, or ndaId required" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -152,6 +164,220 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
+
+  // ─── ONBOARDING: REPORT SENT ─────────────────────────────────────────────
+  if (type === "onboarding-report-sent") {
+    if (!reportId) {
+      return new Response(JSON.stringify({ error: "reportId required for onboarding-report-sent" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: report } = await supabase
+      .from("onboarding_reports")
+      .select("id, view_token, onboarding_id")
+      .eq("id", reportId)
+      .single();
+    if (!report) {
+      return new Response(JSON.stringify({ error: "Report not found" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: ob } = await supabase
+      .from("client_onboardings")
+      .select("organisation, client_name, contact_name, contact_email, profiles:assigned_to_user_id (email, full_name)")
+      .eq("id", (report as any).onboarding_id)
+      .single();
+    if (!ob) {
+      return new Response(JSON.stringify({ error: "Onboarding not found" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const recipientEmail = (ob as any).contact_email as string | null;
+    const recipientName = (ob as any).contact_name || "Team";
+    if (!recipientEmail) {
+      return new Response(JSON.stringify({ ok: true, emailSkipped: "no-contact-email" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const orgName = (ob as any).organisation || (ob as any).client_name || "your organisation";
+    const viewToken = (report as any).view_token as string | null;
+    const origin = req.headers.get("origin") || Deno.env.get("APP_BASE_URL") || "";
+    const viewUrl = origin && viewToken ? `${origin}/onboarding/report/${viewToken}` : "(view link)";
+    const subject = "Your onboarding report from Shoothill — " + orgName;
+    const emailBody = [
+      "Hi " + recipientName + ",",
+      "",
+      "Your onboarding report is ready. You can view it here:",
+      "",
+      viewUrl,
+      "",
+      "When you're happy that the onboarding is complete, you can confirm",
+      "directly from the report — there's a button at the bottom.",
+      "",
+      "- Shoothill",
+    ].join("\n");
+    const r = await sendSendgrid(recipientEmail, recipientName, subject, emailBody);
+    if (!r.ok) {
+      return new Response(JSON.stringify({ error: "Failed to send email" }), {
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // ─── ONBOARDING: REPORT VIEWED ───────────────────────────────────────────
+  if (type === "onboarding-report-viewed") {
+    if (!reportId) {
+      return new Response(JSON.stringify({ error: "reportId required for onboarding-report-viewed" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    await supabase.from("onboarding_report_views").insert({
+      report_id: reportId,
+      user_agent: userAgent ?? null,
+      ip: clientIp,
+    });
+    const { data: report } = await supabase
+      .from("onboarding_reports")
+      .select("id, viewed_at, last_view_email_at, onboarding_id")
+      .eq("id", reportId)
+      .single();
+    if (!report) {
+      return new Response(JSON.stringify({ ok: true, recorded: true, emailSkipped: "report-not-found" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!(report as any).viewed_at) {
+      await supabase.from("onboarding_reports").update({ viewed_at: new Date().toISOString() }).eq("id", reportId);
+    }
+    const lastEmailAt = (report as any).last_view_email_at as string | null;
+    if (lastEmailAt && (Date.now() - new Date(lastEmailAt).getTime() < VIEW_EMAIL_THROTTLE_MS)) {
+      return new Response(JSON.stringify({ ok: true, recorded: true, emailSkipped: "throttled" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: ob } = await supabase
+      .from("client_onboardings")
+      .select("organisation, client_name, profiles:assigned_to_user_id (email, full_name)")
+      .eq("id", (report as any).onboarding_id)
+      .single();
+    const profile = (ob as any)?.profiles as { email?: string; full_name?: string } | null;
+    if (!profile?.email) {
+      return new Response(JSON.stringify({ ok: true, recorded: true, emailSkipped: "no-assignee" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    await supabase.from("onboarding_reports").update({ last_view_email_at: new Date().toISOString() }).eq("id", reportId);
+    const orgName = (ob as any)?.organisation || (ob as any)?.client_name || "(Unknown)";
+    const subject = "Onboarding report viewed: " + orgName;
+    const emailBody = [
+      "Hi " + (profile.full_name || "Team") + ",",
+      "",
+      "The client has just opened their onboarding report.",
+      "",
+      "Customer: " + orgName,
+      "",
+      "You'll receive another notification when they confirm onboarding complete.",
+      "(Further view notifications are throttled to once every 30 minutes.)",
+      "",
+      "- Shoothill Proposal Manager",
+    ].join("\n");
+    await sendSendgrid(profile.email, profile.full_name || "Team", subject, emailBody);
+    return new Response(JSON.stringify({ ok: true, recorded: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // ─── ONBOARDING: SIGNED OFF ──────────────────────────────────────────────
+  if (type === "onboarding-signed-off") {
+    if (!signoffToken) {
+      return new Response(JSON.stringify({ error: "signoffToken required for onboarding-signed-off" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: report } = await supabase
+      .from("onboarding_reports")
+      .select("id, signed_off_at, onboarding_id")
+      .eq("signoff_token", signoffToken)
+      .single();
+    if (!report) {
+      return new Response(JSON.stringify({ error: "Sign-off link not found" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // Idempotent — if already signed, no-op the writes/emails
+    if ((report as any).signed_off_at) {
+      return new Response(JSON.stringify({ ok: true, alreadySigned: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const now = new Date().toISOString();
+    const { error: rUpdErr } = await supabase
+      .from("onboarding_reports")
+      .update({
+        signed_off_at: now,
+        signed_off_ip: clientIp,
+        signed_off_user_agent: userAgent ?? null,
+      })
+      .eq("id", (report as any).id);
+    if (rUpdErr) {
+      return new Response(JSON.stringify({ error: "Failed to record sign-off" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: ob } = await supabase
+      .from("client_onboardings")
+      .select("id, organisation, client_name, contact_name, contact_email, profiles:assigned_to_user_id (email, full_name)")
+      .eq("id", (report as any).onboarding_id)
+      .single();
+    if (ob) {
+      await supabase
+        .from("client_onboardings")
+        .update({ status: "complete", stage3_completed_at: now })
+        .eq("id", (ob as any).id);
+      const orgName = (ob as any).organisation || (ob as any).client_name || "(Unknown)";
+      // Email assignee
+      const profile = (ob as any).profiles as { email?: string; full_name?: string } | null;
+      if (profile?.email) {
+        const subject = "Onboarding signed off: " + orgName;
+        const emailBody = [
+          "Hi " + (profile.full_name || "Team") + ",",
+          "",
+          "The client has just confirmed their onboarding is complete.",
+          "",
+          "Customer: " + orgName,
+          "Confirmed at: " + new Date(now).toLocaleString("en-GB", { timeZone: "Europe/London" }),
+          "",
+          "They've moved into ongoing monthly support.",
+          "",
+          "- Shoothill Proposal Manager",
+        ].join("\n");
+        await sendSendgrid(profile.email, profile.full_name || "Team", subject, emailBody);
+      }
+      // Email customer
+      const customerEmail = (ob as any).contact_email as string | null;
+      if (customerEmail) {
+        const customerName = (ob as any).contact_name || "Team";
+        const subject = "Onboarding confirmed — " + orgName;
+        const emailBody = [
+          "Hi " + customerName + ",",
+          "",
+          "Thanks for confirming your onboarding with Shoothill.",
+          "",
+          "You're now in ongoing monthly support — we'll be in touch with",
+          "the next steps shortly.",
+          "",
+          "- Shoothill",
+        ].join("\n");
+        await sendSendgrid(customerEmail, customerName, subject, emailBody);
+      }
+    }
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   // AD-HOC VIEWED
   if (type === "adhoc-viewed") {
@@ -546,7 +772,7 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  return new Response(JSON.stringify({ error: "type must be 'viewed', 'signed', 'adhoc-viewed', 'adhoc-signed', 'nda-viewed', or 'nda-signed'" }), {
+  return new Response(JSON.stringify({ error: "type must be 'viewed', 'signed', 'adhoc-viewed', 'adhoc-signed', 'nda-viewed', 'nda-signed', 'onboarding-report-sent', 'onboarding-report-viewed', or 'onboarding-signed-off'" }), {
     status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
