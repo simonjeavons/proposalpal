@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import OnboardingStage1Panel from "@/components/OnboardingStage1Panel";
 import type { ClientOnboarding, OnboardingActionLibraryItem } from "@/types/onboarding";
 
 interface ServiceType {
@@ -223,12 +224,28 @@ export default function OnboardingDetail() {
           </div>
         )}
 
-        {onboarding.status === "active" && (
+        {onboarding.status === "active" && onboarding.current_stage === 1 && (
+          <OnboardingStage1Panel
+            onboarding={onboarding}
+            onOnboardingChange={setOnboarding}
+          />
+        )}
+
+        {onboarding.status === "active" && onboarding.current_stage === 2 && (
           <div className="border rounded-lg p-6">
-            <h2 className="text-lg font-semibold mb-2">Stage {onboarding.current_stage}</h2>
+            <h2 className="text-lg font-semibold mb-2">Stage 2 — Report delivery</h2>
             <p className="text-sm text-muted-foreground">
-              The detailed Stage {onboarding.current_stage} workflow ships in the next slice.
-              For now this row exists in the database with action instances ready to be worked through.
+              Stage 1 is complete. The report editor + send flow ships in the next slice.
+              {onboarding.stage1_completed_at && ` Completed ${new Date(onboarding.stage1_completed_at).toLocaleString("en-GB")}.`}
+            </p>
+          </div>
+        )}
+
+        {onboarding.status === "active" && onboarding.current_stage === 3 && (
+          <div className="border rounded-lg p-6">
+            <h2 className="text-lg font-semibold mb-2">Stage 3 — Awaiting client sign-off</h2>
+            <p className="text-sm text-muted-foreground">
+              The client signoff page ships in the next slice.
             </p>
           </div>
         )}
