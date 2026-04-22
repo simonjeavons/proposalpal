@@ -690,6 +690,7 @@ export default function AdhocSign() {
                     <tr key={`${i}-${y}`} style={{ borderBottom: '1px solid #F4F7FA' }}>
                       <td style={{ padding: '12px 0', fontSize: 13, color: '#043D5D' }}>
                         <span style={{ fontWeight: 700 }}>{name}</span>
+                        {opt.discount_note && <span style={{ color: '#3A6278', fontWeight: 500 }}> ({opt.discount_note})</span>}
                         {numYears > 1 && <span style={{ color: '#AAAAAA', fontWeight: 500 }}> — Year {startYear + y}</span>}
                         {isRolling && <span style={{ color: '#AAAAAA', fontWeight: 500 }}> — monthly rolling · {noticeDays} days notice</span>}
                       </td>
@@ -710,8 +711,11 @@ export default function AdhocSign() {
               <div style={{ marginBottom: 0 }}>
                 {contract.upfront_items.map((item, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #F4F7FA', fontSize: 13 }}>
-                    <span style={{ color: '#3A6278' }}>{item.name || item.type}</span>
-                    <span style={{ fontWeight: 700, color: '#043D5D' }}>{formatCurrency(item.price)}</span>
+                    <span style={{ color: '#3A6278' }}>
+                      {item.name || item.type}
+                      {item.discount_note && <span> ({item.discount_note})</span>}
+                    </span>
+                    <span style={{ fontWeight: 700, color: '#043D5D' }}>{formatCurrency(item.discounted_price ?? item.price)}</span>
                   </div>
                 ))}
                 {/* Upfront subtotal — matches PDF "One-Time Project Total" row */}

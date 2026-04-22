@@ -42,12 +42,13 @@ function SortableItem({ id, children }: { id: string; children: (props: { dragHa
   );
 }
 
-function CurrencyField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
-  const [display, setDisplay] = useState((value || 0).toFixed(2));
+function CurrencyField({ label, value, onChange }: { label: string; value: number | ''; onChange: (v: number | '') => void }) {
+  const fmt = (v: number | '') => (v === '' ? '' : (v || 0).toFixed(2));
+  const [display, setDisplay] = useState(fmt(value));
   const [focused, setFocused] = useState(false);
 
   useEffect(() => {
-    if (!focused) setDisplay((value || 0).toFixed(2));
+    if (!focused) setDisplay(fmt(value));
   }, [value, focused]);
 
   return (
@@ -60,9 +61,13 @@ function CurrencyField({ label, value, onChange }: { label: string; value: numbe
         onChange={e => setDisplay(e.target.value.replace(/[^0-9.]/g, ''))}
         onFocus={() => setFocused(true)}
         onBlur={() => {
-          const num = parseFloat(display) || 0;
-          setDisplay(num.toFixed(2));
-          onChange(num);
+          if (display === '') {
+            onChange('');
+          } else {
+            const num = parseFloat(display) || 0;
+            setDisplay(num.toFixed(2));
+            onChange(num);
+          }
           setFocused(false);
         }}
         className="text-sm"
@@ -369,8 +374,8 @@ export function RetainerOptionsEditor({
                           </select>
                         </div>
                       )}
-                      <CurrencyField label={`Price (£${freqLabel(r)})`} value={r.price} onChange={v => updateOption(i, 'price', v)} />
-                      {!hideDiscountPrice && <CurrencyField label={`Discounted (£${freqLabel(r)})`} value={r.discounted_price ?? ''} onChange={v => updateOption(i, 'discounted_price', v === '' || v === 0 ? undefined : Number(v) || 0)} />}
+                      <CurrencyField label={`Price (£${freqLabel(r)})`} value={r.price} onChange={v => updateOption(i, 'price', v === '' ? 0 : v)} />
+                      {!hideDiscountPrice && <CurrencyField label={`Discounted (£${freqLabel(r)})`} value={r.discounted_price ?? ''} onChange={v => updateOption(i, 'discounted_price', v === '' ? undefined : v)} />}
                       {showDiscountControls && (
                         <div>
                           <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Discount Note</Label>
