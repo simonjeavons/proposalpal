@@ -12,6 +12,7 @@ const formatDate = (s: string) => {
 interface OngoingOption {
   name: string;
   yearlyCosts: number[];
+  originalYearlyCosts?: number[];
   term: number;
   frequency: 'weekly' | 'monthly' | 'annual';
   rolling_monthly?: boolean;
@@ -228,11 +229,13 @@ export default function AdhocSign() {
         if (c.retainer_options && c.retainer_options.length > 0) {
           c.ongoing_options = c.retainer_options.map((r: RetainerOption) => {
             const freq = r.frequency ?? 'monthly';
-            const unitPrice = r.discounted_price ?? r.price;
-            const perPeriod = (r.quantity ?? 1) * unitPrice;
+            const qty = r.quantity ?? 1;
+            const hasDiscount = r.discounted_price != null && r.discounted_price < r.price;
+            const discountedUnit = r.discounted_price ?? r.price;
             return {
               name: r.name || r.type || 'Ongoing Option',
-              yearlyCosts: [perPeriod],
+              yearlyCosts: [qty * discountedUnit],
+              originalYearlyCosts: hasDiscount ? [qty * r.price] : undefined,
               term: r.rolling_monthly ? 12 : (r.term_months ?? 12),
               frequency: freq,
               rolling_monthly: r.rolling_monthly,
@@ -676,6 +679,9 @@ export default function AdhocSign() {
                   const costs: number[] = Array.from({ length: numYears }, (_, y) =>
                     opt.yearlyCosts[y] ?? (opt.yearlyCosts[opt.yearlyCosts.length - 1] ?? 0)
                   );
+                  const originalCosts: number[] | null = opt.originalYearlyCosts ? Array.from({ length: numYears }, (_, y) =>
+                    opt.originalYearlyCosts![y] ?? (opt.originalYearlyCosts![opt.originalYearlyCosts!.length - 1] ?? 0)
+                  ) : null;
                   const freqLabel = opt.frequency === 'annual' ? '/yr' : opt.frequency === 'weekly' ? '/wk' : '/mo';
                   const startYear = Math.floor((opt.starts_after_months ?? 0) / 12) + 1;
                   const name = opt.name || `Ongoing Option ${i + 1}`;
@@ -686,22 +692,46 @@ export default function AdhocSign() {
                     if (opt.frequency === 'weekly') return rate * Math.round(months * 52 / 12);
                     return rate * months;
                   };
-                  return costs.map((c, y) => (
-                    <tr key={`${i}-${y}`} style={{ borderBottom: '1px solid #F4F7FA' }}>
-                      <td style={{ padding: '12px 0', fontSize: 13, color: '#043D5D' }}>
-                        <span style={{ fontWeight: 700 }}>{name}</span>
-                        {opt.discount_note && <span style={{ color: '#3A6278', fontWeight: 500 }}> ({opt.discount_note})</span>}
-                        {numYears > 1 && <span style={{ color: '#AAAAAA', fontWeight: 500 }}> — Year {startYear + y}</span>}
-                        {isRolling && <span style={{ color: '#AAAAAA', fontWeight: 500 }}> — monthly rolling · {noticeDays} days notice</span>}
-                      </td>
-                      <td style={{ textAlign: 'right', padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#043D5D', whiteSpace: 'nowrap' as const }}>
-                        {formatCurrency(c)}<span style={{ fontSize: 11, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel}</span>
-                      </td>
-                      <td style={{ textAlign: 'right', padding: '12px 0', fontSize: 15, fontWeight: 800, color: '#009FE3', whiteSpace: 'nowrap' as const }}>
-                        {isRolling ? '—' : formatCurrency(yearAnnualTotal(c, y) ?? 0)}
-                      </td>
-                    </tr>
-                  ));
+                  return costs.map((c, y) => {
+                    const origC = originalCosts?.[y];
+                    const hasDiscount = origC != null && origC > c;
+                    const origAnnual = hasDiscount ? yearAnnualTotal(origC!, y) : null;
+                    const discAnnual = yearAnnualTotal(c, y);
+                    return (
+                      <tr key={`${i}-${y}`} style={{ borderBottom: '1px solid #F4F7FA' }}>
+                        <td style={{ padding: '12px 0', fontSize: 13, color: '#043D5D' }}>
+                          <div>
+                            <span style={{ fontWeight: 700 }}>{name}</span>
+                            {numYears > 1 && <span style={{ color: '#AAAAAA', fontWeight: 500 }}> — Year {startYear + y}</span>}
+                            {isRolling && <span style={{ color: '#AAAAAA', fontWeight: 500 }}> — monthly rolling · {noticeDays} days notice</span>}
+                          </div>
+                          {hasDiscount && opt.discount_note && (
+                            <div style={{ fontSize: 11, color: '#6B7280', fontStyle: 'italic' as const, marginTop: 2 }}>{opt.discount_note}</div>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#043D5D', whiteSpace: 'nowrap' as const }}>
+                          {hasDiscount ? (
+                            <>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through' }}>{formatCurrency(origC!)}<span style={{ fontWeight: 500 }}>{freqLabel}</span></div>
+                              <div>{formatCurrency(c)}<span style={{ fontSize: 11, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel}</span></div>
+                            </>
+                          ) : (
+                            <>{formatCurrency(c)}<span style={{ fontSize: 11, fontWeight: 500, color: '#AAAAAA' }}>{freqLabel}</span></>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '12px 0', fontSize: 15, fontWeight: 800, color: '#009FE3', whiteSpace: 'nowrap' as const }}>
+                          {isRolling ? '—' : hasDiscount && origAnnual != null ? (
+                            <>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through' }}>{formatCurrency(origAnnual)}</div>
+                              <div>{formatCurrency(discAnnual ?? 0)}</div>
+                            </>
+                          ) : (
+                            formatCurrency(discAnnual ?? 0)
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  });
                 })}
               </tbody>
             </table>
@@ -709,15 +739,29 @@ export default function AdhocSign() {
             {/* Upfront line items */}
             {contract.upfront_items.length > 0 && (
               <div style={{ marginBottom: 0 }}>
-                {contract.upfront_items.map((item, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #F4F7FA', fontSize: 13 }}>
-                    <span style={{ color: '#3A6278' }}>
-                      {item.name || item.type}
-                      {item.discount_note && <span> ({item.discount_note})</span>}
-                    </span>
-                    <span style={{ fontWeight: 700, color: '#043D5D' }}>{formatCurrency(item.discounted_price ?? item.price)}</span>
-                  </div>
-                ))}
+                {contract.upfront_items.map((item, i) => {
+                  const hasDiscount = item.discounted_price != null && item.discounted_price < item.price;
+                  return (
+                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'flex-start', gap: 16, padding: '10px 0', borderBottom: '1px solid #F4F7FA', fontSize: 13 }}>
+                      <div style={{ color: '#3A6278' }}>
+                        <div>{item.name || item.type}</div>
+                        {hasDiscount && item.discount_note && (
+                          <div style={{ fontSize: 11, color: '#6B7280', fontStyle: 'italic' as const, marginTop: 2 }}>{item.discount_note}</div>
+                        )}
+                      </div>
+                      <div style={{ textAlign: 'right' as const, whiteSpace: 'nowrap' as const }}>
+                        {hasDiscount ? (
+                          <>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through' }}>{formatCurrency(item.price)}</div>
+                            <div style={{ fontWeight: 700, color: '#043D5D' }}>{formatCurrency(item.discounted_price!)}</div>
+                          </>
+                        ) : (
+                          <span style={{ fontWeight: 700, color: '#043D5D' }}>{formatCurrency(item.price)}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
                 {/* Upfront subtotal — matches PDF "One-Time Project Total" row */}
                 <div style={{ borderTop: '1px solid #DDE8EE', marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', marginBottom: 8 }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>One-Time Project Total</span>
