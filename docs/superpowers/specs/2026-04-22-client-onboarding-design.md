@@ -17,7 +17,7 @@ Source: `Downloads/onboarding_scope_v2.docx` (Version 1.0 Draft, 22 April 2026),
 | Q4 (Stage 3) | Client confirms via tokenised link (no manual fallback in v1). |
 | Q5 | Templated section structure with auto-pulled Stage 1 actions. Section templates configurable per service type by admin. |
 | Q6a | Default assignee inherits from the source contract's `prepared_by_user_id`. |
-| Q6b | Sensible default reminder thresholds, admin-configurable in settings. |
+| Q6b | Sensible default reminder thresholds (per stage), admin-configurable in settings. |
 | Q6c | Completed onboardings hidden by default with a filter toggle. |
 | Q7 | One onboarding per (contract × service type). Multi-service contracts split into multiple onboardings. |
 | Architecture | Approach C — hybrid normalisation. `onboarding_action_instances` is normalised; per-action `form_data` and report `sections` stay JSONB. |
@@ -77,11 +77,12 @@ Single-row table for admin-configurable thresholds.
 | Column | Type | Notes |
 |--------|------|-------|
 | id | INT PK CHECK (id = 1) | Singleton |
-| reminder_form_days | INT DEFAULT 5 | Working days from trigger to Stage 1 form |
-| reminder_kickoff_days | INT DEFAULT 5 | Working days from form submission to kick-off |
-| reminder_report_days | INT DEFAULT 10 | Working days from kick-off to report delivery |
-| reminder_signoff_days | INT DEFAULT 5 | Working days from report sent to sign-off |
+| reminder_stage1_days | INT DEFAULT 5 | Working days from configuration to Stage 1 completion |
+| reminder_stage2_days | INT DEFAULT 10 | Working days from Stage 1 completion to report sent |
+| reminder_stage3_days | INT DEFAULT 5 | Working days from report sent to client sign-off |
 | updated_at | TIMESTAMPTZ | |
+
+Note: with internally-led discovery (Stage 1 done by us during a meeting), the source doc's separate "form" / "kick-off" thresholds collapse into a single Stage 1 threshold.
 
 Seeded with one row. RLS: any authenticated user SELECT; admin UPDATE.
 
@@ -102,6 +103,7 @@ One row per (signed contract × service type). Created as a single draft on sign
 | triggered_at | TIMESTAMPTZ NOT NULL DEFAULT now() | |
 | kickoff_meeting_at | TIMESTAMPTZ | When the kick-off meeting is scheduled |
 | kickoff_held | BOOLEAN DEFAULT false | Manually flipped after meeting |
+| configured_at | TIMESTAMPTZ | Set when draft is split into active rows (clock starts for Stage 1 overdue) |
 | stage1_completed_at, stage2_completed_at, stage3_completed_at | TIMESTAMPTZ | |
 | archived_at | TIMESTAMPTZ | NULL = visible by default; set = hidden |
 | last_reminder_at | TIMESTAMPTZ | For reminder de-duping |
@@ -229,7 +231,9 @@ Top filter bar: Stage filter (All / 1 / 2 / 3 / Complete), Assignee (All / Me / 
 
 Top summary cards: Active count, Overdue count, Stage breakdown (1: N, 2: M, 3: K).
 
-Main table — one row per `client_onboardings` (excluding drafts unless flagged):
+**Drafts callout** (above the main table, only visible when N > 0): "**N onboardings awaiting configuration**" with inline list of draft rows (client name + source contract + "Configure" button → opens `/onboarding/:id` with the configuration prompt). Drafts never appear in the main table — they have no service type yet, so stage tracking and overdue logic don't apply.
+
+Main table — one row per active or complete `client_onboardings`:
 - Client + organisation (linked to source contract via small icon)
 - Service type pill
 - Stage stepper (1→2→3 with active highlighted; "Complete" pill if signed off)
@@ -247,9 +251,11 @@ Outstanding-actions logic per stage:
 - **Stage 3:** 1 if `signed_off_at IS NULL` else 0
 
 Overdue logic (working days, Mon–Fri only — UK bank holidays out of scope for v1):
-- Stage 1: `triggered_at` + `reminder_form_days` < now AND stage 1 not complete
-- Stage 2: `stage1_completed_at` + `reminder_report_days` < now AND `sent_at IS NULL`
-- Stage 3: `sent_at` + `reminder_signoff_days` < now AND `signed_off_at IS NULL`
+- Stage 1: `(configured_at ?? triggered_at)` + `reminder_stage1_days` < now AND `stage1_completed_at IS NULL`
+- Stage 2: `stage1_completed_at` + `reminder_stage2_days` < now AND `sent_at IS NULL`
+- Stage 3: `sent_at` + `reminder_stage3_days` < now AND `signed_off_at IS NULL`
+
+(Drafts have no overdue state — they're tracked in the drafts callout, not the main table.)
 
 ### `src/pages/OnboardingDetail.tsx` — `/onboarding/:id`
 
@@ -262,7 +268,7 @@ Admin-only. Layout:
     - Discovery meeting sub-section: kick-off date/time picker, "meeting held" checkbox
     - Action checklist grouped by sort order. Each row: status dropdown, notes textarea, "Capture data" button (when `form_schema` present) opens a side sheet rendering the schema
     - "Add ad-hoc action" button → inline form for `name_override`
-    - "Complete Stage 1" button — enabled when meeting held + every action `done` or `na`. Captures `stage1_completed_at`, advances `current_stage` to 2.
+    - "Complete Stage 1" button — enabled when kick-off date set + meeting held + every action `done` or `na`. Captures `stage1_completed_at`, advances `current_stage` to 2.
   - **Stage 2 panel** (visible when stage ≥ 2): summary of report status (Draft / Sent / Viewed / Signed off) with "Open report editor" button
   - **Stage 3 panel** (visible when stage ≥ 3): summary of sign-off status with link to client signoff page
 - **History panel** (right side, mirrors `ViewHistoryPanel.tsx`): chronological events — triggered, configured, stage 1 complete, report sent, viewed (each), signed off, reminders sent
