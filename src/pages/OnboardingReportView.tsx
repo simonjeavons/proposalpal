@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { CheckCircle2, Download, ExternalLink } from "lucide-react";
+import { useParams } from "react-router-dom";
+import { CheckCircle2, Download } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +65,7 @@ function SectionBody({ body }: { body: string }) {
 export default function OnboardingReportView() {
   const { view_token: viewToken } = useParams<{ view_token: string }>();
   const [state, setState] = useState<State>({ kind: "loading" });
+  const [accepting, setAccepting] = useState(false);
   const reportDate = useMemo(() => new Date().toLocaleDateString("en-GB", {
     day: "numeric", month: "long", year: "numeric",
   }), []);
@@ -137,6 +139,36 @@ export default function OnboardingReportView() {
   const { report, onboarding, serviceTypeName } = state;
   const signedOff = Boolean(report.signed_off_at);
 
+  const handleAccept = async () => {
+    if (state.kind !== "ready" || !state.report.signoff_token) return;
+    setAccepting(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-proposal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "onboarding-signed-off",
+          signoffToken: state.report.signoff_token,
+          userAgent: navigator.userAgent,
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      const { data: refreshed } = await supabase
+        .from("onboarding_reports").select("*")
+        .eq("id", state.report.id).single();
+      const r = refreshed as OnboardingReport;
+      setState({ ...state, report: r });
+      toast.success("Thanks — onboarding confirmed");
+    } catch (err) {
+      toast.error("Accept failed: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setAccepting(false);
+    }
+  };
+
   const downloadPdf = async () => {
     const blob = await pdf(
       <OnboardingReportPDF
@@ -185,27 +217,38 @@ export default function OnboardingReportView() {
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t">
-          <Button variant="outline" onClick={downloadPdf}>
-            <Download className="w-4 h-4 mr-1.5" /> Download as PDF
-          </Button>
-
+        <div className="pt-6 border-t space-y-6">
           {!signedOff && report.signoff_token && (
-            <Button asChild>
-              <Link to={`/onboarding/signoff/${report.signoff_token}`}>
-                <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                Confirm onboarding complete
-                <ExternalLink className="w-3 h-3 ml-1.5" />
-              </Link>
-            </Button>
+            <div className="border rounded-lg p-5 bg-muted/20 space-y-3 text-center">
+              <p className="text-sm">
+                Happy with the onboarding? Click below to confirm — we'll be notified immediately
+                and your account moves into ongoing monthly support.
+              </p>
+              <Button onClick={handleAccept} disabled={accepting} size="lg" className="w-full sm:w-auto">
+                <CheckCircle2 className="w-5 h-5 mr-2" />
+                {accepting ? "Confirming..." : "Accept — onboarding complete"}
+              </Button>
+            </div>
           )}
 
           {signedOff && (
-            <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
-              <CheckCircle2 className="w-4 h-4" />
-              You confirmed this onboarding on {report.signed_off_at && new Date(report.signed_off_at).toLocaleDateString("en-GB")}.
+            <div className="border rounded-lg p-5 bg-green-50 dark:bg-green-950/30 flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <div className="font-semibold">Thanks — onboarding confirmed.</div>
+                <div className="text-muted-foreground mt-0.5">
+                  Accepted on {report.signed_off_at && new Date(report.signed_off_at).toLocaleString("en-GB")}.
+                  You've moved into ongoing monthly support.
+                </div>
+              </div>
             </div>
           )}
+
+          <div className="flex justify-center">
+            <Button variant="outline" onClick={downloadPdf}>
+              <Download className="w-4 h-4 mr-1.5" /> Download as PDF
+            </Button>
+          </div>
         </div>
       </div>
     </div>
