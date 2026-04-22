@@ -1,11 +1,21 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import OnboardingStage1Panel from "@/components/OnboardingStage1Panel";
 import type { ClientOnboarding, OnboardingActionLibraryItem } from "@/types/onboarding";
 
@@ -25,6 +35,8 @@ export default function OnboardingDetail() {
   const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [configuring, setConfiguring] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -138,6 +150,22 @@ export default function OnboardingDetail() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!onboarding) return;
+    setDeleting(true);
+    const { error } = await supabase
+      .from("client_onboardings")
+      .delete()
+      .eq("id", onboarding.id);
+    setDeleting(false);
+    if (error) {
+      toast.error("Delete failed: " + error.message);
+      return;
+    }
+    toast.success("Onboarding deleted");
+    navigate("/admin");
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -178,8 +206,8 @@ export default function OnboardingDetail() {
             {onboarding.organisation || onboarding.client_name || "(Unknown client)"}
           </h1>
           <div className="text-sm text-muted-foreground space-y-1">
-            {onboarding.client_name && onboarding.organisation && (
-              <div>Contact: {onboarding.client_name}</div>
+            {onboarding.contact_name && (
+              <div>Contact: {onboarding.contact_name}</div>
             )}
             {onboarding.contact_email && <div>{onboarding.contact_email}</div>}
             {serviceTypeName && <div>Service type: <span className="font-medium text-foreground">{serviceTypeName}</span></div>}
@@ -236,7 +264,8 @@ export default function OnboardingDetail() {
             <div>
               <h2 className="text-lg font-semibold">Stage 2 — Report delivery</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Build the onboarding report and send it to the client via a tokenised link.
+                Build the onboarding report, generate a shareable link, and send that link to the
+                client yourself. They'll click Accept at the bottom when they're happy.
                 {onboarding.stage1_completed_at && ` Stage 1 completed ${new Date(onboarding.stage1_completed_at).toLocaleString("en-GB")}.`}
               </p>
             </div>
@@ -251,8 +280,9 @@ export default function OnboardingDetail() {
             <div>
               <h2 className="text-lg font-semibold">Stage 3 — Awaiting client sign-off</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                The report has been sent. The client confirms via the link in their email.
-                {onboarding.stage2_completed_at && ` Sent ${new Date(onboarding.stage2_completed_at).toLocaleString("en-GB")}.`}
+                The shareable link is ready. Once the client clicks Accept at the bottom of the
+                report you'll get an email confirming onboarding complete.
+                {onboarding.stage2_completed_at && ` Link generated ${new Date(onboarding.stage2_completed_at).toLocaleString("en-GB")}.`}
               </p>
             </div>
             <Button variant="outline" onClick={() => navigate(`/onboarding/${onboarding.id}/report`)}>
@@ -269,7 +299,40 @@ export default function OnboardingDetail() {
             </p>
           </div>
         )}
+
+        <div className="border border-destructive/40 rounded-lg p-4 flex items-center justify-between">
+          <div>
+            <div className="text-sm font-semibold">Danger zone</div>
+            <div className="text-xs text-muted-foreground">
+              Permanently remove this onboarding, its actions, and its report.
+            </div>
+          </div>
+          <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}>
+            <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete onboarding
+          </Button>
+        </div>
       </div>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this onboarding?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the onboarding for{" "}
+              <strong>{onboarding.organisation || onboarding.client_name || "(Unknown)"}</strong>
+              {serviceTypeName && ` (${serviceTypeName})`} along with its action checklist and any
+              report (sent or draft). The source {onboarding.source_type === "proposal" ? "proposal" : "ad-hoc agreement"}{" "}
+              is untouched. This can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={deleting}>
+              {deleting ? "Deleting..." : "Delete onboarding"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

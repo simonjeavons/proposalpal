@@ -249,21 +249,10 @@ export default function OnboardingReportEditor() {
         .eq("id", onboarding.id);
       if (obErr) throw new Error(obErr.message);
 
-      // Fire-and-log the email
-      try {
-        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-proposal`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: "onboarding-report-sent", reportId: report.id }),
-        });
-      } catch (e) {
-        console.warn("notify-proposal email failed (non-blocking):", e);
-      }
-
       setReport(prev => prev ? { ...prev, view_token, signoff_token, sent_at: now } : prev);
       setOnboarding(prev => prev ? { ...prev, current_stage: 3, stage2_completed_at: now } : prev);
       setConfirmSend(false);
-      toast.success("Report sent — Stage 2 complete");
+      toast.success("Link generated — copy it below to send to the client");
     } catch (err) {
       toast.error("Send failed: " + (err instanceof Error ? err.message : String(err)));
     } finally {
@@ -350,9 +339,12 @@ export default function OnboardingReportEditor() {
         {isLocked && viewUrl && (
           <div className="border rounded-lg p-4 bg-green-50 dark:bg-green-950/30 space-y-3">
             <div>
-              <h2 className="font-semibold text-sm">Sent to client</h2>
+              <h2 className="font-semibold text-sm">Shareable link ready</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {report.sent_at && `Sent ${new Date(report.sent_at).toLocaleString("en-GB")}`}
+                Send the link below to the client however you like (email, Teams, etc).
+                They'll be able to review the report and click Accept at the bottom — you'll get an
+                email when they do.
+                {report.sent_at && ` · Generated ${new Date(report.sent_at).toLocaleString("en-GB")}`}
                 {report.viewed_at && ` · Viewed ${new Date(report.viewed_at).toLocaleString("en-GB")}`}
               </p>
             </div>
@@ -371,7 +363,7 @@ export default function OnboardingReportEditor() {
               </Button>
             </div>
             <Button size="sm" variant="outline" onClick={handleReviseAndResend}>
-              <RefreshCcw className="w-3.5 h-3.5 mr-1.5" /> Revise & resend
+              <RefreshCcw className="w-3.5 h-3.5 mr-1.5" /> Revise &amp; regenerate
             </Button>
           </div>
         )}
@@ -453,7 +445,7 @@ export default function OnboardingReportEditor() {
             </Button>
             {!isLocked && (
               <Button onClick={() => setConfirmSend(true)} disabled={sections.length === 0}>
-                <Send className="w-4 h-4 mr-1.5" /> Send to client
+                <Send className="w-4 h-4 mr-1.5" /> Generate share link
               </Button>
             )}
           </div>
@@ -463,17 +455,18 @@ export default function OnboardingReportEditor() {
       <AlertDialog open={confirmSend} onOpenChange={setConfirmSend}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Send the report?</AlertDialogTitle>
+            <AlertDialogTitle>Generate a shareable link?</AlertDialogTitle>
             <AlertDialogDescription>
-              An email goes to <strong>{onboarding.contact_email || "the client"}</strong> with a
-              link to view the report and confirm onboarding complete. The editor will be locked
-              after sending — you can unlock with "Revise &amp; resend" if needed.
+              This creates a tokenised link you can send to the client yourself (no automatic email).
+              When they open it and click Accept at the bottom, you'll get an email confirming
+              onboarding complete. The editor locks after generating — use "Revise &amp; regenerate"
+              if you need to update it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={sending}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleSend} disabled={sending}>
-              {sending ? "Sending..." : "Send"}
+              {sending ? "Generating..." : "Generate link"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
