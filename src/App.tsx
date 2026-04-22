@@ -11,6 +11,7 @@ import ProposalView from "./pages/ProposalView";
 import ProposalAccept from "./pages/ProposalAccept";
 import AdhocSign from "./pages/AdhocSign";
 import NdaSign from "./pages/NdaSign";
+import OnboardingDetail from "./pages/OnboardingDetail";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/p/:slug/accept" element={<ProposalAccept />} />
             <Route path="/ac/:slug/sign" element={<AdhocSign />} />
             <Route path="/nda/:slug/sign" element={<NdaSign />} />
+            <Route path="/onboarding/:id" element={<ProtectedRoute><OnboardingDetail /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

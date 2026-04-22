@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { LayoutDashboard, FileText, Users, UserCircle2, Target, ShoppingBag, Scale, LogOut, Plus, Menu, X, FileStack, Wand2, FolderOpen, ChevronDown } from "lucide-react";
+import { LayoutDashboard, FileText, Users, UserCircle2, Target, ShoppingBag, Scale, LogOut, Plus, Menu, X, FileStack, Wand2, FolderOpen, ChevronDown, UserPlus } from "lucide-react";
 
-type Tab = "dashboard" | "proposals" | "users" | "team" | "solutions" | "services" | "agreements" | "ndas";
+type Tab = "dashboard" | "proposals" | "users" | "team" | "solutions" | "services" | "agreements" | "ndas" | "onboarding";
 type AdhocView = "templates" | "adhoc" | "all";
 type NdaView = "new" | "all";
 
@@ -182,6 +182,13 @@ export function Sidebar({ activeTab, onTabChange, onServicesClick, userEmail, on
             ))}
           </div>
         )}
+
+        <NavItem
+          label="Onboarding"
+          icon={UserPlus}
+          active={activeTab === "onboarding"}
+          onClick={() => handleTabClick("onboarding")}
+        />
 
         {/* Admin group */}
         <div className="pt-4 pb-1">

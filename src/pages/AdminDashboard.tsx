@@ -9,6 +9,7 @@ import { Plus, Eye, Pencil, Copy, Trash2, ExternalLink, Users, FileText, LogOut,
 import { Sidebar } from "@/components/Sidebar";
 import ViewHistoryPanel from "@/components/ViewHistoryPanel";
 import DocumentListRow, { type DocumentChip } from "@/components/DocumentListRow";
+import OnboardingDashboardTab from "@/components/OnboardingDashboardTab";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -27,7 +28,7 @@ interface Profile {
   created_at: string;
 }
 
-type Tab = "dashboard" | "proposals" | "users" | "team" | "solutions" | "services" | "agreements" | "ndas";
+type Tab = "dashboard" | "proposals" | "users" | "team" | "solutions" | "services" | "agreements" | "ndas" | "onboarding";
 
 interface TeamMember {
   id: string;
@@ -2749,6 +2750,9 @@ export default function AdminDashboard() {
             </div>
           </>
         )}
+
+        {/* Onboarding Tab */}
+        {activeTab === "onboarding" && <OnboardingDashboardTab />}
 
         {/* Users Tab */}
         {activeTab === "users" && (

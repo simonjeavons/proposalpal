@@ -33,6 +33,69 @@ function getOptionTotal(opt: { yearlyCosts: number[]; term: number; frequency: s
   }, 0);
 }
 
+// Inserts a draft client_onboardings row for a freshly signed contract and
+// emails the assignee. Wrapped in try/catch so a failure here never breaks
+// the sign event — an admin can use the manual "Create onboarding" fallback.
+async function createOnboardingDraft(
+  supabase: ReturnType<typeof createClient>,
+  sourceType: "proposal" | "adhoc",
+  sourceId: string,
+): Promise<void> {
+  try {
+    const table = sourceType === "proposal" ? "proposals" : "adhoc_contracts";
+    const { data: source, error: srcErr } = await supabase
+      .from(table)
+      .select("id, client_name, organisation, contact_name, contact_email, prepared_by_user_id, profiles:prepared_by_user_id (email, full_name)")
+      .eq("id", sourceId)
+      .single();
+    if (srcErr || !source) {
+      console.error("createOnboardingDraft: source not found", sourceType, sourceId, srcErr);
+      return;
+    }
+
+    const { data: inserted, error: insErr } = await supabase
+      .from("client_onboardings")
+      .insert({
+        source_type: sourceType,
+        source_id: sourceId,
+        status: "draft",
+        current_stage: 1,
+        assigned_to_user_id: (source as any).prepared_by_user_id ?? null,
+        client_name: (source as any).client_name ?? "",
+        organisation: (source as any).organisation ?? "",
+        contact_name: (source as any).contact_name ?? "",
+        contact_email: (source as any).contact_email ?? "",
+      })
+      .select("id")
+      .single();
+    if (insErr || !inserted) {
+      console.error("createOnboardingDraft: insert failed", insErr);
+      return;
+    }
+
+    const profile = (source as any).profiles as { email?: string; full_name?: string } | null;
+    if (!profile?.email) return;
+
+    const orgOrClient = (source as any).organisation || (source as any).client_name || "(Unknown)";
+    const subject = "New onboarding to configure: " + orgOrClient;
+    const emailBody = [
+      "Hi " + (profile.full_name || "Team") + ",",
+      "",
+      "A signed contract has just triggered a new onboarding.",
+      "",
+      "Customer: " + orgOrClient,
+      "",
+      "Open the Onboarding tab in the Shoothill Proposal Manager to select",
+      "the applicable service types and start Stage 1.",
+      "",
+      "- Shoothill Proposal Manager",
+    ].join("\n");
+    await sendSendgrid(profile.email, profile.full_name || "Team", subject, emailBody);
+  } catch (err) {
+    console.error("createOnboardingDraft: unexpected error", err);
+  }
+}
+
 async function sendSendgrid(recipientEmail: string, recipientName: string, subject: string, body: string) {
   const sendgridApiKey = Deno.env.get("SENDGRID_API_KEY");
   if (!sendgridApiKey) {
@@ -214,6 +277,7 @@ Deno.serve(async (req: Request) => {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    await createOnboardingDraft(supabase, "adhoc", contractId);
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -476,6 +540,7 @@ Deno.serve(async (req: Request) => {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    await createOnboardingDraft(supabase, "proposal", proposalId);
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
