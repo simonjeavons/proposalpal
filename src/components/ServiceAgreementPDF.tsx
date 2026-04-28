@@ -468,6 +468,12 @@ export function ServiceAgreementPDF({
                       ))}
                     </>
                   )}
+                  {!isMultiYear && (
+                    <View style={styles.tableRowBoldQuiet}>
+                      <Text style={styles.tableDescBold}>Monthly Equivalent</Text>
+                      <Text style={styles.tableAmtBold}>{fmt(fixedTotal / 12)} + VAT/mo</Text>
+                    </View>
+                  )}
                   <View style={styles.tableRowBold}>
                     <Text style={styles.tableDescBold}>{isMultiYear ? 'Total Fixed-Term Commitment' : 'Annual Commitments Total'}</Text>
                     <Text style={styles.tableAmtBold}>{fmt(fixedTotal)} + VAT</Text>
