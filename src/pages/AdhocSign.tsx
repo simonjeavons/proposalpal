@@ -4,6 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Phase, UpfrontItem, RetainerOption } from "@/types/proposal";
 
 const formatCurrency = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const formatTerm = (months: number) => {
+  if (months > 0 && months % 12 === 0) {
+    const y = months / 12;
+    return `${y} year${y === 1 ? '' : 's'}`;
+  }
+  return `${months} month${months === 1 ? '' : 's'}`;
+};
 const formatDate = (s: string) => {
   if (!s) return '';
   return new Date(s + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -52,6 +59,14 @@ interface AdhocContract {
 }
 
 const FREQ_LABEL: Record<string, string> = { weekly: '/wk', monthly: '/mo', annual: '/yr' };
+
+// Monthly bill while an option is active (year-1 rate, frequency-normalised)
+const getOptionMonthlyEquivalent = (opt: OngoingOption) => {
+  const rate = opt.yearlyCosts[0] ?? 0;
+  if (opt.frequency === 'weekly') return rate * 52 / 12;
+  if (opt.frequency === 'annual') return rate / 12;
+  return rate; // monthly
+};
 
 // Legacy ongoing option total (year-by-year)
 const getOptionTotal = (opt: OngoingOption) => {
@@ -290,7 +305,7 @@ export default function AdhocSign() {
         const upfrontTotal = contract.upfront_items.reduce((s, i) => s + (i.discounted_price ?? i.price), 0);
         const allAnnualTotals = contract.ongoing_options.map(getOptionTotal);
         const totalAnnualOngoing = allAnnualTotals.reduce((s, t) => s + t, 0);
-        const monthlyTotal = totalAnnualOngoing / 12;
+        const monthlyTotal = contract.ongoing_options.reduce((s, o) => s + getOptionMonthlyEquivalent(o), 0);
         const firstYearTotal = upfrontTotal + totalAnnualOngoing;
         const contractYearSubtotals = computeContractYearSubtotals(contract.ongoing_options);
         const [firstOpt, ...extraOpts] = contract.ongoing_options;
@@ -587,6 +602,7 @@ export default function AdhocSign() {
   const upfrontTotal = contract.upfront_items.reduce((s, i) => s + (i.discounted_price ?? i.price), 0);
   const allAnnualTotals = contract.ongoing_options.map(getOptionTotal);
   const totalAnnualOngoing = allAnnualTotals.reduce((s, t) => s + t, 0);
+  const monthlyOngoing = contract.ongoing_options.reduce((s, o) => s + getOptionMonthlyEquivalent(o), 0);
   const firstYearTotal = upfrontTotal + totalAnnualOngoing;
 
   const submitting = submitState !== 'idle';
@@ -621,6 +637,18 @@ export default function AdhocSign() {
               {contract.organisation && <div><span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA', display: 'block', marginBottom: 2 }}>Organisation</span><span style={{ fontSize: 14, fontWeight: 700, color: '#043D5D' }}>{contract.organisation}</span></div>}
               {contract.programme_title && <div><span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA', display: 'block', marginBottom: 2 }}>Programme</span><span style={{ fontSize: 14, fontWeight: 700, color: '#043D5D' }}>{contract.programme_title}</span></div>}
               <div><span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA', display: 'block', marginBottom: 2 }}>Agreement Date</span><span style={{ fontSize: 14, fontWeight: 700, color: '#043D5D' }}>{formatDate(contract.agreement_date)}</span></div>
+              {(() => {
+                const fixed = contract.ongoing_options.find(o => !o.rolling_monthly);
+                const rolling = contract.ongoing_options.find(o => o.rolling_monthly);
+                const termText = fixed
+                  ? `${formatTerm(fixed.term)}${fixed.starts_after_months ? ' (begins after project delivery)' : ''}`
+                  : rolling
+                  ? `Monthly rolling · ${rolling.notice_days ?? 30} days notice`
+                  : null;
+                return termText ? (
+                  <div><span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA', display: 'block', marginBottom: 2 }}>Term</span><span style={{ fontSize: 14, fontWeight: 700, color: '#043D5D' }}>{termText}</span></div>
+                ) : null;
+              })()}
             </div>
           </div>
         </div>
@@ -704,6 +732,7 @@ export default function AdhocSign() {
                             <span style={{ fontWeight: 700 }}>{name}</span>
                             {numYears > 1 && <span style={{ color: '#AAAAAA', fontWeight: 500 }}> — Year {startYear + y}</span>}
                             {isRolling && <span style={{ color: '#AAAAAA', fontWeight: 500 }}> — monthly rolling · {noticeDays} days notice</span>}
+                            {!isRolling && numYears === 1 && <span style={{ color: '#AAAAAA', fontWeight: 500 }}> — {formatTerm(opt.term)} term</span>}
                           </div>
                           {hasDiscount && opt.discount_note && (
                             <div style={{ fontSize: 11, color: '#6B7280', fontStyle: 'italic' as const, marginTop: 2 }}>{opt.discount_note}</div>
@@ -775,9 +804,9 @@ export default function AdhocSign() {
               <div style={{ borderTop: '2px solid #043D5D', paddingTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
                 <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#043D5D' }}>Grand Total</span>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: isMobile ? 16 : 32 }}>
-                  {totalAnnualOngoing > 0 && (
+                  {monthlyOngoing > 0 && (
                     <span style={{ fontSize: 14, fontWeight: 700, color: '#3A6278' }}>
-                      {formatCurrency(totalAnnualOngoing / 12)}<span style={{ color: '#AAAAAA', fontWeight: 400 }}>/mo</span>
+                      {formatCurrency(monthlyOngoing)}<span style={{ color: '#AAAAAA', fontWeight: 400 }}>/mo</span>
                     </span>
                   )}
                   <span style={{ fontSize: 20, fontWeight: 800, color: '#009FE3' }}>{formatCurrency(firstYearTotal)}</span>

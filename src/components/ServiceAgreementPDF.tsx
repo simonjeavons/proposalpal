@@ -406,6 +406,12 @@ export function ServiceAgreementPDF({
           const fixedOpts = ongoingOptions.filter(o => !o.rolling_monthly);
           const rollingOpts = ongoingOptions.filter(o => o.rolling_monthly);
           const fixedTotal = fixedOpts.reduce((s, o) => s + getTotal(o), 0);
+          const fixedMonthly = fixedOpts.reduce((s, o) => {
+            const rate = o.yearlyCosts[0] ?? 0;
+            if (o.frequency === 'weekly') return s + rate * 52 / 12;
+            if (o.frequency === 'annual') return s + rate / 12;
+            return s + rate;
+          }, 0);
           const rollingMonthlyTotal = rollingOpts.reduce((s, o) => s + (o.yearlyCosts[0] ?? 0), 0);
           return (
             <>
@@ -471,7 +477,7 @@ export function ServiceAgreementPDF({
                   {!isMultiYear && (
                     <View style={styles.tableRowBoldQuiet}>
                       <Text style={styles.tableDescBold}>Monthly Equivalent</Text>
-                      <Text style={styles.tableAmtBold}>{fmt(fixedTotal / 12)} + VAT/mo</Text>
+                      <Text style={styles.tableAmtBold}>{fmt(fixedMonthly)} + VAT/mo</Text>
                     </View>
                   )}
                   <View style={styles.tableRowBold}>
