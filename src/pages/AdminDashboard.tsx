@@ -779,6 +779,22 @@ export default function AdminDashboard() {
     setNdaView('new');
   };
 
+  const duplicateNda = async (id: string) => {
+    const { data, error: fetchError } = await supabase
+      .from('ndas' as any)
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (fetchError || !data) { toast.error('Could not load NDA to duplicate'); return; }
+    const { id: _id, slug: _slug, created_at: _ca, updated_at: _ua, signer_name: _sn, signer_title: _st, signed_at: _sa, signed_nda_url: _su, last_view_email_at: _lv, ...rest } = data as any;
+    const { error } = await supabase
+      .from('ndas' as any)
+      .insert({ ...rest, company_name: `${rest.company_name} (Copy)`, status: 'draft' } as any);
+    if (error) { toast.error(`Failed to duplicate: ${error.message}`); return; }
+    toast.success('NDA duplicated');
+    fetchAllNdas();
+  };
+
   const deleteNda = async (id: string, status: string) => {
     const label = status === 'draft' ? 'draft' : 'NDA';
     if (!window.confirm(`Delete this ${label}? This cannot be undone.`)) return;
@@ -936,13 +952,13 @@ export default function AdminDashboard() {
     if (activeTab === 'agreements' && adhocView === 'all') fetchAllAgreements();
   }, [activeTab, adhocView]);
 
-  // Fetch NDA data when switching to NDAs tab
+  // Fetch NDA data when switching to NDAs tab, or returning to the All NDAs subview
   useEffect(() => {
     if (activeTab === 'ndas') {
       fetchNdaTemplates();
       fetchAllNdas();
     }
-  }, [activeTab]);
+  }, [activeTab, ndaView]);
 
   // Set preparedByUserId for NDA form when user is available
   useEffect(() => {
@@ -2670,6 +2686,14 @@ export default function AdminDashboard() {
                                   <LinkIcon className="w-4 h-4" />
                                 </Button>
                               )}
+                              <Button
+                                variant="ghost" size="sm"
+                                className="text-muted-foreground hover:text-primary"
+                                title="Duplicate"
+                                onClick={() => duplicateNda(nda.id)}
+                              >
+                                <Copy className="w-4 h-4" />
+                              </Button>
                               {(nda.status === 'draft' || nda.status === 'pending') && (
                                 <>
                                   <Button
@@ -2692,7 +2716,7 @@ export default function AdminDashboard() {
                               )}
                               {nda.status === 'signed' && nda.signed_nda_url && (
                                 <a
-                                  href={supabase.storage.from('ndas').getPublicUrl(nda.signed_nda_url).data.publicUrl}
+                                  href={supabase.storage.from('contracts').getPublicUrl(nda.signed_nda_url).data.publicUrl}
                                   target="_blank" rel="noopener noreferrer"
                                   title="Download signed NDA"
                                 >
