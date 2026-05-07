@@ -67,6 +67,21 @@ export default function ProposalView() {
           team_member_ids: ((data as any).team_member_ids as string[]) || [],
         } as Proposal;
         setProposal(proposalData);
+
+        // Fire view-tracking event (skip for logged-in internal users)
+        (async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) return;
+          fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-proposal`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '',
+            },
+            body: JSON.stringify({ type: 'viewed', proposalId: data.id, userAgent: navigator.userAgent }),
+          }).catch(() => { /* fire-and-forget */ });
+        })();
+
         if (data.client_name) {
           document.title = `Shoothill Proposal for ${data.client_name}`;
         }
