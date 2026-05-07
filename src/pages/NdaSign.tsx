@@ -120,6 +120,15 @@ export default function NdaSign() {
   const [agreed, setAgreed] = useState(false);
   const [submitState, setSubmitState] = useState<'idle' | 'signing' | 'saving'>('idle');
 
+  // Set browser tab title — keep "Proposal" off this page
+  useEffect(() => {
+    if (nda) {
+      document.title = `Confidentiality Agreement — ${nda.company_name}`;
+    } else {
+      document.title = 'Mutual Confidentiality Agreement';
+    }
+  }, [nda]);
+
   // Load NDA
   useEffect(() => {
     if (!slug) return;

@@ -211,12 +211,25 @@ export default function AdhocSign() {
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState<string | null>(null);
 
+  // Word download
+  const [wordGenerating, setWordGenerating] = useState(false);
+
   // Signing form
   const [signerName, setSignerName] = useState('');
   const [signerTitle, setSignerTitle] = useState('');
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [agreed, setAgreed] = useState(false);
   const [submitState, setSubmitState] = useState<'idle' | 'signing' | 'saving'>('idle');
+
+  // Set browser tab title — keep "Proposal" off this page
+  useEffect(() => {
+    if (contract) {
+      const entity = contract.organisation || contract.client_name || '';
+      document.title = entity ? `Service Agreement — ${entity}` : 'Service Agreement';
+    } else {
+      document.title = 'Service Agreement';
+    }
+  }, [contract]);
 
   // Load contract
   useEffect(() => {
@@ -614,6 +627,37 @@ export default function AdhocSign() {
     ? 'Saving…'
     : 'Sign Agreement →';
 
+  const handleDownloadWord = async () => {
+    if (!contract || wordGenerating) return;
+    setWordGenerating(true);
+    try {
+      const { generateAdhocDocx, triggerBlobDownload } = await import('@/lib/adhocWordExport');
+      const blob = await generateAdhocDocx({
+        clientName: contract.client_name,
+        organisation: contract.organisation,
+        programmeTitle: contract.programme_title,
+        agreementDate: formatDate(contract.agreement_date) || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+        companyRegNumber: contract.company_reg_number,
+        registeredOffice: [contract.registered_address_1, contract.registered_address_2, contract.registered_city, contract.registered_county, contract.registered_postcode].filter(Boolean).join(', '),
+        phases: contract.phases,
+        upfrontItems: contract.upfront_items,
+        ongoingOptions: contract.ongoing_options,
+        scopeOfWorkText: contract.scope_of_work_text,
+        additionalTermsText: contract.additional_terms_text,
+        paymentTerms: contract.payment_terms,
+        templateSections,
+        contactName: contract.contact_name,
+        contactEmail: contract.contact_email,
+      });
+      const safeEntity = (contract.organisation || contract.client_name || 'agreement').replace(/[^A-Za-z0-9_-]+/g, '_');
+      triggerBlobDownload(blob, `Service-Agreement-${safeEntity}.docx`);
+    } catch (err) {
+      console.error('Word generation failed:', err);
+    } finally {
+      setWordGenerating(false);
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: '#F4F7FA', fontFamily: "'Inter', sans-serif", color: '#1A2E3B', fontSize: 14, lineHeight: 1.7 }}>
 
@@ -835,9 +879,19 @@ export default function AdhocSign() {
             ) : generatedPdfUrl ? (
               <>
                 <iframe src={`${generatedPdfUrl}#toolbar=1&navpanes=0`} title="Service Agreement" width="100%" style={{ height: 600, border: '1px solid #DDE8EE', display: 'block' }} />
-                <a href={generatedPdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 12, fontSize: 12, color: '#009FE3', fontWeight: 600 }}>
-                  Open in new tab ↗
-                </a>
+                <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 16, alignItems: 'center', marginTop: 12 }}>
+                  <a href={generatedPdfUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#009FE3', fontWeight: 600 }}>
+                    Open in new tab ↗
+                  </a>
+                  <button
+                    onClick={handleDownloadWord}
+                    disabled={wordGenerating}
+                    style={{ fontSize: 12, color: '#009FE3', fontWeight: 600, background: 'none', border: 'none', padding: 0, cursor: wordGenerating ? 'wait' : 'pointer' }}
+                    title="Download an editable Word version for review or to track changes"
+                  >
+                    {wordGenerating ? 'Preparing Word document…' : 'Download editable Word version (.docx) ↓'}
+                  </button>
+                </div>
               </>
             ) : (
               <p style={{ fontSize: 13, color: '#AAAAAA', padding: '16px 0' }}>No template selected — agreement clauses will be minimal.</p>

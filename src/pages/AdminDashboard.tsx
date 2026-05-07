@@ -567,6 +567,77 @@ export default function AdminDashboard() {
     setAdhocView('adhoc');
   };
 
+  const [adhocWordDownloadingId, setAdhocWordDownloadingId] = useState<string | null>(null);
+  const downloadAdhocWord = async (id: string) => {
+    if (adhocWordDownloadingId) return;
+    setAdhocWordDownloadingId(id);
+    try {
+      const { data, error } = await supabase
+        .from('adhoc_contracts' as any)
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (error || !data) { toast.error('Could not load contract'); return; }
+      const c: any = data;
+      let templateSections: { heading: string; body: string }[] = [];
+      if (c.template_id) {
+        const { data: tmpl } = await supabase
+          .from('service_agreement_templates' as any)
+          .select('sections')
+          .eq('id', c.template_id)
+          .single();
+        if (tmpl && Array.isArray((tmpl as any).sections)) templateSections = (tmpl as any).sections;
+      }
+      const ongoingOptions = (Array.isArray(c.retainer_options) && c.retainer_options.length > 0)
+        ? c.retainer_options.map((r: any) => {
+            const freq = r.frequency ?? 'monthly';
+            const qty = r.quantity ?? 1;
+            const hasDiscount = r.discounted_price != null && r.discounted_price < r.price;
+            const discountedUnit = r.discounted_price ?? r.price;
+            return {
+              name: r.name || r.type || 'Ongoing Option',
+              yearlyCosts: [qty * discountedUnit],
+              originalYearlyCosts: hasDiscount ? [qty * r.price] : undefined,
+              term: r.rolling_monthly ? 12 : (r.term_months ?? 12),
+              frequency: freq,
+              rolling_monthly: r.rolling_monthly,
+              notice_days: r.notice_days,
+              starts_after_months: r.starts_after_months,
+              discount_note: r.discount_note,
+            };
+          })
+        : (Array.isArray(c.ongoing_options) ? c.ongoing_options : []);
+      const formatDateStr = (s: string | null) => s
+        ? new Date(s + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+        : '';
+      const { generateAdhocDocx, triggerBlobDownload } = await import('@/lib/adhocWordExport');
+      const blob = await generateAdhocDocx({
+        clientName: c.client_name || '',
+        organisation: c.organisation || null,
+        programmeTitle: c.programme_title || '',
+        agreementDate: formatDateStr(c.agreement_date) || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+        companyRegNumber: c.company_reg_number || null,
+        registeredOffice: [c.registered_address_1, c.registered_address_2, c.registered_city, c.registered_county, c.registered_postcode].filter(Boolean).join(', '),
+        phases: Array.isArray(c.phases) ? c.phases : [],
+        upfrontItems: Array.isArray(c.upfront_items) ? c.upfront_items : [],
+        ongoingOptions,
+        scopeOfWorkText: c.scope_of_work_text || null,
+        additionalTermsText: c.additional_terms_text || null,
+        paymentTerms: c.payment_terms || '',
+        templateSections,
+        contactName: c.contact_name || '',
+        contactEmail: c.contact_email || '',
+      });
+      const safeEntity = (c.organisation || c.client_name || 'agreement').replace(/[^A-Za-z0-9_-]+/g, '_');
+      triggerBlobDownload(blob, `Service-Agreement-${safeEntity}.docx`);
+    } catch (err) {
+      console.error('Word generation failed:', err);
+      toast.error('Failed to generate Word document');
+    } finally {
+      setAdhocWordDownloadingId(null);
+    }
+  };
+
   const deleteAdhocContract = async (id: string, status: string) => {
     const label = status === 'draft' ? 'draft' : 'contract';
     if (!window.confirm(`Delete this ${label}? This cannot be undone.`)) return;
@@ -2408,6 +2479,17 @@ export default function AdminDashboard() {
                                   onClick={() => { navigator.clipboard.writeText(signingLink); toast.success('Signing link copied!'); }}
                                 >
                                   <LinkIcon className="w-4 h-4" />
+                                </Button>
+                              )}
+                              {c.source === 'adhoc' && (
+                                <Button
+                                  variant="ghost" size="sm"
+                                  className="text-muted-foreground hover:text-primary"
+                                  title="Download editable Word version (.docx)"
+                                  disabled={adhocWordDownloadingId === c.id}
+                                  onClick={() => downloadAdhocWord(c.id)}
+                                >
+                                  <FileText className="w-4 h-4" />
                                 </Button>
                               )}
                               {c.source === 'adhoc' && (c.status === 'draft' || c.status === 'pending') && (
