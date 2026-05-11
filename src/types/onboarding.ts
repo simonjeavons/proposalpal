@@ -69,6 +69,7 @@ export interface ClientOnboarding {
   archived_at: string | null;
   last_reminder_at: string | null;
   last_reminder_stage: number | null;
+  notify_customer: boolean;
   created_at: string;
   updated_at: string;
 }

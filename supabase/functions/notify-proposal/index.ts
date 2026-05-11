@@ -1,8 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const CC_EMAIL = "sj@shoothill.com";
-const CC_NAME = "Simon Jeavons";
+const CC_RECIPIENTS: { email: string; name: string }[] = [
+  { email: "sj@shoothill.com", name: "Simon Jeavons" },
+  { email: "patrick.howe@shoothill.com", name: "Patrick Howe" },
+];
 const FROM_EMAIL = "proposals@shoothill.com";
 const FROM_NAME = "Shoothill Proposal Manager";
 
@@ -102,9 +104,8 @@ async function sendSendgrid(recipientEmail: string, recipientName: string, subje
     console.error("SENDGRID_API_KEY secret not set");
     return { ok: false, reason: "no-api-key" };
   }
-  const ccList = recipientEmail.toLowerCase() !== CC_EMAIL.toLowerCase()
-    ? [{ email: CC_EMAIL, name: CC_NAME }]
-    : [];
+  const recipientLower = recipientEmail.toLowerCase();
+  const ccList = CC_RECIPIENTS.filter(c => c.email.toLowerCase() !== recipientLower);
   const payload = {
     personalizations: [{
       to: [{ email: recipientEmail, name: recipientName }],
@@ -184,12 +185,17 @@ Deno.serve(async (req: Request) => {
     }
     const { data: ob } = await supabase
       .from("client_onboardings")
-      .select("organisation, client_name, contact_name, contact_email, profiles:assigned_to_user_id (email, full_name)")
+      .select("organisation, client_name, contact_name, contact_email, notify_customer, profiles:assigned_to_user_id (email, full_name)")
       .eq("id", (report as any).onboarding_id)
       .single();
     if (!ob) {
       return new Response(JSON.stringify({ error: "Onboarding not found" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!(ob as any).notify_customer) {
+      return new Response(JSON.stringify({ ok: true, emailSkipped: "customer-notifications-disabled" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     const recipientEmail = (ob as any).contact_email as string | null;
@@ -329,7 +335,7 @@ Deno.serve(async (req: Request) => {
     }
     const { data: ob } = await supabase
       .from("client_onboardings")
-      .select("id, organisation, client_name, contact_name, contact_email, profiles:assigned_to_user_id (email, full_name)")
+      .select("id, organisation, client_name, contact_name, contact_email, notify_customer, profiles:assigned_to_user_id (email, full_name)")
       .eq("id", (report as any).onboarding_id)
       .single();
     if (ob) {
@@ -356,9 +362,9 @@ Deno.serve(async (req: Request) => {
         ].join("\n");
         await sendSendgrid(profile.email, profile.full_name || "Team", subject, emailBody);
       }
-      // Email customer
+      // Email customer (gated on per-onboarding notify_customer flag)
       const customerEmail = (ob as any).contact_email as string | null;
-      if (customerEmail) {
+      if (customerEmail && (ob as any).notify_customer) {
         const customerName = (ob as any).contact_name || "Team";
         const subject = "Onboarding confirmed — " + orgName;
         const emailBody = [

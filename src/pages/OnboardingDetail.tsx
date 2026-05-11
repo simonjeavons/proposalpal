@@ -219,6 +219,31 @@ export default function OnboardingDetail() {
             </div>
             <div>Triggered: {new Date(onboarding.triggered_at).toLocaleString("en-GB")}</div>
           </div>
+          <label className="flex items-start gap-2 pt-2 border-t cursor-pointer">
+            <Checkbox
+              checked={onboarding.notify_customer}
+              onCheckedChange={async (checked) => {
+                const next = Boolean(checked);
+                const prev = onboarding.notify_customer;
+                setOnboarding({ ...onboarding, notify_customer: next });
+                const { error } = await supabase
+                  .from("client_onboardings")
+                  .update({ notify_customer: next })
+                  .eq("id", onboarding.id);
+                if (error) {
+                  setOnboarding({ ...onboarding, notify_customer: prev });
+                  toast.error("Failed to update: " + error.message);
+                }
+              }}
+            />
+            <span className="text-sm">
+              <span className="font-medium text-foreground">Send onboarding emails to customer</span>
+              <span className="block text-xs text-muted-foreground">
+                Off by default. When on, the customer receives the "onboarding confirmed"
+                email after they click Accept on the report.
+              </span>
+            </span>
+          </label>
         </div>
 
         {onboarding.status === "draft" && (
