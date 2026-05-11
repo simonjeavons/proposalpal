@@ -47,7 +47,7 @@ async function createOnboardingDraft(
     const table = sourceType === "proposal" ? "proposals" : "adhoc_contracts";
     const { data: source, error: srcErr } = await supabase
       .from(table)
-      .select("id, client_name, organisation, contact_name, contact_email, prepared_by_user_id, profiles:prepared_by_user_id (email, full_name)")
+      .select("id, client_name, organisation, contact_name, contact_email, notify_customer, prepared_by_user_id, profiles:prepared_by_user_id (email, full_name)")
       .eq("id", sourceId)
       .single();
     if (srcErr || !source) {
@@ -67,6 +67,7 @@ async function createOnboardingDraft(
         organisation: (source as any).organisation ?? "",
         contact_name: (source as any).contact_name ?? "",
         contact_email: (source as any).contact_email ?? "",
+        notify_customer: (source as any).notify_customer ?? false,
       })
       .select("id")
       .single();

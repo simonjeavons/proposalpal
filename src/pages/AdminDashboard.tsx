@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 interface Profile {
@@ -188,6 +189,7 @@ export default function AdminDashboard() {
     phases: [] as Phase[],
     upfrontItems: [] as UpfrontItem[],
     retainerOptions: [] as RetainerOption[],
+    notifyCustomer: false,
   });
 
   // NDA tab state
@@ -509,6 +511,7 @@ export default function AdminDashboard() {
     upfront_items: adhocForm.upfrontItems,
     ongoing_options: adhocForm.retainerOptions,
     retainer_options: adhocForm.retainerOptions,
+    notify_customer: adhocForm.notifyCustomer,
   });
 
   const resetAdhocForm = () => {
@@ -517,7 +520,7 @@ export default function AdminDashboard() {
       agreementDate: new Date().toISOString().split('T')[0],
       contactName: '', contactEmail: '',
       paymentTerms: '50% on commencement / 50% on delivery',
-      templateId: '', scopeOfWorkText: '', additionalTermsText: '', preparedByUserId: '', phases: [], upfrontItems: [], retainerOptions: [],
+      templateId: '', scopeOfWorkText: '', additionalTermsText: '', preparedByUserId: '', phases: [], upfrontItems: [], retainerOptions: [], notifyCustomer: false,
     });
     setEditingDraftId(null);
     setAdhocLink(null);
@@ -561,6 +564,7 @@ export default function AdminDashboard() {
               frequency: o.frequency || 'monthly',
             }))
           : [],
+      notifyCustomer: Boolean(d.notify_customer),
     });
     setEditingDraftId(id);
     setAdhocLink(null);
@@ -2274,6 +2278,21 @@ export default function AdminDashboard() {
                     <div className="col-span-2 space-y-1">
                       <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Payment Terms</Label>
                       <Input value={adhocForm.paymentTerms} onChange={e => setAdhocForm(f => ({ ...f, paymentTerms: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <Checkbox
+                          checked={adhocForm.notifyCustomer}
+                          onCheckedChange={checked => setAdhocForm(f => ({ ...f, notifyCustomer: Boolean(checked) }))}
+                        />
+                        <span className="text-sm">
+                          <span className="font-medium">Send onboarding emails to this customer</span>
+                          <span className="block text-xs text-muted-foreground">
+                            Off by default. When on, the customer receives the "onboarding confirmed"
+                            email after sign-off. Carries through to the onboarding record on signing.
+                          </span>
+                        </span>
+                      </label>
                     </div>
                   </div>
                 </div>

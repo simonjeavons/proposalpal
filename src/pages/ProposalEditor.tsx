@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Save, Plus, Trash2, Eye, Upload, FileText, X, BookmarkPlus, GripVertical, ArrowDownWideNarrow, LinkIcon, ExternalLink } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
@@ -112,6 +113,7 @@ interface FormData {
   status: string;
   pricing_model: 'traditional' | 'dual';
   saas_config: SaasConfig;
+  notify_customer: boolean;
 }
 
 const DEFAULT_NEXT_STEPS: { title: string; description: string }[] = [
@@ -214,6 +216,7 @@ export default function ProposalEditor() {
     status: 'draft',
     pricing_model: 'traditional' as const,
     saas_config: { tiers: [], selling_points: [...DEFAULT_SAAS_SELLING_POINTS] },
+    notify_customer: false,
   });
 
   const sensors = useSensors(
@@ -305,6 +308,7 @@ export default function ProposalEditor() {
             status: data.status,
             pricing_model: ((data as any).pricing_model as 'traditional' | 'dual') || 'traditional',
             saas_config: ((data as any).saas_config as SaasConfig) || { tiers: [], selling_points: [...DEFAULT_SAAS_SELLING_POINTS] },
+            notify_customer: Boolean((data as any).notify_customer),
           });
           setSlug(data.slug);
           setContractFileUrl((data as any).contract_file_url || null);
@@ -569,6 +573,20 @@ export default function ProposalEditor() {
             <Field label="Proposal Date" value={form.proposal_date} onChange={v => updateField('proposal_date', v)} type="date" />
             <Field label="Valid Until" value={form.valid_until} onChange={v => updateField('valid_until', v)} type="date" />
           </Grid>
+          <label className="flex items-start gap-2 pt-4 mt-2 border-t cursor-pointer">
+            <Checkbox
+              checked={form.notify_customer}
+              onCheckedChange={checked => updateField('notify_customer', Boolean(checked))}
+            />
+            <span className="text-sm">
+              <span className="font-medium">Send onboarding emails to this customer</span>
+              <span className="block text-xs text-muted-foreground">
+                Off by default. When on, the customer receives the "onboarding confirmed"
+                email after they sign off on their onboarding report. Carries through to
+                the onboarding record on signing.
+              </span>
+            </span>
+          </label>
         </Section>
 
         {/* Client Details */}
