@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatConfidentialityDuration } from "@/components/NdaPDF";
+import { sanitizeNdaHtml } from "@/lib/sanitizeNdaHtml";
+import { plainToNdaHtml } from "@/lib/plainToNdaHtml";
 
 const formatDate = (s: string) => {
   if (!s) return '';
@@ -158,8 +160,11 @@ export default function NdaSign() {
         // If already signed, show confirmation immediately
         if (n.status === 'signed') { setSubmitted(true); }
 
-        // Load template sections
-        if (n.template_id) {
+        // Sections: prefer the locked-in copy on the NDA row; fall back to template.
+        const onRow = (data as any).sections;
+        if (Array.isArray(onRow) && onRow.length > 0) {
+          setTemplateSections(onRow as TemplateSection[]);
+        } else if (n.template_id) {
           const { data: tmpl } = await supabase
             .from('nda_templates' as any)
             .select('sections')
@@ -429,14 +434,21 @@ export default function NdaSign() {
               <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Agreed Terms</h2>
             </div>
             <div style={{ padding: isMobile ? '16px' : '24px 28px' }}>
-              {templateSections.map((section, i) => (
-                <div key={i} style={{ marginBottom: i < templateSections.length - 1 ? 20 : 0 }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 700, color: '#043D5D', marginBottom: 6 }}>{section.heading}</h3>
-                  <p style={{ fontSize: 13, color: '#1A2E3B', lineHeight: 1.7, whiteSpace: 'pre-wrap' as const }}>
-                    {section.body.replace(/\{\{CONFIDENTIALITY_YEARS\}\}/g, durationText)}
-                  </p>
-                </div>
-              ))}
+              {templateSections.map((section, i) => {
+                const html = sanitizeNdaHtml(
+                  plainToNdaHtml(section.body || '').replace(/\{\{CONFIDENTIALITY_YEARS\}\}/g, durationText)
+                );
+                return (
+                  <div key={i} style={{ marginBottom: i < templateSections.length - 1 ? 20 : 0 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: '#043D5D', marginBottom: 6 }}>{section.heading}</h3>
+                    <div
+                      className="nda-section-body"
+                      style={{ fontSize: 13, color: '#1A2E3B', lineHeight: 1.7 }}
+                      dangerouslySetInnerHTML={{ __html: html }}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

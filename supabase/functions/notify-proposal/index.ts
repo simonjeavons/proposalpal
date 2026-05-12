@@ -644,6 +644,74 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // NDA RESENT — the prepared NDA copy was edited; nudge the contact to re-review and sign.
+  if (type === "nda-resent") {
+    const ndaId = body.ndaId;
+    if (!ndaId) {
+      return new Response(JSON.stringify({ error: "ndaId required for nda-resent" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: nda } = await supabase
+      .from("ndas")
+      .select("id, slug, company_name, contact_name, contact_email, status, profiles:prepared_by_user_id (email, full_name)")
+      .eq("id", ndaId)
+      .single();
+    if (!nda) {
+      return new Response(JSON.stringify({ error: "NDA not found" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if ((nda as any).status === "signed") {
+      return new Response(JSON.stringify({ error: "NDA already signed — cannot resend" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const contactEmail = (nda as any).contact_email as string | null;
+    const contactName = (nda as any).contact_name || "there";
+    const companyName = (nda as any).company_name || "(Unknown)";
+    if (!contactEmail) {
+      return new Response(JSON.stringify({ error: "NDA has no contact_email" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const origin = req.headers.get("origin") || Deno.env.get("APP_BASE_URL") || "";
+    const signingUrl = origin && (nda as any).slug ? `${origin}/nda/${(nda as any).slug}/sign` : "(signing link)";
+    const subject = "[NDA] Updated for signature: " + companyName;
+    const emailBody = [
+      "Hi " + contactName + ",",
+      "",
+      "The Mutual Non-Disclosure Agreement we shared has been updated to reflect your suggested changes. Please review and sign at the link below — the link itself is unchanged.",
+      "",
+      "Sign here: " + signingUrl,
+      "",
+      "If anything still doesn't look right, reply to this email and we'll get it sorted.",
+      "",
+      "Thanks,",
+      "Shoothill",
+    ].join("\n");
+    await sendSendgrid(contactEmail, contactName, subject, emailBody);
+
+    // Notify the preparer too so they have a record of the resend.
+    const profile = (nda as any).profiles as { email: string; full_name: string } | null;
+    if (profile?.email) {
+      const internalBody = [
+        "Hi " + (profile.full_name || "Team") + ",",
+        "",
+        "You resent the updated NDA to " + contactName + " (" + contactEmail + ") for " + companyName + ".",
+        "",
+        "Signing link: " + signingUrl,
+        "",
+        "- Shoothill Proposal Manager",
+      ].join("\n");
+      await sendSendgrid(profile.email, profile.full_name || "Team", "[NDA] Resent to " + companyName, internalBody);
+    }
+
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   // PROPOSAL VIEWED/SIGNED
   if (!proposalId) {
     return new Response(JSON.stringify({ error: "proposalId required for type viewed/signed" }), {
@@ -779,7 +847,7 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  return new Response(JSON.stringify({ error: "type must be 'viewed', 'signed', 'adhoc-viewed', 'adhoc-signed', 'nda-viewed', 'nda-signed', 'onboarding-report-sent', 'onboarding-report-viewed', or 'onboarding-signed-off'" }), {
+  return new Response(JSON.stringify({ error: "type must be 'viewed', 'signed', 'adhoc-viewed', 'adhoc-signed', 'nda-viewed', 'nda-signed', 'nda-resent', 'onboarding-report-sent', 'onboarding-report-viewed', or 'onboarding-signed-off'" }), {
     status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });

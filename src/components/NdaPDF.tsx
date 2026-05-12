@@ -1,5 +1,7 @@
 import { Document, Image, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { SHOOTHILL_LOGO_URI, SIMON_SIGNATURE_URI } from './ServiceAgreementPDF';
+import { HtmlToPdf } from './nda/htmlToPdf';
+import { plainToNdaHtml } from '@/lib/plainToNdaHtml';
 
 export interface NdaPDFProps {
   companyName: string;
@@ -237,14 +239,15 @@ export function NdaPDF({
           <Text style={styles.sectionHeading}>Agreed terms.</Text>
         </View>
 
-        {templateSections.map((section, i) => (
-          <View key={i} wrap={false} style={{ marginTop: 6 }}>
-            <Text style={styles.clauseHeading}>{section.heading}</Text>
-            <Text style={styles.sectionBody}>
-              {section.body.replace(/\{\{CONFIDENTIALITY_YEARS\}\}/g, durationText)}
-            </Text>
-          </View>
-        ))}
+        {templateSections.map((section, i) => {
+          const html = plainToNdaHtml(section.body || '').replace(/\{\{CONFIDENTIALITY_YEARS\}\}/g, durationText);
+          return (
+            <View key={i} wrap={false} style={{ marginTop: 6 }}>
+              <Text style={styles.clauseHeading}>{section.heading}</Text>
+              <HtmlToPdf html={html} />
+            </View>
+          );
+        })}
 
         {/* Signing Block */}
         <View wrap={false} style={{ marginTop: 14 }}>

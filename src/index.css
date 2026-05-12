@@ -209,3 +209,15 @@
   /* Tighten vertical (and horizontal) padding on big sections */
   .print-compact { padding: 28px 32px !important; }
 }
+
+/* NDA section body — paragraphs / lists rendered from sanitised HTML */
+.nda-section-body p { margin: 0 0 8px; }
+.nda-section-body p:last-child { margin-bottom: 0; }
+.nda-section-body ul,
+.nda-section-body ol { margin: 0 0 8px; padding-left: 22px; }
+.nda-section-body ul { list-style-type: disc; }
+.nda-section-body ol { list-style-type: decimal; }
+.nda-section-body li { margin: 2px 0; }
+.nda-section-body strong { font-weight: 700; }
+.nda-section-body em { font-style: italic; }
+.nda-section-body u { text-decoration: underline; }

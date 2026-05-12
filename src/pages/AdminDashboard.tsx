@@ -17,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { RichSectionEditor, type NdaSection } from "@/components/RichSectionEditor";
+import { plainToNdaHtml } from "@/lib/plainToNdaHtml";
 
 interface Profile {
   id: string;
@@ -193,7 +195,7 @@ export default function AdminDashboard() {
   });
 
   // NDA tab state
-  type NdaView = 'new' | 'all';
+  type NdaView = 'new' | 'all' | 'templates';
   const [ndaView, setNdaView] = useState<NdaView>('all');
   const [ndaTemplates, setNdaTemplates] = useState<AgreementTemplate[]>([]);
   const [ndaTemplatesLoading, setNdaTemplatesLoading] = useState(true);
@@ -202,8 +204,12 @@ export default function AdminDashboard() {
   const [savingNda, setSavingNda] = useState(false);
   const [savingNdaDraft, setSavingNdaDraft] = useState(false);
   const [editingNdaId, setEditingNdaId] = useState<string | null>(null);
+  const [ndaStatus, setNdaStatus] = useState<'draft' | 'pending' | 'signed' | null>(null);
   const [ndaLink, setNdaLink] = useState<string | null>(null);
   const [previewNdaSlug, setPreviewNdaSlug] = useState<string | null>(null);
+  const [resendingNda, setResendingNda] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [ndaForm, setNdaForm] = useState({
     companyName: '',
     companyRegNumber: '',
@@ -219,6 +225,7 @@ export default function AdminDashboard() {
     agreementDate: new Date().toISOString().split('T')[0],
     templateId: '',
     preparedByUserId: '',
+    sections: [] as NdaSection[],
   });
 
   const fetchServiceTypes = async () => {
@@ -756,7 +763,19 @@ export default function AdminDashboard() {
     agreement_date: ndaForm.agreementDate,
     template_id: ndaForm.templateId || null,
     prepared_by_user_id: ndaForm.preparedByUserId || null,
+    sections: ndaForm.sections,
   });
+
+  // Sections currently on the selected template (used as the baseline for resets
+  // and as the source-of-truth snapshot when creating a new NDA).
+  const selectedTemplateSections = (): NdaSection[] => {
+    const tpl = ndaTemplates.find(t => t.id === ndaForm.templateId);
+    if (!tpl) return [];
+    return (tpl.sections || []).map((s: any) => ({
+      heading: s.heading || '',
+      body: plainToNdaHtml(s.body || ''),
+    }));
+  };
 
   const resetNdaForm = () => {
     setNdaForm({
@@ -767,10 +786,25 @@ export default function AdminDashboard() {
       confidentialityYears: 5,
       agreementDate: new Date().toISOString().split('T')[0],
       templateId: '', preparedByUserId: user?.id || '',
+      sections: [],
     });
     setEditingNdaId(null);
+    setNdaStatus(null);
     setNdaLink(null);
   };
+
+  // When the user picks a template (and we're not editing an existing NDA with
+  // its own locked-in sections), snapshot the template's sections into the form.
+  useEffect(() => {
+    if (editingNdaId) return;
+    if (!ndaForm.templateId) return;
+    if (ndaForm.sections.length > 0) return;
+    const snap = selectedTemplateSections();
+    if (snap.length > 0) {
+      setNdaForm(f => ({ ...f, sections: snap }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ndaForm.templateId, ndaTemplates]);
 
   const saveDraftNda = async () => {
     if (!ndaForm.companyName.trim()) { toast.error('Enter a company name first'); return; }
@@ -782,6 +816,7 @@ export default function AdminDashboard() {
         .eq('id', editingNdaId);
       setSavingNdaDraft(false);
       if (error) { toast.error('Failed to update draft'); return; }
+      setNdaStatus('draft');
       toast.success('Draft updated');
     } else {
       const { data, error } = await supabase
@@ -792,6 +827,7 @@ export default function AdminDashboard() {
       setSavingNdaDraft(false);
       if (error) { toast.error('Failed to save draft'); return; }
       if (data) setEditingNdaId((data as any).id);
+      setNdaStatus('draft');
       toast.success('Draft saved — find it in All NDAs');
     }
   };
@@ -809,6 +845,7 @@ export default function AdminDashboard() {
         .single();
       setSavingNda(false);
       if (error) { toast.error('Failed to generate signing link'); return; }
+      setNdaStatus('pending');
       setNdaLink(`${window.location.origin}/nda/${(data as any).slug}/sign`);
       toast.success('NDA finalised — share the signing link below');
     } else {
@@ -820,6 +857,7 @@ export default function AdminDashboard() {
       setSavingNda(false);
       if (error) { toast.error('Failed to create NDA'); return; }
       setEditingNdaId((data as any).id);
+      setNdaStatus('pending');
       setNdaLink(`${window.location.origin}/nda/${(data as any).slug}/sign`);
       toast.success('NDA created — share the signing link below');
     }
@@ -833,6 +871,23 @@ export default function AdminDashboard() {
       .single();
     if (error || !data) { toast.error('Could not load NDA'); return; }
     const d = data as any;
+    // Sections may be null on legacy rows pre-migration — fall back to template snapshot.
+    let sections: NdaSection[] = Array.isArray(d.sections)
+      ? d.sections.map((s: any) => ({ heading: s.heading || '', body: s.body || '' }))
+      : [];
+    if (sections.length === 0 && d.template_id) {
+      const { data: tpl } = await supabase
+        .from('nda_templates' as any)
+        .select('sections')
+        .eq('id', d.template_id)
+        .single();
+      if (tpl && Array.isArray((tpl as any).sections)) {
+        sections = ((tpl as any).sections as any[]).map(s => ({
+          heading: s.heading || '',
+          body: plainToNdaHtml(s.body || ''),
+        }));
+      }
+    }
     setNdaForm({
       companyName: d.company_name || '',
       companyRegNumber: d.company_reg_number || '',
@@ -848,10 +903,34 @@ export default function AdminDashboard() {
       agreementDate: d.agreement_date || new Date().toISOString().split('T')[0],
       templateId: d.template_id || '',
       preparedByUserId: d.prepared_by_user_id || '',
+      sections,
     });
     setEditingNdaId(id);
+    setNdaStatus(d.status || null);
     setNdaLink(d.status === 'pending' && d.slug ? `${window.location.origin}/nda/${d.slug}/sign` : null);
     setNdaView('new');
+  };
+
+  const resendNda = async () => {
+    if (!editingNdaId) return;
+    if (!ndaForm.contactEmail.trim()) { toast.error('Contact email is required to resend'); return; }
+    setResendingNda(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-proposal`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '',
+        },
+        body: JSON.stringify({ type: 'nda-resent', ndaId: editingNdaId }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      toast.success('Updated NDA emailed to the contact');
+    } catch (err: any) {
+      toast.error(`Failed to send: ${err?.message || 'unknown error'}`);
+    } finally {
+      setResendingNda(false);
+    }
   };
 
   const duplicateNda = async (id: string) => {
@@ -2559,10 +2638,14 @@ export default function AdminDashboard() {
           <>
             <div className="mb-6">
               <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1">
-                {ndaView === 'new' ? 'New NDA' : 'All NDAs'}
+                {ndaView === 'new' ? 'New NDA' : ndaView === 'templates' ? 'NDA Templates' : 'All NDAs'}
               </h1>
               <p className="text-sm text-muted-foreground">
-                {ndaView === 'new' ? 'Create a new Non-Disclosure Agreement.' : 'View all NDAs and their status.'}
+                {ndaView === 'new'
+                  ? 'Create a new Non-Disclosure Agreement.'
+                  : ndaView === 'templates'
+                    ? 'Edit the master text used when creating new NDAs. Existing NDAs keep the text they were created with.'
+                    : 'View all NDAs and their status.'}
               </p>
             </div>
 
@@ -2689,6 +2772,21 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+                {/* Section copy editor */}
+                {ndaForm.sections.length > 0 && ndaStatus !== 'signed' && (
+                  <div className="bg-card border border-border p-5">
+                    <div className="flex items-baseline justify-between mb-3">
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">NDA Copy</h2>
+                      <span className="text-[10px] text-muted-foreground">Edit clause text for this NDA only</span>
+                    </div>
+                    <RichSectionEditor
+                      sections={ndaForm.sections}
+                      onChange={(next) => setNdaForm(f => ({ ...f, sections: next }))}
+                      templateSections={selectedTemplateSections()}
+                    />
+                  </div>
+                )}
+
                 {/* Save buttons */}
                 <div className="grid grid-cols-2 gap-3">
                   <Button
@@ -2708,9 +2806,28 @@ export default function AdminDashboard() {
                   >
                     {savingNda ? (
                       <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />Saving…</>
-                    ) : 'Send for Signature'}
+                    ) : ndaStatus === 'pending' ? 'Save Changes' : 'Send for Signature'}
                   </Button>
                 </div>
+
+                {/* Resend (only for pending NDAs that already have a link out) */}
+                {ndaStatus === 'pending' && editingNdaId && (
+                  <div className="bg-card border border-amber-300 p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-amber-700">Resend for signature</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Email {ndaForm.contactEmail || 'the contact'} a note that the NDA has been updated. The signing link is unchanged.</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={resendNda}
+                      disabled={resendingNda}
+                    >
+                      {resendingNda ? 'Sending…' : 'Resend now'}
+                    </Button>
+                  </div>
+                )}
 
                 {/* Generated link */}
                 {ndaLink && (
@@ -2730,6 +2847,107 @@ export default function AdminDashboard() {
                     </div>
                     <p className="text-xs text-muted-foreground">Share this link with the other party for signing.</p>
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* ── TEMPLATES VIEW ── */}
+            {ndaView === 'templates' && (
+              <div className="space-y-4 max-w-3xl">
+                {ndaTemplatesLoading ? (
+                  <div className="flex items-center justify-center py-20">
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  ndaTemplates.map(t => {
+                    const isOpen = editingTemplateId === t.id;
+                    return (
+                      <div key={t.id} className="bg-card border border-border">
+                        <button
+                          type="button"
+                          onClick={() => setEditingTemplateId(isOpen ? null : t.id)}
+                          className="w-full flex items-center justify-between px-5 py-3 hover:bg-muted/40"
+                        >
+                          <div className="text-left">
+                            <p className="text-sm font-semibold">{t.name}</p>
+                            {t.description && <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>}
+                          </div>
+                          <span className="text-xs text-muted-foreground">{(t.sections || []).length} sections</span>
+                        </button>
+                        {isOpen && (
+                          <div className="border-t border-border p-5 space-y-4">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Name</Label>
+                                <Input
+                                  value={t.name}
+                                  className="h-8 text-sm"
+                                  onChange={e => setNdaTemplates(prev => prev.map(x => x.id === t.id ? { ...x, name: e.target.value } : x))}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sort order</Label>
+                                <Input
+                                  type="number"
+                                  value={t.sort_order ?? 0}
+                                  className="h-8 text-sm"
+                                  onChange={e => setNdaTemplates(prev => prev.map(x => x.id === t.id ? { ...x, sort_order: Number(e.target.value) } : x))}
+                                />
+                              </div>
+                              <div className="col-span-2 space-y-1">
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
+                                <Textarea
+                                  value={t.description || ''}
+                                  rows={2}
+                                  className="text-sm"
+                                  onChange={e => setNdaTemplates(prev => prev.map(x => x.id === t.id ? { ...x, description: e.target.value } : x))}
+                                />
+                              </div>
+                            </div>
+                            <RichSectionEditor
+                              sections={(t.sections || []).map((s: any) => ({ heading: s.heading || '', body: plainToNdaHtml(s.body || '') }))}
+                              onChange={(next) => setNdaTemplates(prev => prev.map(x => x.id === t.id ? { ...x, sections: next as any } : x))}
+                              allowStructuralEdits
+                            />
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 text-xs"
+                                onClick={() => { setEditingTemplateId(null); fetchNdaTemplates(); }}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="h-8 text-xs"
+                                disabled={savingTemplate}
+                                onClick={async () => {
+                                  if (!window.confirm('Save changes to this template? Existing NDAs keep their current text — only new NDAs will use the updated version.')) return;
+                                  setSavingTemplate(true);
+                                  const { error } = await supabase
+                                    .from('nda_templates' as any)
+                                    .update({
+                                      name: t.name,
+                                      description: t.description,
+                                      sort_order: t.sort_order,
+                                      sections: t.sections,
+                                    })
+                                    .eq('id', t.id);
+                                  setSavingTemplate(false);
+                                  if (error) { toast.error(`Save failed: ${error.message}`); return; }
+                                  toast.success('Template updated');
+                                  fetchNdaTemplates();
+                                }}
+                              >
+                                {savingTemplate ? 'Saving…' : 'Save template'}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             )}

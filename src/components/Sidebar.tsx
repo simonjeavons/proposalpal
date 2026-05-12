@@ -4,7 +4,7 @@ import { LayoutDashboard, FileText, Users, UserCircle2, Target, ShoppingBag, Sca
 
 type Tab = "dashboard" | "proposals" | "users" | "team" | "solutions" | "services" | "agreements" | "ndas" | "onboarding";
 type AdhocView = "templates" | "adhoc" | "all";
-type NdaView = "new" | "all";
+type NdaView = "new" | "all" | "templates";
 
 interface SidebarProps {
   activeTab: Tab;
@@ -34,6 +34,7 @@ const AGREEMENT_SUBS: { view: AdhocView; label: string; icon: React.ElementType 
 const NDA_SUBS: { view: NdaView; label: string; icon: React.ElementType }[] = [
   { view: "new", label: "New NDA", icon: Plus },
   { view: "all", label: "All NDAs", icon: FolderOpen },
+  { view: "templates", label: "Templates", icon: FileStack },
 ];
 
 function NavItem({ label, icon: Icon, active, onClick, extra }: {
