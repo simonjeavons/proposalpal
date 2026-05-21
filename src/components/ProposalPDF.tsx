@@ -784,10 +784,16 @@ export function ProposalPDF({
             <Text style={styles.summaryValue}>{fmt(displayUpfrontTotal)}</Text>
           </View>
           {allOngoing.length > 0 ? (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Year 1 ongoing</Text>
-              <Text style={styles.summaryValue}>{fmt(annualOngoing)}</Text>
-            </View>
+            <>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Monthly total</Text>
+                <Text style={styles.summaryValue}>{`${fmt(annualOngoing / 12)}/month`}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Year 1 ongoing</Text>
+                <Text style={styles.summaryValue}>{fmt(annualOngoing)}</Text>
+              </View>
+            </>
           ) : null}
           <View style={styles.summaryDivider} />
           <View style={styles.summaryRow}>
