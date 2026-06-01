@@ -2455,6 +2455,8 @@ export default function AdminDashboard() {
                   onChange={items => setAdhocForm(f => ({ ...f, upfrontItems: items }))}
                   products={products}
                   currentServiceTypeId={null}
+                  enableServiceTagPicker
+                  serviceTypes={serviceTypes.map(st => ({ id: st.id, name: st.name }))}
                 />
 
                 {/* Ongoing Options */}

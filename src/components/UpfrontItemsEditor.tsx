@@ -67,7 +67,14 @@ export interface UpfrontItemsEditorProps {
   onSaveToLibrary?: (name: string, price: number, description: string) => void;
   showDiscountControls?: boolean;
   hideDiscountPrice?: boolean;
+  // When true, each item first picks a service tag, then the Solution list filters
+  // to that tag + universal items. Requires `serviceTypes`. Used by the ad-hoc generator.
+  enableServiceTagPicker?: boolean;
+  serviceTypes?: { id: string; name: string }[];
 }
+
+// Sentinel <select> value representing the explicit "Universal" tag (service_type_id = null).
+const UNIVERSAL = '__universal__';
 
 export function UpfrontItemsEditor({
   items,
@@ -81,6 +88,8 @@ export function UpfrontItemsEditor({
   onSaveToLibrary,
   showDiscountControls = true,
   hideDiscountPrice = false,
+  enableServiceTagPicker = false,
+  serviceTypes = [],
 }: UpfrontItemsEditorProps) {
   const updateItem = (i: number, patch: Partial<UpfrontItem>) => {
     const updated = [...items];
@@ -111,7 +120,35 @@ export function UpfrontItemsEditor({
         {items.length === 0 && (
           <p className="text-sm text-muted-foreground italic">No upfront items yet. Add items to build the one-time investment breakdown.</p>
         )}
-        {items.map((item, i) => (
+        {items.map((item, i) => {
+          // Effective service tag for this item: explicit choice if made, else derived
+          // from the selected product, else undefined (nothing chosen yet).
+          const effectiveTag: string | null | undefined = enableServiceTagPicker
+            ? (item.service_type_id !== undefined
+                ? item.service_type_id
+                : (item.type ? (products.find(p => p.name === item.type)?.service_type_id ?? null) : undefined))
+            : currentServiceTypeId;
+          const solutionUnder = (p: Product) => {
+            if (!p.is_upfront) return false;
+            if (!enableServiceTagPicker) return !p.service_type_id || p.service_type_id === currentServiceTypeId;
+            if (effectiveTag === undefined) return false;        // pick a service first
+            if (effectiveTag === null) return !p.service_type_id; // Universal only
+            return p.service_type_id === effectiveTag || !p.service_type_id; // tag + universal
+          };
+          const solutionOptions = products.filter(solutionUnder);
+          const changeTag = (v: string) => {
+            const newTag = v === '' ? undefined : (v === UNIVERSAL ? null : v);
+            const cur = item.type ? products.find(p => p.name === item.type) : undefined;
+            // Keep the current solution only if it remains valid under the new tag.
+            const keep = !cur ? true
+              : newTag === undefined ? false
+              : newTag === null ? !cur.service_type_id
+              : (cur.service_type_id === newTag || !cur.service_type_id);
+            const patch: Partial<UpfrontItem> = { service_type_id: newTag };
+            if (!keep) { patch.type = ''; patch.description = ''; }
+            updateItem(i, patch);
+          };
+          return (
           <div key={i} className="bg-muted p-4 border border-border space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -135,10 +172,25 @@ export function UpfrontItemsEditor({
               </div>
             </div>
             <Grid>
+              {enableServiceTagPicker && (
+                <div>
+                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Service</Label>
+                  <select
+                    value={effectiveTag === undefined ? '' : (effectiveTag === null ? UNIVERSAL : effectiveTag)}
+                    onChange={e => changeTag(e.target.value)}
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  >
+                    <option value="">Select service…</option>
+                    <option value={UNIVERSAL}>Universal</option>
+                    {serviceTypes.map(st => <option key={st.id} value={st.id}>{st.name}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Solution</Label>
                 <select
                   value={item.type}
+                  disabled={enableServiceTagPicker && effectiveTag === undefined}
                   onChange={e => {
                     const product = products.find(p => p.name === e.target.value);
                     updateItem(i, {
@@ -147,10 +199,10 @@ export function UpfrontItemsEditor({
                       description: product?.description ? product.description : (item.description || ''),
                     });
                   }}
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="">Select…</option>
-                  {products.filter(p => p.is_upfront && (!p.service_type_id || p.service_type_id === currentServiceTypeId)).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                  <option value="">{enableServiceTagPicker && effectiveTag === undefined ? 'Select a service first…' : 'Select…'}</option>
+                  {solutionOptions.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                 </select>
               </div>
               <CurrencyField label="Price (£)" value={item.price} onChange={v => updateItem(i, { price: v === '' ? 0 : v })} />
@@ -207,7 +259,8 @@ export function UpfrontItemsEditor({
               </button>
             )}
           </div>
-        ))}
+          );
+        })}
         {items.length > 0 && (
           <div className="flex justify-between items-center px-1 pt-1 border-t border-border">
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total</span>

@@ -7,6 +7,9 @@ export interface UpfrontItem {
   show_discount_percent?: boolean;
   description?: string;
   optional?: boolean;
+  // UI-only: remembers the service tag chosen in the two-step solution picker.
+  // null = "Universal" explicitly chosen; undefined = not yet chosen. Ignored by PDF/Word.
+  service_type_id?: string | null;
 }
 
 export interface Challenge {
