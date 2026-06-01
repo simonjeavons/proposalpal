@@ -16,6 +16,8 @@ export interface ServiceAgreementPDFProps {
   organisation: string;
   programmeTitle: string;
   agreementDate: string;
+  contractTermMonths?: number | null;
+  contractEndDate?: string | null; // pre-formatted display string
   phases: Phase[];
   upfrontItems: UpfrontItem[];
   coreOptions?: RetainerOption[];
@@ -247,6 +249,8 @@ export function ServiceAgreementPDF({
   organisation,
   programmeTitle,
   agreementDate,
+  contractTermMonths,
+  contractEndDate,
   phases,
   upfrontItems,
   coreOptions = [],
@@ -293,6 +297,18 @@ export function ServiceAgreementPDF({
             <Text style={styles.metaLabel}>Agreement Date</Text>
             <Text style={styles.metaValue}>{agreementDate}</Text>
           </View>
+          {contractTermMonths ? (
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Contract Term</Text>
+              <Text style={styles.metaValue}>{contractTermMonths} months</Text>
+            </View>
+          ) : null}
+          {contractEndDate ? (
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>End Date</Text>
+              <Text style={styles.metaValue}>{contractEndDate}</Text>
+            </View>
+          ) : null}
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>Client</Text>
             <Text style={styles.metaValue}>{entityName}</Text>

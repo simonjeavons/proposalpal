@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Phase, UpfrontItem, RetainerOption } from "@/types/proposal";
+import { contractEndDateISO, formatLongDate } from "@/lib/contractTerm";
 
 const formatCurrency = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const formatTerm = (months: number) => {
@@ -44,6 +45,7 @@ interface AdhocContract {
   additional_terms_text: string | null;
   programme_title: string;
   agreement_date: string;
+  contract_term_months: number | null;
   contact_name: string;
   contact_email: string;
   payment_terms: string;
@@ -358,6 +360,8 @@ export default function AdhocSign() {
           organisation: contract.organisation,
           programmeTitle: contract.programme_title,
           agreementDate: formatDate(contract.agreement_date) || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+          contractTermMonths: contract.contract_term_months ?? null,
+          contractEndDate: formatLongDate(contractEndDateISO(contract.agreement_date, contract.contract_term_months)) || null,
           phases: contract.phases,
           upfrontItems: contract.upfront_items,
           selectedStandard,
@@ -444,6 +448,8 @@ export default function AdhocSign() {
         organisation: contract.organisation,
         programmeTitle: contract.programme_title,
         agreementDate: formatDate(contract.agreement_date) || signingDateStr,
+        contractTermMonths: contract.contract_term_months ?? null,
+        contractEndDate: formatLongDate(contractEndDateISO(contract.agreement_date, contract.contract_term_months)) || null,
         phases: contract.phases,
         upfrontItems: contract.upfront_items,
         selectedStandard,
@@ -637,6 +643,8 @@ export default function AdhocSign() {
         organisation: contract.organisation,
         programmeTitle: contract.programme_title,
         agreementDate: formatDate(contract.agreement_date) || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+        contractTermMonths: contract.contract_term_months ?? null,
+        contractEndDate: formatLongDate(contractEndDateISO(contract.agreement_date, contract.contract_term_months)) || null,
         companyRegNumber: contract.company_reg_number,
         registeredOffice: [contract.registered_address_1, contract.registered_address_2, contract.registered_city, contract.registered_county, contract.registered_postcode].filter(Boolean).join(', '),
         phases: contract.phases,
@@ -681,6 +689,8 @@ export default function AdhocSign() {
               {contract.organisation && <div><span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA', display: 'block', marginBottom: 2 }}>Organisation</span><span style={{ fontSize: 14, fontWeight: 700, color: '#043D5D' }}>{contract.organisation}</span></div>}
               {contract.programme_title && <div><span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA', display: 'block', marginBottom: 2 }}>Programme</span><span style={{ fontSize: 14, fontWeight: 700, color: '#043D5D' }}>{contract.programme_title}</span></div>}
               <div><span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA', display: 'block', marginBottom: 2 }}>Agreement Date</span><span style={{ fontSize: 14, fontWeight: 700, color: '#043D5D' }}>{formatDate(contract.agreement_date)}</span></div>
+              {contract.contract_term_months ? <div><span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA', display: 'block', marginBottom: 2 }}>Contract Term</span><span style={{ fontSize: 14, fontWeight: 700, color: '#043D5D' }}>{contract.contract_term_months} months</span></div> : null}
+              {contractEndDateISO(contract.agreement_date, contract.contract_term_months) ? <div><span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#AAAAAA', display: 'block', marginBottom: 2 }}>End Date</span><span style={{ fontSize: 14, fontWeight: 700, color: '#043D5D' }}>{formatLongDate(contractEndDateISO(contract.agreement_date, contract.contract_term_months))}</span></div> : null}
               {(() => {
                 const fixed = contract.ongoing_options.find(o => !o.rolling_monthly);
                 const rolling = contract.ongoing_options.find(o => o.rolling_monthly);

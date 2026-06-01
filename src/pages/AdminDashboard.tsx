@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { RichSectionEditor, type NdaSection } from "@/components/RichSectionEditor";
 import { plainToNdaHtml } from "@/lib/plainToNdaHtml";
+import { contractEndDateISO, formatLongDate } from "@/lib/contractTerm";
 
 interface Profile {
   id: string;
@@ -181,6 +182,7 @@ export default function AdminDashboard() {
     registeredPostcode: '',
     programmeTitle: '',
     agreementDate: new Date().toISOString().split('T')[0],
+    contractTermMonths: '' as number | '',
     contactName: '',
     contactEmail: '',
     paymentTerms: '50% on commencement / 50% on delivery',
@@ -507,6 +509,7 @@ export default function AdminDashboard() {
     registered_postcode: adhocForm.registeredPostcode,
     programme_title: adhocForm.programmeTitle,
     agreement_date: adhocForm.agreementDate,
+    contract_term_months: adhocForm.contractTermMonths === '' ? null : adhocForm.contractTermMonths,
     contact_name: adhocForm.contactName,
     contact_email: adhocForm.contactEmail,
     payment_terms: adhocForm.paymentTerms,
@@ -525,6 +528,7 @@ export default function AdminDashboard() {
     setAdhocForm({
       clientName: '', organisation: '', companyRegNumber: '', registeredAddress1: '', registeredAddress2: '', registeredCity: '', registeredCounty: '', registeredPostcode: '', programmeTitle: '',
       agreementDate: new Date().toISOString().split('T')[0],
+      contractTermMonths: '',
       contactName: '', contactEmail: '',
       paymentTerms: '50% on commencement / 50% on delivery',
       templateId: '', scopeOfWorkText: '', additionalTermsText: '', preparedByUserId: '', phases: [], upfrontItems: [], retainerOptions: [], notifyCustomer: false,
@@ -552,6 +556,7 @@ export default function AdminDashboard() {
       registeredPostcode: d.registered_postcode || '',
       programmeTitle: d.programme_title || '',
       agreementDate: d.agreement_date || new Date().toISOString().split('T')[0],
+      contractTermMonths: d.contract_term_months ?? '',
       contactName: d.contact_name || '',
       contactEmail: d.contact_email || '',
       paymentTerms: d.payment_terms || '50% on commencement / 50% on delivery',
@@ -627,6 +632,8 @@ export default function AdminDashboard() {
         organisation: c.organisation || null,
         programmeTitle: c.programme_title || '',
         agreementDate: formatDateStr(c.agreement_date) || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+        contractTermMonths: c.contract_term_months ?? null,
+        contractEndDate: formatLongDate(contractEndDateISO(c.agreement_date, c.contract_term_months)) || null,
         companyRegNumber: c.company_reg_number || null,
         registeredOffice: [c.registered_address_1, c.registered_address_2, c.registered_city, c.registered_county, c.registered_postcode].filter(Boolean).join(', '),
         phases: Array.isArray(c.phases) ? c.phases : [],
@@ -2329,6 +2336,21 @@ export default function AdminDashboard() {
                     <div className="space-y-1">
                       <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Agreement Date</Label>
                       <Input type="date" value={adhocForm.agreementDate} onChange={e => setAdhocForm(f => ({ ...f, agreementDate: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Contract Term (months)</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={adhocForm.contractTermMonths}
+                        onChange={e => setAdhocForm(f => ({ ...f, contractTermMonths: e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10) || 0) }))}
+                        className="h-8 text-sm"
+                        placeholder="e.g. 12"
+                      />
+                      {adhocForm.contractTermMonths !== '' && contractEndDateISO(adhocForm.agreementDate, Number(adhocForm.contractTermMonths)) && (
+                        <p className="text-xs text-muted-foreground mt-1">Ends {formatLongDate(contractEndDateISO(adhocForm.agreementDate, Number(adhocForm.contractTermMonths)))}</p>
+                      )}
                     </div>
                     <div className="col-span-2 space-y-1">
                       <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Shoothill Contact</Label>

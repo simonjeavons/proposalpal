@@ -37,6 +37,8 @@ export interface AdhocDocxInput {
   organisation: string | null;
   programmeTitle: string;
   agreementDate: string; // already formatted display string
+  contractTermMonths?: number | null;
+  contractEndDate?: string | null; // already formatted display string
   companyRegNumber: string | null;
   registeredOffice: string;
   phases: Phase[];
@@ -275,6 +277,8 @@ export async function generateAdhocDocx(input: AdhocDocxInput): Promise<Blob> {
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
       labelValueRow('Agreement Date', input.agreementDate),
+      ...(input.contractTermMonths ? [labelValueRow('Contract Term', `${input.contractTermMonths} months`)] : []),
+      ...(input.contractEndDate ? [labelValueRow('End Date', input.contractEndDate)] : []),
       labelValueRow('Client', entityName),
       labelValueRow('Programme', input.programmeTitle),
     ],
