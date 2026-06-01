@@ -2457,6 +2457,7 @@ export default function AdminDashboard() {
                   currentServiceTypeId={null}
                   enableServiceTagPicker
                   serviceTypes={serviceTypes.map(st => ({ id: st.id, name: st.name }))}
+                  enableOngoingFlag
                 />
 
                 {/* Ongoing Options */}

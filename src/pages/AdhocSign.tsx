@@ -835,9 +835,9 @@ export default function AdhocSign() {
                     </div>
                   );
                 })}
-                {/* Upfront subtotal — matches PDF "One-Time Project Total" row */}
+                {/* Upfront subtotal — matches PDF "One-Time Project Total" / "Ongoing Monthly Total" row */}
                 <div style={{ borderTop: '1px solid #DDE8EE', marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>One-Time Project Total</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>{contract.upfront_items.every(it => it.ongoing) ? 'Ongoing Monthly Total' : 'One-Time Project Total'}</span>
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>{formatCurrency(upfrontTotal)} + VAT</span>
                 </div>
               </div>

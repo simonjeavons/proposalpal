@@ -384,7 +384,7 @@ export function ServiceAgreementPDF({
         ))}
         {upfrontItems.length > 0 && (
           <View style={styles.tableRowBold}>
-            <Text style={styles.tableDescBold}>One-Time Project Total</Text>
+            <Text style={styles.tableDescBold}>{upfrontItems.every(it => it.ongoing) ? 'Ongoing Monthly Total' : 'One-Time Project Total'}</Text>
             <Text style={styles.tableAmtBold}>{fmt(upfrontTotal)} + VAT</Text>
           </View>
         )}

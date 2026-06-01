@@ -71,6 +71,9 @@ export interface UpfrontItemsEditorProps {
   // to that tag + universal items. Requires `serviceTypes`. Used by the ad-hoc generator.
   enableServiceTagPicker?: boolean;
   serviceTypes?: { id: string; name: string }[];
+  // When true, each item gets an "Ongoing" toggle; if all items are ongoing the
+  // charges total is labelled "Ongoing Monthly Total". Used by the ad-hoc generator.
+  enableOngoingFlag?: boolean;
 }
 
 // Sentinel <select> value representing the explicit "Universal" tag (service_type_id = null).
@@ -90,6 +93,7 @@ export function UpfrontItemsEditor({
   hideDiscountPrice = false,
   enableServiceTagPicker = false,
   serviceTypes = [],
+  enableOngoingFlag = false,
 }: UpfrontItemsEditorProps) {
   const updateItem = (i: number, patch: Partial<UpfrontItem>) => {
     const updated = [...items];
@@ -154,8 +158,20 @@ export function UpfrontItemsEditor({
               <div className="flex items-center gap-3">
                 <span className="text-sm font-bold text-foreground">{item.name || item.type || 'Untitled'}</span>
                 {item.optional && <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5">OPTIONAL</span>}
+                {enableOngoingFlag && item.ongoing && <span className="text-[10px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5">ONGOING</span>}
               </div>
               <div className="flex items-center gap-2">
+                {enableOngoingFlag && (
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!item.ongoing}
+                      onChange={e => updateItem(i, { ongoing: e.target.checked || undefined } as any)}
+                      className="w-3.5 h-3.5"
+                    />
+                    <span className="text-xs text-muted-foreground">Ongoing</span>
+                  </label>
+                )}
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
                     type="checkbox"

@@ -165,7 +165,8 @@ const buildPricingChildren = (input: AdhocDocxInput): (Paragraph | Table)[] => {
     rows.push(priceRow(label, `${fmt(price)} + VAT`));
   });
   if (upfrontItems.length > 0) {
-    rows.push(priceRow('One-Time Project Total', `${fmt(upfrontTotal)} + VAT`, { bold: true, bg: true }));
+    const upfrontTotalLabel = upfrontItems.every(it => it.ongoing) ? 'Ongoing Monthly Total' : 'One-Time Project Total';
+    rows.push(priceRow(upfrontTotalLabel, `${fmt(upfrontTotal)} + VAT`, { bold: true, bg: true }));
   }
 
   // Ongoing options
