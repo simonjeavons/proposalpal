@@ -83,7 +83,7 @@ export interface TeamMember {
 export interface Proposal {
   id: string;
   slug: string;
-  status: 'draft' | 'sent' | 'accepted';
+  status: 'draft' | 'sent' | 'accepted' | 'expired';
   client_name: string;
   programme_title: string;
   prepared_by: string;

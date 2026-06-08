@@ -503,7 +503,7 @@ export default function ProposalEditor() {
         {/* Status */}
         <Section title="Status">
           <div className="flex gap-2">
-            {['draft', 'sent', 'accepted'].map(s => (
+            {['draft', 'sent', 'accepted', 'expired'].map(s => (
               <button key={s} onClick={() => updateField('status', s)}
                 className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-colors ${form.status === s ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:border-primary'}`}
               >{s}</button>

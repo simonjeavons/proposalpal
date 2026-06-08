@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { RichSectionEditor, type NdaSection } from "@/components/RichSectionEditor";
 import { plainToNdaHtml } from "@/lib/plainToNdaHtml";
 import { contractEndDateISO, formatLongDate } from "@/lib/contractTerm";
+import { effectiveStatus } from "@/lib/proposalStatus";
 
 interface Profile {
   id: string;
@@ -1279,6 +1280,7 @@ export default function AdminDashboard() {
       case 'draft': return 'bg-muted text-muted-foreground';
       case 'sent': return 'bg-primary/10 text-primary';
       case 'accepted': return 'bg-green-100 text-green-800';
+      case 'expired': return 'bg-red-100 text-red-800';
       default: return 'bg-muted text-muted-foreground';
     }
   };
@@ -1563,7 +1565,7 @@ export default function AdminDashboard() {
           const uniqueSectors = [...new Set(proposals.map(p => p.sector).filter(Boolean))] as string[];
           const uniqueUsers = [...new Set(proposals.map(p => p.prepared_by).filter(Boolean))] as string[];
           const filtered = proposals.filter(p => {
-            if (filterStatus !== 'all' && p.status !== filterStatus) return false;
+            if (filterStatus !== 'all' && effectiveStatus(p) !== filterStatus) return false;
             if (filterSector !== 'all' && p.sector !== filterSector) return false;
             if (filterUser !== 'all' && p.prepared_by !== filterUser) return false;
             return true;
@@ -1585,6 +1587,7 @@ export default function AdminDashboard() {
                     <option value="draft">Draft</option>
                     <option value="sent">Sent</option>
                     <option value="accepted">Accepted</option>
+                    <option value="expired">Expired</option>
                   </select>
                   {uniqueSectors.length > 0 && (
                     <select className={selectCls} value={filterSector} onChange={e => setFilterSector(e.target.value)}>
@@ -1638,8 +1641,8 @@ export default function AdminDashboard() {
                       return (
                         <DocumentListRow
                           key={p.id}
-                          statusLabel={p.status}
-                          statusClassName={getStatusColor(p.status)}
+                          statusLabel={effectiveStatus(p)}
+                          statusClassName={getStatusColor(effectiveStatus(p))}
                           clientName={p.client_name || 'Untitled'}
                           organisation={p.organisation}
                           programmeTitle={p.programme_title || 'Untitled project'}

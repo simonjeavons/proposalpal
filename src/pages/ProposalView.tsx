@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Proposal, Challenge, Phase, RetainerOption, UpfrontItem, TeamMember, SaasConfig, SaasTier } from "@/types/proposal";
+import { isProposalExpired } from "@/lib/proposalStatus";
 
 const ShootHillMark = () => (
   <svg className="absolute -right-[120px] -bottom-[120px] w-[560px] h-[560px] opacity-10 pointer-events-none z-0" viewBox="0 0 199 198" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -154,6 +155,38 @@ export default function ProposalView() {
   if (!proposal) return (
     <div className="flex items-center justify-center min-h-screen" style={{ background: '#F4F7FA' }}>
       <p style={{ color: '#3A6278', fontSize: 16 }}>Proposal not found.</p>
+    </div>
+  );
+
+  if (isProposalExpired(proposal)) return (
+    <div className="flex items-center justify-center min-h-screen px-6" style={{ background: '#F4F7FA' }}>
+      <div className="text-center max-w-md w-full bg-white border" style={{ borderColor: '#E2EAF0', padding: '40px 32px' }}>
+        <h1 style={{ color: '#3A6278', fontSize: 22, fontWeight: 800, marginBottom: 12 }}>This proposal has expired</h1>
+        <p style={{ color: '#5A7384', fontSize: 15, lineHeight: 1.5, marginBottom: 24 }}>
+          This proposal is no longer available to view. Please get in touch
+          {proposal.contact_name ? <> with <strong style={{ color: '#3A6278' }}>{proposal.contact_name}</strong></> : null} for an updated version.
+        </p>
+        <div className="text-left inline-block" style={{ fontSize: 14, color: '#3A6278' }}>
+          {proposal.contact_email && (
+            <div style={{ marginBottom: 8 }}>
+              <span style={{ color: '#8298A6' }}>Email: </span>
+              <a href={`mailto:${proposal.contact_email}`} style={{ color: '#009FE3', fontWeight: 600 }}>{proposal.contact_email}</a>
+            </div>
+          )}
+          {proposal.contact_phone && (
+            <div style={{ marginBottom: 8 }}>
+              <span style={{ color: '#8298A6' }}>Phone: </span>
+              <a href={`tel:${proposal.contact_phone.replace(/\s+/g, '')}`} style={{ color: '#3A6278', fontWeight: 600 }}>{proposal.contact_phone}</a>
+            </div>
+          )}
+          {proposal.contact_mobile && (
+            <div>
+              <span style={{ color: '#8298A6' }}>Mobile: </span>
+              <a href={`tel:${proposal.contact_mobile.replace(/\s+/g, '')}`} style={{ color: '#3A6278', fontWeight: 600 }}>{proposal.contact_mobile}</a>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 
