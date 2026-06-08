@@ -158,13 +158,17 @@ export default function ProposalView() {
     </div>
   );
 
-  if (isProposalExpired(proposal)) return (
+  if (isProposalExpired(proposal)) {
+    // Staff member (proposal owner) is prepared_by ("First Last, Job Title");
+    // contact_name is the client, so don't use it here.
+    const expiredOwnerName = proposal.prepared_by ? proposal.prepared_by.split(',')[0].trim() : '';
+    return (
     <div className="flex items-center justify-center min-h-screen px-6" style={{ background: '#F4F7FA' }}>
       <div className="text-center max-w-md w-full bg-white border" style={{ borderColor: '#E2EAF0', padding: '40px 32px' }}>
         <h1 style={{ color: '#3A6278', fontSize: 22, fontWeight: 800, marginBottom: 12 }}>This proposal has expired</h1>
         <p style={{ color: '#5A7384', fontSize: 15, lineHeight: 1.5, marginBottom: 24 }}>
           This proposal is no longer available to view. Please get in touch
-          {proposal.contact_name ? <> with <strong style={{ color: '#3A6278' }}>{proposal.contact_name}</strong></> : null} for an updated version.
+          {expiredOwnerName ? <> with <strong style={{ color: '#3A6278' }}>{expiredOwnerName}</strong></> : null} for an updated version.
         </p>
         <div className="text-left inline-block" style={{ fontSize: 14, color: '#3A6278' }}>
           {proposal.contact_email && (
@@ -188,7 +192,8 @@ export default function ProposalView() {
         </div>
       </div>
     </div>
-  );
+    );
+  }
 
   const coreOptions = proposal.retainer_options.filter(r => r.option_type === 'core');
   const standardOptions = proposal.retainer_options.filter(r => r.option_type === 'standard');
