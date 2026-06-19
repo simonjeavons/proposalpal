@@ -357,11 +357,19 @@ export default function ProposalView() {
         <img style={{ height: 24, padding: '13px 0', display: 'block', filter: 'brightness(0) invert(1)' }} src="https://shoothill.com/wp-content/uploads/2024/07/Shoothill-site-logo-3.svg" alt="Shoothill" />
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <div style={{ display: 'flex', overflowX: 'auto' }}>
-            {['About', 'Challenge', 'Journey', 'Pricing', 'Team', 'Clients', 'Contact'].map(link => (
-              <a key={link} href={`#${link.toLowerCase()}`} style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.5)', textDecoration: 'none', padding: '15px 14px', borderBottom: '2px solid transparent', transition: 'color .2s', whiteSpace: 'nowrap' }}
+            {[
+              { label: 'About',     hash: 'about'     },
+              { label: 'Challenge', hash: 'challenge', show: hasChallenge },
+              { label: 'Journey',   hash: 'journey',   show: proposal.phases.length > 0 },
+              { label: 'Pricing',   hash: 'pricing'   },
+              { label: 'Team',      hash: 'team'      },
+              { label: 'Clients',   hash: 'clients'   },
+              { label: 'Contact',   hash: 'contact'   },
+            ].filter(link => link.show !== false).map(link => (
+              <a key={link.hash} href={`#${link.hash}`} style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.5)', textDecoration: 'none', padding: '15px 14px', borderBottom: '2px solid transparent', transition: 'color .2s', whiteSpace: 'nowrap' }}
                 onMouseEnter={e => { (e.target as HTMLElement).style.color = 'white'; }}
                 onMouseLeave={e => { (e.target as HTMLElement).style.color = 'rgba(255,255,255,.5)'; }}
-              >{link}</a>
+              >{link.label}</a>
             ))}
           </div>
         </div>
