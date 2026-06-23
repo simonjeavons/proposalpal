@@ -7,12 +7,54 @@ export interface UpfrontItem {
   show_discount_percent?: boolean;
   description?: string;
   optional?: boolean;
+  // Items sharing a non-empty `choice_group` are mutually exclusive: the client picks
+  // one or none. Takes precedence over `optional` — a grouped item is always a "pick one"
+  // member regardless of the optional flag.
+  choice_group?: string;
   // When every upfront item is `ongoing`, the charges total is labelled
   // "Ongoing Monthly Total" instead of "One-Time Project Total".
   ongoing?: boolean;
   // UI-only: remembers the service tag chosen in the two-step solution picker.
   // null = "Universal" explicitly chosen; undefined = not yet chosen. Ignored by PDF/Word.
   service_type_id?: string | null;
+}
+
+/** Unit price of an upfront item, honouring any discount. */
+export function upfrontItemPrice(item: UpfrontItem): number {
+  return Number(item.discounted_price ?? item.price) || 0;
+}
+
+/** True if the item is part of a mutually-exclusive "pick one" group. */
+export function isChoiceGroupItem(item: UpfrontItem): boolean {
+  return !!(item.choice_group && item.choice_group.trim());
+}
+
+/**
+ * An item is included in the upfront total when it is always-included
+ * (neither optional nor part of a choice group) OR it is currently selected.
+ */
+export function isUpfrontItemIncluded(
+  item: UpfrontItem,
+  index: number,
+  selected: Set<number>,
+): boolean {
+  const chooseable = item.optional || isChoiceGroupItem(item);
+  return chooseable ? selected.has(index) : true;
+}
+
+/**
+ * Authoritative upfront total: sum of every always-included or selected item.
+ * Used by the editor, customer view, accept flow, PDF and Word exports so they
+ * never disagree.
+ */
+export function computeUpfrontTotal(
+  items: UpfrontItem[] | null | undefined,
+  selected: Set<number> = new Set(),
+): number {
+  return (items || []).reduce(
+    (sum, item, i) => (isUpfrontItemIncluded(item, i, selected) ? sum + upfrontItemPrice(item) : sum),
+    0,
+  );
 }
 
 export interface Challenge {

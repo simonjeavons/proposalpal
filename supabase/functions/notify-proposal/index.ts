@@ -801,7 +801,7 @@ Deno.serve(async (req: Request) => {
     }
     const { data: acceptance } = await supabase
       .from("proposal_acceptances")
-      .select("signer_name, signer_title, retainer_price, upfront_total, first_year_total, signed_at")
+      .select("signer_name, signer_title, retainer_price, upfront_total, first_year_total, signed_at, selected_upfront_snapshot")
       .eq("proposal_id", proposalId)
       .order("signed_at", { ascending: false })
       .limit(1)
@@ -814,6 +814,10 @@ Deno.serve(async (req: Request) => {
     const retainerPrice = acceptance?.retainer_price ?? 0;
     const firstYearTotal = acceptance?.first_year_total ?? 0;
     const upfrontTotal = acceptance?.upfront_total ?? 0;
+    const upfrontSnapshot = (acceptance?.selected_upfront_snapshot as { name: string; price: number }[] | null) ?? [];
+    const upfrontLines = upfrontSnapshot.length > 0
+      ? ["  Chosen upfront items:", ...upfrontSnapshot.map((it) => "    - " + (it.name || "Item") + ": " + fmt(it.price))]
+      : [];
     const subject = "Proposal signed: " + projectName + " - " + clientName;
     const emailBody = [
       "Hi " + recipientName + ",",
@@ -828,6 +832,7 @@ Deno.serve(async (req: Request) => {
       "",
       "Financials:",
       "  Upfront:      " + fmt(upfrontTotal),
+      ...upfrontLines,
       "  Monthly:      " + fmt(retainerPrice) + "/month",
       "  Year 1 total: " + fmt(firstYearTotal),
       "",

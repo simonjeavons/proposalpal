@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, BookmarkPlus } from "lucide-react";
 import type { UpfrontItem } from "@/types/proposal";
+import { computeUpfrontTotal, isChoiceGroupItem } from "@/types/proposal";
 
 interface Product {
   id: string;
@@ -157,7 +158,8 @@ export function UpfrontItemsEditor({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="text-sm font-bold text-foreground">{item.name || item.type || 'Untitled'}</span>
-                {item.optional && <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5">OPTIONAL</span>}
+                {isChoiceGroupItem(item) && <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5">CHOICE: {item.choice_group!.trim().toUpperCase()}</span>}
+                {item.optional && !isChoiceGroupItem(item) && <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5">OPTIONAL</span>}
                 {enableOngoingFlag && item.ongoing && <span className="text-[10px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5">ONGOING</span>}
               </div>
               <div className="flex items-center gap-2">
@@ -172,15 +174,17 @@ export function UpfrontItemsEditor({
                     <span className="text-xs text-muted-foreground">Ongoing</span>
                   </label>
                 )}
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={!!item.optional}
-                    onChange={e => updateItem(i, { optional: e.target.checked || undefined } as any)}
-                    className="w-3.5 h-3.5"
-                  />
-                  <span className="text-xs text-muted-foreground">Optional</span>
-                </label>
+                {!isChoiceGroupItem(item) && (
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!item.optional}
+                      onChange={e => updateItem(i, { optional: e.target.checked || undefined } as any)}
+                      className="w-3.5 h-3.5"
+                    />
+                    <span className="text-xs text-muted-foreground">Optional</span>
+                  </label>
+                )}
                 <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
                   onClick={() => onChange(items.filter((_, j) => j !== i))}>
                   <Trash2 className="w-4 h-4" />
@@ -247,6 +251,16 @@ export function UpfrontItemsEditor({
               </label>
             )}
             <div>
+              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Choice Group</Label>
+              <input
+                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                placeholder="e.g. Website option — leave blank for a normal item"
+                value={item.choice_group || ''}
+                onChange={e => updateItem(i, { choice_group: e.target.value || undefined } as any)}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">Items sharing a choice group are shown to the client as "pick one" — they choose one or none.</p>
+            </div>
+            <div>
               <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Name</Label>
               <input
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
@@ -279,8 +293,8 @@ export function UpfrontItemsEditor({
         })}
         {items.length > 0 && (
           <div className="flex justify-between items-center px-1 pt-1 border-t border-border">
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total</span>
-            <span className="text-sm font-bold text-foreground">£{items.reduce((s, i) => s + (i.discounted_price ?? i.price), 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Base Total {items.some(it => it.optional || isChoiceGroupItem(it)) && <span className="normal-case font-normal">(always-included only)</span>}</span>
+            <span className="text-sm font-bold text-foreground">£{computeUpfrontTotal(items).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
         )}
         {onNotesChange && (

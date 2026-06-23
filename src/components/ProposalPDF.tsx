@@ -1,7 +1,7 @@
 import { Document, Image, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { SHOOTHILL_LOGO_URI } from './ServiceAgreementPDF';
 import { SHOOTHILL_WHITE_LOGO_URI } from './shoothillWhiteLogo';
-import { DEFAULT_SAAS_SELLING_POINTS, type Proposal, type RetainerOption, type UpfrontItem } from '@/types/proposal';
+import { DEFAULT_SAAS_SELLING_POINTS, isChoiceGroupItem, type Proposal, type RetainerOption, type UpfrontItem } from '@/types/proposal';
 
 const NAVY = '#043D5D';
 const BLUE = '#009FE3';
@@ -481,7 +481,9 @@ export function ProposalPDF({
     ...selectedExtras,
   ];
 
-  const baseUpfrontItems = (proposal.upfront_items || []).filter((it) => !(it as UpfrontItem).optional);
+  // Always-included items only — optional add-ons and choice-group members appear via
+  // selectedOptionalUpfrontItems (whatever the client actually picked).
+  const baseUpfrontItems = (proposal.upfront_items || []).filter((it) => !(it as UpfrontItem).optional && !isChoiceGroupItem(it as UpfrontItem));
   const allUpfrontItems: UpfrontItem[] = [...baseUpfrontItems, ...selectedOptionalUpfrontItems];
 
   const isDual = proposal.pricing_model === 'dual' && !!proposal.saas_config && (proposal.saas_config.tiers?.length ?? 0) > 0;
