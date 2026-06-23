@@ -535,84 +535,49 @@ export default function ProposalView() {
             <p style={{ fontSize: 14, color: 'rgba(255,255,255,.5)', maxWidth: 540 }}>A structured, transparent programme. Each phase builds on the last, with clear deliverables and sign-off before the next begins.</p>
           </div>
 
-          {isMobile ? (
-            /* Mobile: simple stacked cards with left accent */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {proposal.phases.map((phase, i) => (
-                <div key={i} className="scroll-reveal" style={{ background: 'rgba(255,255,255,.08)', borderLeft: '3px solid #009FE3', border: '1px solid rgba(255,255,255,.15)', borderLeftWidth: 3, padding: '16px 16px', transitionDelay: `${i * 80}ms` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: '#009FE3' }}>{phase.label}</div>
-                    {!proposal.hide_phase_durations && phase.duration && <div style={{ fontSize: 9, fontWeight: 700, background: '#009FE3', color: 'white', padding: '1px 6px' }}>{phase.duration}</div>}
-                  </div>
-                  <h3 style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 8, lineHeight: 1.3 }}>{phase.title}</h3>
-                  <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, padding: 0, margin: 0 }}>
-                    {phase.tasks.filter(t => t.trim()).map((t, j) => (
-                      <li key={j} style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', display: 'flex', gap: 6 }}>
-                        <span style={{ color: '#009FE3', flexShrink: 0, fontWeight: 700 }}>›</span>{t}
-                      </li>
-                    ))}
-                  </ul>
-                  {phase.price ? <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.1)', fontSize: 12, fontWeight: 800, color: '#009FE3' }}>{phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`}</div> : null}
-                </div>
-              ))}
-            </div>
-          ) : (
-            /* Desktop/tablet: alternating above/below timeline */
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${proposal.phases.length}, 1fr)`, gap: 0, position: 'relative' }}>
-              {/* Rail */}
-              <div style={{ gridColumn: '1 / -1', gridRow: 2, alignSelf: 'center', height: 4, background: 'linear-gradient(90deg, #009FE3, rgba(0,159,227,.45))', zIndex: 0, pointerEvents: 'none' as const }} />
-              {proposal.phases.map((phase, i) => {
-                const isAbove = i % 2 === 0;
-                return (
-                  <div key={i} style={{ display: 'contents' }}>
-                    {isAbove ? (
-                      <div style={{ gridRow: 1, gridColumn: i + 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', zIndex: 1 }}>
-                        <div className="scroll-reveal" style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', padding: '18px 16px', width: '90%', transitionDelay: `${i * 100}ms` }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 5 }}>{phase.label}</div>
-                          <h3 style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 5, lineHeight: 1.3 }}>{phase.title}</h3>
-                          {!proposal.hide_phase_durations && phase.duration && <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, background: '#009FE3', color: 'white', padding: '2px 8px', marginBottom: 10 }}>{phase.duration}</div>}
-                          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3, padding: 0, margin: 0 }}>
-                            {phase.tasks.filter(t => t.trim()).map((t, j) => (
-                              <li key={j} style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', display: 'flex', gap: 6 }}>
+          {/* Vertical timeline — one rail, full-width rows. Scales with phase count
+              and per-phase detail; long task lists split into two columns on wide screens. */}
+          {(() => {
+            const railLeft = 9;
+            const padLeft = isMobile ? 30 : 38;
+            const fmtPrice = (p: string) => (p.startsWith('£') ? p : `£${Number(p).toLocaleString('en-GB')}`);
+            return (
+              <div style={{ position: 'relative', paddingLeft: padLeft }}>
+                {/* Rail */}
+                <div style={{ position: 'absolute', left: railLeft, top: 6, bottom: 6, width: 2, background: 'linear-gradient(180deg, #009FE3, rgba(0,159,227,.45))', pointerEvents: 'none' as const }} />
+                {proposal.phases.map((phase, i) => {
+                  const tasks = phase.tasks.filter(t => t.trim());
+                  const twoCol = !isMobile && tasks.length > 4;
+                  const isLast = i === proposal.phases.length - 1;
+                  return (
+                    <div key={i} className="scroll-reveal" style={{ position: 'relative', paddingBottom: isLast ? 0 : (isMobile ? 14 : 22), transitionDelay: `${i * 80}ms` }}>
+                      {/* Dot (centred on the rail) */}
+                      <div style={{ position: 'absolute', left: -padLeft + railLeft - 9, top: 2, width: 20, height: 20, borderRadius: '50%', background: 'white', border: '4px solid #009FE3', boxShadow: '0 0 0 5px rgba(0,159,227,.18)' }} />
+                      <div style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', padding: isMobile ? '16px' : '18px 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' as const }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
+                            <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: '#009FE3' }}>{phase.label}</div>
+                            {!proposal.hide_phase_durations && phase.duration && <div style={{ fontSize: 10, fontWeight: 700, background: '#009FE3', color: 'white', padding: '2px 8px' }}>{phase.duration}</div>}
+                          </div>
+                          {phase.price ? <div style={{ fontSize: 13, fontWeight: 800, color: '#009FE3' }}>{fmtPrice(phase.price)}</div> : null}
+                        </div>
+                        <h3 style={{ fontSize: isMobile ? 14 : 15, fontWeight: 700, color: 'white', margin: '8px 0 0', lineHeight: 1.3 }}>{phase.title}</h3>
+                        {tasks.length > 0 && (
+                          <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0 0', ...(twoCol ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 28px' } : { display: 'flex', flexDirection: 'column' as const, gap: 5 }) }}>
+                            {tasks.map((t, j) => (
+                              <li key={j} style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', display: 'flex', gap: 7, lineHeight: 1.45 }}>
                                 <span style={{ color: '#009FE3', flexShrink: 0, fontWeight: 700 }}>›</span>{t}
                               </li>
                             ))}
                           </ul>
-                          {phase.price ? <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.1)', fontSize: 12, fontWeight: 800, color: '#009FE3' }}>{phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`}</div> : null}
-                        </div>
-                        <div style={{ width: 2, height: 36, background: 'rgba(0,159,227,.5)', flexShrink: 0 }} />
+                        )}
                       </div>
-                    ) : (
-                      <div style={{ gridRow: 1, gridColumn: i + 1, zIndex: 1 }} />
-                    )}
-                    <div style={{ gridRow: 2, gridColumn: i + 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
-                      <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'white', border: '4px solid #009FE3', boxShadow: '0 0 0 5px rgba(0,159,227,.2)' }} />
                     </div>
-                    {!isAbove ? (
-                      <div style={{ gridRow: 3, gridColumn: i + 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', zIndex: 1 }}>
-                        <div style={{ width: 2, height: 36, background: 'rgba(0,159,227,.5)', flexShrink: 0 }} />
-                        <div className="scroll-reveal" style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', padding: '18px 16px', width: '90%', transitionDelay: `${i * 100}ms` }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 5 }}>{phase.label}</div>
-                          <h3 style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 5, lineHeight: 1.3 }}>{phase.title}</h3>
-                          {!proposal.hide_phase_durations && phase.duration && <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, background: '#009FE3', color: 'white', padding: '2px 8px', marginBottom: 10 }}>{phase.duration}</div>}
-                          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3, padding: 0, margin: 0 }}>
-                            {phase.tasks.filter(t => t.trim()).map((t, j) => (
-                              <li key={j} style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', display: 'flex', gap: 6 }}>
-                                <span style={{ color: '#009FE3', flexShrink: 0, fontWeight: 700 }}>›</span>{t}
-                              </li>
-                            ))}
-                          </ul>
-                          {phase.price ? <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.1)', fontSize: 12, fontWeight: 800, color: '#009FE3' }}>{phase.price.startsWith('£') ? phase.price : `£${Number(phase.price).toLocaleString('en-GB')}`}</div> : null}
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ gridRow: 3, gridColumn: i + 1, zIndex: 1 }} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       </section>}
 
