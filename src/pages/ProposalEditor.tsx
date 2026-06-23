@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Challenge, Phase, RetainerOption, UpfrontItem, SaasConfig } from "@/types/proposal";
-import { DEFAULT_CHALLENGES, DEFAULT_PHASES, DEFAULT_RETAINER_OPTIONS, DEFAULT_SAAS_SELLING_POINTS } from "@/types/proposal";
+import { DEFAULT_CHALLENGES, DEFAULT_PHASES, DEFAULT_RETAINER_OPTIONS, DEFAULT_SAAS_SELLING_POINTS, computeUpfrontTotal } from "@/types/proposal";
 import SaasConfigEditor from "@/components/SaasConfigEditor";
 import ViewHistoryPanel from "@/components/ViewHistoryPanel";
 import { Button } from "@/components/ui/button";
@@ -323,7 +323,9 @@ export default function ProposalEditor() {
     const preparedUser = users.find(u => u.id === form.prepared_by_user_id);
     return {
       ...form,
-      upfront_total: form.upfront_items.reduce((sum, item) => sum + (item.discounted_price ?? item.price), 0),
+      // Base total = always-included items only (optional/choice-group items are added
+      // when the client selects them in the customer view).
+      upfront_total: computeUpfrontTotal(form.upfront_items),
       contract_file_url: contractFileUrl,
       client_logo_url: clientLogoUrl,
       prepared_by_user_id: form.prepared_by_user_id || null,

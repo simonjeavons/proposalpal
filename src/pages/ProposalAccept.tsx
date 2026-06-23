@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import type { Proposal, Challenge, Phase, RetainerOption, SaasConfig, SaasTier } from "@/types/proposal";
+import type { Proposal, Challenge, Phase, RetainerOption, SaasConfig, SaasTier, UpfrontItem } from "@/types/proposal";
+import { computeUpfrontTotal, isUpfrontItemIncluded, upfrontItemPrice } from "@/types/proposal";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const formatCurrency = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -384,6 +385,12 @@ export default function ProposalAccept() {
   const standardIndex = Number(searchParams.get('standard') ?? 0);
   const extrasParam = searchParams.get('extras');
   const pricingOption = (searchParams.get('pricing') as 'traditional' | 'saas') || 'traditional';
+  // Upfront items the client selected on the view page (optional add-ons + one choice
+  // per group), carried as comma-separated indices into proposal.upfront_items.
+  const upfrontParam = searchParams.get('upfront');
+  const selectedUpfrontIndices = new Set<number>(
+    upfrontParam ? upfrontParam.split(',').map(Number).filter(n => !isNaN(n)) : []
+  );
   // Initialise from URL param immediately; when extrasParam is null (direct nav)
   // we'll default to recommended extras once the proposal loads.
   const [selectedExtrasIndices, setSelectedExtrasIndices] = useState<number[]>(() =>
@@ -485,7 +492,8 @@ export default function ProposalAccept() {
         const selStandard = stdOpts[standardIndex] || null;
         // If no extras param was present in the URL, default to recommended extras
         const selExtras = selectedExtrasIndices.map(i => optExtras[i]).filter(Boolean);
-        const upfrontAmt = Number(proposal.upfront_total);
+        const upfrontAmt = computeUpfrontTotal((proposal as any).upfront_items, selectedUpfrontIndices);
+        const selUpfrontItems = ((proposal as any).upfront_items || []).filter((it: UpfrontItem, i: number) => isUpfrontItemIncluded(it, i, selectedUpfrontIndices));
         const coreAmt = coreOpts.reduce((sum, r) => sum + (r.quantity ?? 1) * (r.discounted_price ?? r.price), 0);
         const stdPrice = selStandard ? (selStandard.quantity ?? 1) * (selStandard.discounted_price ?? selStandard.price) : 0;
         const extrasPrice = selExtras.reduce((sum, r) => sum + (r.quantity ?? 1) * (r.discounted_price ?? r.price), 0);
@@ -505,7 +513,7 @@ export default function ProposalAccept() {
           programmeTitle: proposal.programme_title,
           agreementDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
           phases: proposal.phases || [],
-          upfrontItems: (proposal as any).upfront_items || [],
+          upfrontItems: selUpfrontItems,
           coreOptions: coreOpts,
           selectedStandard: selStandard,
           selectedExtras: selExtras,
@@ -558,7 +566,8 @@ export default function ProposalAccept() {
   const optionalExtras = proposal.retainer_options.filter(r => r.option_type === 'optional_extra');
   const selectedStandard = standardOptions[standardIndex] || null;
   const selectedExtras = selectedExtrasIndices.map(i => optionalExtras[i]).filter(Boolean);
-  const upfront = Number(proposal.upfront_total);
+  const upfront = computeUpfrontTotal(proposal.upfront_items, selectedUpfrontIndices);
+  const selectedUpfrontItemsList = (proposal.upfront_items || []).filter((it, i) => isUpfrontItemIncluded(it, i, selectedUpfrontIndices));
   const optionTotal = (r: { price: number; discounted_price?: number; quantity?: number }) => (r.quantity ?? 1) * (r.discounted_price ?? r.price);
   const corePrice = coreOptions.reduce((sum, r) => sum + optionTotal(r), 0);
   const standardPrice = selectedStandard ? optionTotal(selectedStandard) : 0;
@@ -660,7 +669,8 @@ export default function ProposalAccept() {
         const optExtras = proposal.retainer_options.filter(r => r.option_type === 'optional_extra');
         const selStandard = stdOpts[standardIndex] || null;
         const selExtras = selectedExtrasIndices.map(i => optExtras[i]).filter(Boolean);
-        const upfrontAmt = Number(proposal.upfront_total);
+        const upfrontAmt = computeUpfrontTotal((proposal as any).upfront_items, selectedUpfrontIndices);
+        const selUpfrontItems = ((proposal as any).upfront_items || []).filter((it: UpfrontItem, i: number) => isUpfrontItemIncluded(it, i, selectedUpfrontIndices));
         const coreAmt = coreOpts.reduce((sum, r) => sum + (r.quantity ?? 1) * (r.discounted_price ?? r.price), 0);
         const stdPrice = selStandard ? (selStandard.quantity ?? 1) * (selStandard.discounted_price ?? selStandard.price) : 0;
         const extrasPrice = selExtras.reduce((sum, r) => sum + (r.quantity ?? 1) * (r.discounted_price ?? r.price), 0);
@@ -675,7 +685,7 @@ export default function ProposalAccept() {
           programmeTitle: proposal.programme_title,
           agreementDate: signingDateStr,
           phases: proposal.phases || [],
-          upfrontItems: (proposal as any).upfront_items || [],
+          upfrontItems: selUpfrontItems,
           coreOptions: coreOpts,
           selectedStandard: selStandard,
           selectedExtras: selExtras,
@@ -750,6 +760,8 @@ export default function ProposalAccept() {
       signer_title: signerTitle,
       selected_retainer_index: isSaas ? -1 : standardIndex,
       selected_extras: isSaas ? [] : selectedExtrasIndices,
+      selected_upfront_items: isSaas ? [] : [...selectedUpfrontIndices],
+      selected_upfront_snapshot: isSaas ? [] : selectedUpfrontItemsList.map(it => ({ name: it.name || it.type || '', price: upfrontItemPrice(it) })),
       upfront_total: isSaas ? 0 : upfront,
       retainer_price: isSaas ? saasMonthlyPrice : ongoingTotal,
       first_year_total: isSaas ? saasFirstYear : contractTotal,

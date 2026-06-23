@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Proposal, Challenge, Phase, RetainerOption, UpfrontItem, TeamMember, SaasConfig, SaasTier } from "@/types/proposal";
+import { computeUpfrontTotal, isChoiceGroupItem } from "@/types/proposal";
 import { isProposalExpired } from "@/lib/proposalStatus";
 
 const ShootHillMark = () => (
@@ -291,12 +292,12 @@ export default function ProposalView() {
   // Annual cost for first-year (used in summary headline)
   const annualOngoing = ongoingForYear(0);
 
-  const optionalUpfrontItems = (proposal.upfront_items || []).map((item, i) => ({ item, index: i })).filter(({ item }) => (item as any).optional);
-  const optionalUpfrontAddOn = [...selectedOptionalItems].reduce((sum, i) => {
-    const item = proposal.upfront_items?.[i];
-    return sum + (item ? (item.discounted_price ?? item.price) : 0);
-  }, 0);
-  const displayUpfrontTotal = Number(proposal.upfront_total) + optionalUpfrontAddOn;
+  // Authoritative upfront total: always-included items + whatever the client has selected
+  // (optional add-ons and one choice per group). Recomputed from items + selection so it
+  // never disagrees with the accept flow / PDF.
+  const displayUpfrontTotal = computeUpfrontTotal(proposal.upfront_items, selectedOptionalItems);
+  const upfrontBaseTotal = computeUpfrontTotal(proposal.upfront_items);
+  const optionalUpfrontAddOn = displayUpfrontTotal - upfrontBaseTotal;
   const firstYearTotal = displayUpfrontTotal + annualOngoing;
 
   // Multi-year totals based on max term
@@ -873,7 +874,19 @@ export default function ProposalView() {
                 {/* Upfront items table */}
                 {(() => {
                   const allItems = proposal.upfront_items || [];
-                  const hasOptional = allItems.some(item => (item as any).optional);
+                  const nonGrouped = allItems.map((item, i) => ({ item, i })).filter(({ item }) => !isChoiceGroupItem(item));
+                  const hasOptional = nonGrouped.some(({ item }) => (item as any).optional);
+
+                  // Ordered choice groups (by first appearance), each with its members.
+                  const groupOrder: string[] = [];
+                  const groups: Record<string, { item: UpfrontItem; i: number }[]> = {};
+                  allItems.forEach((item, i) => {
+                    if (!isChoiceGroupItem(item)) return;
+                    const g = item.choice_group!.trim();
+                    if (!groups[g]) { groups[g] = []; groupOrder.push(g); }
+                    groups[g].push({ item, i });
+                  });
+
                   return (
                     <>
                       {hasOptional && (
@@ -881,11 +894,12 @@ export default function ProposalView() {
                           Items marked <strong style={{ color: '#B45309' }}>Optional</strong> are not included by default — select them to add to your investment.
                         </p>
                       )}
+                      {nonGrouped.length > 0 && (
                       <div style={{ border: '1px solid #DDE8EE', overflow: 'hidden' }}>
-                        {allItems.map((item, i) => {
+                        {nonGrouped.map(({ item, i }, rowIdx) => {
                           const isOptional = !!(item as any).optional;
                           const isSelected = selectedOptionalItems.has(i);
-                          const rowBg = isOptional ? (isSelected ? '#FFFBEB' : '#FAFAFA') : (i % 2 === 0 ? 'white' : '#F9FAFB');
+                          const rowBg = isOptional ? (isSelected ? '#FFFBEB' : '#FAFAFA') : (rowIdx % 2 === 0 ? 'white' : '#F9FAFB');
                           return (
                             <div
                               key={i}
@@ -900,7 +914,7 @@ export default function ProposalView() {
                               style={{
                                 display: 'grid', gridTemplateColumns: '1fr 110px', alignItems: 'center',
                                 padding: '12px 20px',
-                                borderBottom: i < allItems.length - 1 ? '1px solid #DDE8EE' : 'none',
+                                borderBottom: rowIdx < nonGrouped.length - 1 ? '1px solid #DDE8EE' : 'none',
                                 gap: 16, background: rowBg,
                                 cursor: isOptional ? 'pointer' : 'default',
                                 opacity: isOptional && !isSelected ? 0.7 : 1,
@@ -944,6 +958,61 @@ export default function ProposalView() {
                           );
                         })}
                       </div>
+                      )}
+                      {groupOrder.map(g => (
+                        <div key={g} style={{ marginTop: nonGrouped.length > 0 ? 18 : 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: '#3A6278', marginBottom: 8 }}>
+                            Choose your option <span style={{ fontWeight: 500, color: '#9CA3AF' }}>· {g} · pick one or none</span>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${Math.min(groups[g].length, 2)}, 1fr)`, gap: 2, background: '#DDE8EE' }}>
+                            {groups[g].map(({ item, i }) => {
+                              const isSelected = selectedOptionalItems.has(i);
+                              return (
+                                <div
+                                  key={i}
+                                  onClick={() => {
+                                    setSelectedOptionalItems(prev => {
+                                      const next = new Set(prev);
+                                      const wasSelected = next.has(i);
+                                      // Mutually exclusive: clear the rest of the group, then toggle this one.
+                                      groups[g].forEach(({ i: gi }) => next.delete(gi));
+                                      if (!wasSelected) next.add(i);
+                                      return next;
+                                    });
+                                  }}
+                                  style={{
+                                    background: isSelected ? '#F0FAFF' : 'white',
+                                    padding: '20px 18px', cursor: 'pointer', transition: 'background .2s',
+                                    border: isSelected ? '2px solid #009FE3' : '2px solid transparent',
+                                    position: 'relative' as const,
+                                  }}
+                                >
+                                  <div style={{
+                                    width: 20, height: 20, border: isSelected ? 'none' : '2px solid #DDE8EE', borderRadius: '50%',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10,
+                                    background: isSelected ? '#009FE3' : 'transparent',
+                                    color: isSelected ? 'white' : 'transparent',
+                                    marginBottom: 10, transition: 'all .2s',
+                                  }}>✓</div>
+                                  {item.type && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 6 }}>{item.type}</div>}
+                                  <div style={{ fontSize: 15, fontWeight: 800, color: '#043D5D', marginBottom: 6 }}>{item.name}</div>
+                                  {item.discounted_price != null && item.discounted_price < item.price ? (
+                                    <>
+                                      <div style={{ fontSize: 14, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through', lineHeight: 1, marginBottom: 2 }}>£{Number(item.price).toLocaleString('en-GB')}</div>
+                                      <div style={{ fontSize: 24, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>£{Number(item.discounted_price).toLocaleString('en-GB')}</div>
+                                      {(item as any).show_discount_percent !== false && <div style={{ display: 'inline-block', fontSize: 9, fontWeight: 700, color: '#22C55E', background: '#F0FDF4', padding: '2px 6px', marginBottom: 4 }}>Save {Math.round(((item.price - item.discounted_price) / item.price) * 100)}%</div>}
+                                      {(item as any).discount_note && <div style={{ fontSize: 10, color: '#6B7280', fontStyle: 'italic', marginBottom: 4 }}>{(item as any).discount_note}</div>}
+                                    </>
+                                  ) : (
+                                    <div style={{ fontSize: 24, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>£{Number(item.price).toLocaleString('en-GB')}</div>
+                                  )}
+                                  {(item as any).description && <div style={{ fontSize: 12, color: '#3A6278', marginTop: 6 }}>{(item as any).description}</div>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </>
                   );
                 })()}
@@ -951,7 +1020,7 @@ export default function ProposalView() {
                   <div>
                     <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)' }}>Total one-time investment</span>
                     {optionalUpfrontAddOn > 0 && (
-                      <div style={{ fontSize: 10, color: '#FCD34D', marginTop: 2 }}>Includes £{optionalUpfrontAddOn.toLocaleString('en-GB')} of optional items</div>
+                      <div style={{ fontSize: 10, color: '#FCD34D', marginTop: 2 }}>Includes £{optionalUpfrontAddOn.toLocaleString('en-GB')} of selected options</div>
                     )}
                   </div>
                   <strong style={{ fontSize: 20, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em', transition: 'all .3s' }}>£{displayUpfrontTotal.toLocaleString('en-GB')} + VAT @ 20%</strong>
@@ -1455,7 +1524,7 @@ export default function ProposalView() {
             </button>
             <button
               className="cta-pulse"
-              onClick={() => navigate(`/p/${slug}/accept?standard=${selectedStandard}&extras=${[...checkedExtras].join(',')}&pricing=${selectedPricingOption}`)}
+              onClick={() => navigate(`/p/${slug}/accept?standard=${selectedStandard}&extras=${[...checkedExtras].join(',')}&pricing=${selectedPricingOption}&upfront=${[...selectedOptionalItems].join(',')}`)}
               style={{ background: '#009FE3', color: 'white', fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' as const, padding: '9px 18px', border: 'none', cursor: 'pointer' }}
             >
               Sign agreement →
