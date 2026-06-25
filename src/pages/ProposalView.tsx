@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Proposal, Challenge, Phase, RetainerOption, UpfrontItem, TeamMember, SaasConfig, SaasTier } from "@/types/proposal";
-import { computeUpfrontTotal, isChoiceGroupItem } from "@/types/proposal";
+import { computeUpfrontTotal, isChoiceGroupItem, resolveUpfrontSections, groupItemsBySection, computeSectionTotal } from "@/types/proposal";
 import { isProposalExpired } from "@/lib/proposalStatus";
 
 const ShootHillMark = () => (
@@ -329,6 +329,150 @@ export default function ProposalView() {
   // Shoothill contact (proposal owner) — extract name only from "First Last, Job Title"
   const ownerName = proposal.prepared_by ? proposal.prepared_by.split(',')[0].trim() : '';
   const ownerPhone = proposal.contact_mobile || proposal.contact_phone || '';
+
+  const renderUpfrontTable = (entries: { item: UpfrontItem; i: number }[]) => {
+    const nonGrouped = entries.filter(({ item }) => !isChoiceGroupItem(item));
+    const hasOptional = nonGrouped.some(({ item }) => (item as any).optional);
+
+    // Ordered choice groups (by first appearance), each with its members.
+    const groupOrder: string[] = [];
+    const groups: Record<string, { item: UpfrontItem; i: number }[]> = {};
+    entries.forEach(({ item, i }) => {
+      if (!isChoiceGroupItem(item)) return;
+      const g = item.choice_group!.trim();
+      if (!groups[g]) { groups[g] = []; groupOrder.push(g); }
+      groups[g].push({ item, i });
+    });
+
+    return (
+      <>
+        {hasOptional && (
+          <p style={{ fontSize: 12, color: '#3A6278', marginBottom: 12, marginTop: 0 }}>
+            Items marked <strong style={{ color: '#B45309' }}>Optional</strong> are not included by default — select them to add to your investment.
+          </p>
+        )}
+        {nonGrouped.length > 0 && (
+        <div style={{ border: '1px solid #DDE8EE', overflow: 'hidden' }}>
+          {nonGrouped.map(({ item, i }, rowIdx) => {
+            const isOptional = !!(item as any).optional;
+            const isSelected = selectedOptionalItems.has(i);
+            const rowBg = isOptional ? (isSelected ? '#FFFBEB' : '#FAFAFA') : (rowIdx % 2 === 0 ? 'white' : '#F9FAFB');
+            return (
+              <div
+                key={i}
+                onClick={() => {
+                  if (!isOptional) return;
+                  setSelectedOptionalItems(prev => {
+                    const next = new Set(prev);
+                    if (next.has(i)) next.delete(i); else next.add(i);
+                    return next;
+                  });
+                }}
+                style={{
+                  display: 'grid', gridTemplateColumns: '1fr 110px', alignItems: 'center',
+                  padding: '12px 20px',
+                  borderBottom: rowIdx < nonGrouped.length - 1 ? '1px solid #DDE8EE' : 'none',
+                  gap: 16, background: rowBg,
+                  cursor: isOptional ? 'pointer' : 'default',
+                  opacity: isOptional && !isSelected ? 0.7 : 1,
+                  transition: 'all .2s',
+                  outline: isOptional && isSelected ? '2px solid #F59E0B' : isOptional ? '1px dashed #D1D5DB' : 'none',
+                  outlineOffset: -1,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  {isOptional && (
+                    <div style={{
+                      width: 18, height: 18, border: isSelected ? 'none' : '2px solid #D1D5DB', borderRadius: 4,
+                      background: isSelected ? '#F59E0B' : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 10, color: 'white', fontWeight: 800, flexShrink: 0, marginTop: 2,
+                      transition: 'all .2s',
+                    }}>{isSelected ? '✓' : ''}</div>
+                  )}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                      {item.type && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#009FE3' }}>{item.type}</div>}
+                      {isOptional && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: '#B45309', background: '#FEF3C7', padding: '1px 5px', border: '1px solid #FCD34D' }}>Optional</div>}
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>{item.name}</div>
+                    {(item as any).description && <div style={{ fontSize: 11, color: '#AAAAAA', marginTop: 2 }}>{(item as any).description}</div>}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' as const }}>
+                  {item.discounted_price != null && item.discounted_price < item.price ? (
+                    <>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through' }}>£{Number(item.price).toLocaleString('en-GB')}</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: isOptional ? (isSelected ? '#B45309' : '#9CA3AF') : '#009FE3' }}>£{Number(item.discounted_price).toLocaleString('en-GB')}</div>
+                      {(item as any).show_discount_percent !== false && <div style={{ fontSize: 9, fontWeight: 700, color: '#22C55E', marginTop: 1 }}>Save {Math.round(((item.price - item.discounted_price) / item.price) * 100)}%</div>}
+                      {(item as any).discount_note && <div style={{ fontSize: 10, color: '#6B7280', fontStyle: 'italic', marginTop: 2 }}>{(item as any).discount_note}</div>}
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 15, fontWeight: 800, color: isOptional ? (isSelected ? '#B45309' : '#9CA3AF') : '#043D5D' }}>£{Number(item.price).toLocaleString('en-GB')}</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        )}
+        {groupOrder.map(g => (
+          <div key={g} style={{ marginTop: nonGrouped.length > 0 ? 18 : 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#3A6278', marginBottom: 8 }}>
+              Choose your option <span style={{ fontWeight: 500, color: '#9CA3AF' }}>· {g} · pick one or none</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${Math.min(groups[g].length, 2)}, 1fr)`, gap: 2, background: '#DDE8EE' }}>
+              {groups[g].map(({ item, i }) => {
+                const isSelected = selectedOptionalItems.has(i);
+                return (
+                  <div
+                    key={i}
+                    onClick={() => {
+                      setSelectedOptionalItems(prev => {
+                        const next = new Set(prev);
+                        const wasSelected = next.has(i);
+                        // Mutually exclusive: clear the rest of the group, then toggle this one.
+                        groups[g].forEach(({ i: gi }) => next.delete(gi));
+                        if (!wasSelected) next.add(i);
+                        return next;
+                      });
+                    }}
+                    style={{
+                      background: isSelected ? '#F0FAFF' : 'white',
+                      padding: '20px 18px', cursor: 'pointer', transition: 'background .2s',
+                      border: isSelected ? '2px solid #009FE3' : '2px solid transparent',
+                      position: 'relative' as const,
+                    }}
+                  >
+                    <div style={{
+                      width: 20, height: 20, border: isSelected ? 'none' : '2px solid #DDE8EE', borderRadius: '50%',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10,
+                      background: isSelected ? '#009FE3' : 'transparent',
+                      color: isSelected ? 'white' : 'transparent',
+                      marginBottom: 10, transition: 'all .2s',
+                    }}>✓</div>
+                    {item.type && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 6 }}>{item.type}</div>}
+                    <div style={{ fontSize: 15, fontWeight: 800, color: '#043D5D', marginBottom: 6 }}>{item.name}</div>
+                    {item.discounted_price != null && item.discounted_price < item.price ? (
+                      <>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through', lineHeight: 1, marginBottom: 2 }}>£{Number(item.price).toLocaleString('en-GB')}</div>
+                        <div style={{ fontSize: 24, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>£{Number(item.discounted_price).toLocaleString('en-GB')}</div>
+                        {(item as any).show_discount_percent !== false && <div style={{ display: 'inline-block', fontSize: 9, fontWeight: 700, color: '#22C55E', background: '#F0FDF4', padding: '2px 6px', marginBottom: 4 }}>Save {Math.round(((item.price - item.discounted_price) / item.price) * 100)}%</div>}
+                        {(item as any).discount_note && <div style={{ fontSize: 10, color: '#6B7280', fontStyle: 'italic', marginBottom: 4 }}>{(item as any).discount_note}</div>}
+                      </>
+                    ) : (
+                      <div style={{ fontSize: 24, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>£{Number(item.price).toLocaleString('en-GB')}</div>
+                    )}
+                    {(item as any).description && <div style={{ fontSize: 12, color: '#3A6278', marginTop: 6 }}>{(item as any).description}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </>
+    );
+  };
 
   return (
     <div className="print-bg-white" style={{ background: '#F4F7FA', color: '#1A2E3B', fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.7 }}>
@@ -834,163 +978,45 @@ export default function ProposalView() {
             {/* Traditional pricing view */}
             {((proposal as any).pricing_model !== 'dual' || selectedPricingOption === 'traditional') && <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
               {/* Upfront */}
-              {(proposal.upfront_items || []).length > 0 && <div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 16 }}>{(proposal as any).upfront_section_title || 'Part 1: One-time project delivery'}</div>
-                {/* Upfront items table */}
-                {(() => {
-                  const allItems = proposal.upfront_items || [];
-                  const nonGrouped = allItems.map((item, i) => ({ item, i })).filter(({ item }) => !isChoiceGroupItem(item));
-                  const hasOptional = nonGrouped.some(({ item }) => (item as any).optional);
-
-                  // Ordered choice groups (by first appearance), each with its members.
-                  const groupOrder: string[] = [];
-                  const groups: Record<string, { item: UpfrontItem; i: number }[]> = {};
-                  allItems.forEach((item, i) => {
-                    if (!isChoiceGroupItem(item)) return;
-                    const g = item.choice_group!.trim();
-                    if (!groups[g]) { groups[g] = []; groupOrder.push(g); }
-                    groups[g].push({ item, i });
-                  });
-
-                  return (
-                    <>
-                      {hasOptional && (
-                        <p style={{ fontSize: 12, color: '#3A6278', marginBottom: 12, marginTop: 0 }}>
-                          Items marked <strong style={{ color: '#B45309' }}>Optional</strong> are not included by default — select them to add to your investment.
-                        </p>
-                      )}
-                      {nonGrouped.length > 0 && (
-                      <div style={{ border: '1px solid #DDE8EE', overflow: 'hidden' }}>
-                        {nonGrouped.map(({ item, i }, rowIdx) => {
-                          const isOptional = !!(item as any).optional;
-                          const isSelected = selectedOptionalItems.has(i);
-                          const rowBg = isOptional ? (isSelected ? '#FFFBEB' : '#FAFAFA') : (rowIdx % 2 === 0 ? 'white' : '#F9FAFB');
-                          return (
-                            <div
-                              key={i}
-                              onClick={() => {
-                                if (!isOptional) return;
-                                setSelectedOptionalItems(prev => {
-                                  const next = new Set(prev);
-                                  if (next.has(i)) next.delete(i); else next.add(i);
-                                  return next;
-                                });
-                              }}
-                              style={{
-                                display: 'grid', gridTemplateColumns: '1fr 110px', alignItems: 'center',
-                                padding: '12px 20px',
-                                borderBottom: rowIdx < nonGrouped.length - 1 ? '1px solid #DDE8EE' : 'none',
-                                gap: 16, background: rowBg,
-                                cursor: isOptional ? 'pointer' : 'default',
-                                opacity: isOptional && !isSelected ? 0.7 : 1,
-                                transition: 'all .2s',
-                                outline: isOptional && isSelected ? '2px solid #F59E0B' : isOptional ? '1px dashed #D1D5DB' : 'none',
-                                outlineOffset: -1,
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                                {isOptional && (
-                                  <div style={{
-                                    width: 18, height: 18, border: isSelected ? 'none' : '2px solid #D1D5DB', borderRadius: 4,
-                                    background: isSelected ? '#F59E0B' : 'transparent',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: 10, color: 'white', fontWeight: 800, flexShrink: 0, marginTop: 2,
-                                    transition: 'all .2s',
-                                  }}>{isSelected ? '✓' : ''}</div>
-                                )}
-                                <div>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                                    {item.type && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#009FE3' }}>{item.type}</div>}
-                                    {isOptional && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: '#B45309', background: '#FEF3C7', padding: '1px 5px', border: '1px solid #FCD34D' }}>Optional</div>}
-                                  </div>
-                                  <div style={{ fontSize: 13, fontWeight: 700, color: '#043D5D' }}>{item.name}</div>
-                                  {(item as any).description && <div style={{ fontSize: 11, color: '#AAAAAA', marginTop: 2 }}>{(item as any).description}</div>}
-                                </div>
-                              </div>
-                              <div style={{ textAlign: 'right' as const }}>
-                                {item.discounted_price != null && item.discounted_price < item.price ? (
-                                  <>
-                                    <div style={{ fontSize: 12, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through' }}>£{Number(item.price).toLocaleString('en-GB')}</div>
-                                    <div style={{ fontSize: 15, fontWeight: 800, color: isOptional ? (isSelected ? '#B45309' : '#9CA3AF') : '#009FE3' }}>£{Number(item.discounted_price).toLocaleString('en-GB')}</div>
-                                    {(item as any).show_discount_percent !== false && <div style={{ fontSize: 9, fontWeight: 700, color: '#22C55E', marginTop: 1 }}>Save {Math.round(((item.price - item.discounted_price) / item.price) * 100)}%</div>}
-                                    {(item as any).discount_note && <div style={{ fontSize: 10, color: '#6B7280', fontStyle: 'italic', marginTop: 2 }}>{(item as any).discount_note}</div>}
-                                  </>
-                                ) : (
-                                  <div style={{ fontSize: 15, fontWeight: 800, color: isOptional ? (isSelected ? '#B45309' : '#9CA3AF') : '#043D5D' }}>£{Number(item.price).toLocaleString('en-GB')}</div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      )}
-                      {groupOrder.map(g => (
-                        <div key={g} style={{ marginTop: nonGrouped.length > 0 ? 18 : 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: '#3A6278', marginBottom: 8 }}>
-                            Choose your option <span style={{ fontWeight: 500, color: '#9CA3AF' }}>· {g} · pick one or none</span>
+              {(proposal.upfront_items || []).length > 0 && (() => {
+                const upfrontSections = resolveUpfrontSections(
+                  (proposal as any).upfront_sections,
+                  (proposal as any).upfront_section_title,
+                  (proposal as any).upfront_notes,
+                );
+                const grouped = groupItemsBySection(proposal.upfront_items, upfrontSections);
+                return (
+                  <>
+                    {upfrontSections.map(section => {
+                      const entries = grouped.get(section.id) || [];
+                      if (entries.length === 0) return null;
+                      const subtotal = computeSectionTotal(proposal.upfront_items, upfrontSections, section.id, selectedOptionalItems);
+                      return (
+                        <div key={section.id}>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: '#043D5D', letterSpacing: '.04em', textTransform: 'uppercase' as const, paddingBottom: 8, borderBottom: '2px solid #043D5D', marginBottom: 16 }}>{section.title || 'One-time project delivery'}</div>
+                          {renderUpfrontTable(entries)}
+                          <div style={{ background: '#F0F5F8', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: '#3A6278' }}>Section subtotal</span>
+                            <strong style={{ fontSize: 15, fontWeight: 800, color: '#043D5D' }}>£{subtotal.toLocaleString('en-GB')}</strong>
                           </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${Math.min(groups[g].length, 2)}, 1fr)`, gap: 2, background: '#DDE8EE' }}>
-                            {groups[g].map(({ item, i }) => {
-                              const isSelected = selectedOptionalItems.has(i);
-                              return (
-                                <div
-                                  key={i}
-                                  onClick={() => {
-                                    setSelectedOptionalItems(prev => {
-                                      const next = new Set(prev);
-                                      const wasSelected = next.has(i);
-                                      // Mutually exclusive: clear the rest of the group, then toggle this one.
-                                      groups[g].forEach(({ i: gi }) => next.delete(gi));
-                                      if (!wasSelected) next.add(i);
-                                      return next;
-                                    });
-                                  }}
-                                  style={{
-                                    background: isSelected ? '#F0FAFF' : 'white',
-                                    padding: '20px 18px', cursor: 'pointer', transition: 'background .2s',
-                                    border: isSelected ? '2px solid #009FE3' : '2px solid transparent',
-                                    position: 'relative' as const,
-                                  }}
-                                >
-                                  <div style={{
-                                    width: 20, height: 20, border: isSelected ? 'none' : '2px solid #DDE8EE', borderRadius: '50%',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10,
-                                    background: isSelected ? '#009FE3' : 'transparent',
-                                    color: isSelected ? 'white' : 'transparent',
-                                    marginBottom: 10, transition: 'all .2s',
-                                  }}>✓</div>
-                                  {item.type && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 6 }}>{item.type}</div>}
-                                  <div style={{ fontSize: 15, fontWeight: 800, color: '#043D5D', marginBottom: 6 }}>{item.name}</div>
-                                  {item.discounted_price != null && item.discounted_price < item.price ? (
-                                    <>
-                                      <div style={{ fontSize: 14, fontWeight: 600, color: '#AAAAAA', textDecoration: 'line-through', lineHeight: 1, marginBottom: 2 }}>£{Number(item.price).toLocaleString('en-GB')}</div>
-                                      <div style={{ fontSize: 24, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>£{Number(item.discounted_price).toLocaleString('en-GB')}</div>
-                                      {(item as any).show_discount_percent !== false && <div style={{ display: 'inline-block', fontSize: 9, fontWeight: 700, color: '#22C55E', background: '#F0FDF4', padding: '2px 6px', marginBottom: 4 }}>Save {Math.round(((item.price - item.discounted_price) / item.price) * 100)}%</div>}
-                                      {(item as any).discount_note && <div style={{ fontSize: 10, color: '#6B7280', fontStyle: 'italic', marginBottom: 4 }}>{(item as any).discount_note}</div>}
-                                    </>
-                                  ) : (
-                                    <div style={{ fontSize: 24, fontWeight: 900, color: '#043D5D', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 4 }}>£{Number(item.price).toLocaleString('en-GB')}</div>
-                                  )}
-                                  {(item as any).description && <div style={{ fontSize: 12, color: '#3A6278', marginTop: 6 }}>{(item as any).description}</div>}
-                                </div>
-                              );
-                            })}
-                          </div>
+                          {section.notes && (
+                            <p style={{ fontSize: 11, color: '#AAAAAA', marginTop: 8, marginBottom: 0 }}>{section.notes}</p>
+                          )}
                         </div>
-                      ))}
-                    </>
-                  );
-                })()}
-                <div style={{ background: '#043D5D', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
-                  <div>
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)' }}>Total one-time investment</span>
-                    {optionalUpfrontAddOn > 0 && (
-                      <div style={{ fontSize: 10, color: '#FCD34D', marginTop: 2 }}>Includes £{optionalUpfrontAddOn.toLocaleString('en-GB')} of selected options</div>
-                    )}
-                  </div>
-                  <strong style={{ fontSize: 20, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em', transition: 'all .3s' }}>£{displayUpfrontTotal.toLocaleString('en-GB')} + VAT @ 20%</strong>
-                </div>
-              </div>}
+                      );
+                    })}
+                    <div style={{ background: '#043D5D', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                      <div>
+                        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)' }}>Total one-time investment</span>
+                        {optionalUpfrontAddOn > 0 && (
+                          <div style={{ fontSize: 10, color: '#FCD34D', marginTop: 2 }}>Includes £{optionalUpfrontAddOn.toLocaleString('en-GB')} of selected options</div>
+                        )}
+                      </div>
+                      <strong style={{ fontSize: 20, fontWeight: 900, color: '#009FE3', letterSpacing: '-.03em', transition: 'all .3s' }}>£{displayUpfrontTotal.toLocaleString('en-GB')} + VAT @ 20%</strong>
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Core ongoing options — always included, not selectable */}
               {coreOptions.length > 0 && (
