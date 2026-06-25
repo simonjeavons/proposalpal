@@ -84,6 +84,8 @@ export function UpfrontItemCard({
   hideDiscountPrice = false,
   onSaveToLibrary,
 }: UpfrontItemCardProps) {
+  // Effective service tag for this item: explicit choice if made, else derived
+  // from the selected product, else undefined (nothing chosen yet).
   const effectiveTag: string | null | undefined = enableServiceTagPicker
     ? (item.service_type_id !== undefined
         ? item.service_type_id
@@ -92,9 +94,9 @@ export function UpfrontItemCard({
   const solutionUnder = (p: Product) => {
     if (!p.is_upfront) return false;
     if (!enableServiceTagPicker) return !p.service_type_id || p.service_type_id === currentServiceTypeId;
-    if (effectiveTag === undefined) return false;
-    if (effectiveTag === null) return !p.service_type_id;
-    return p.service_type_id === effectiveTag || !p.service_type_id;
+    if (effectiveTag === undefined) return false;        // pick a service first
+    if (effectiveTag === null) return !p.service_type_id; // Universal only
+    return p.service_type_id === effectiveTag || !p.service_type_id; // tag + universal
   };
   const solutionOptions = products.filter(solutionUnder);
   const changeTag = (v: string) => {
