@@ -741,7 +741,7 @@ export function ProposalPDF({
                 const subtotal = entries.reduce((s, { item }) => s + (item.discounted_price ?? item.price), 0);
                 return (
                   <View key={section.id} wrap={false}>
-                    <Text style={styles.subHead}>{section.title || 'Upfront investment'}</Text>
+                    <Text style={styles.subHead}>{section.title || 'One-time project delivery'}</Text>
                     {entries.map(({ item, i }) => {
                       const price = item.discounted_price ?? item.price;
                       return (
