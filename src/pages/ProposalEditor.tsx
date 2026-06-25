@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import type { Challenge, Phase, RetainerOption, UpfrontItem, SaasConfig } from "@/types/proposal";
+import type { Challenge, Phase, RetainerOption, UpfrontItem, UpfrontSection, SaasConfig } from "@/types/proposal";
 import { DEFAULT_CHALLENGES, DEFAULT_PHASES, DEFAULT_RETAINER_OPTIONS, DEFAULT_SAAS_SELLING_POINTS, computeUpfrontTotal } from "@/types/proposal";
 import SaasConfigEditor from "@/components/SaasConfigEditor";
 import ViewHistoryPanel from "@/components/ViewHistoryPanel";
@@ -17,7 +17,8 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
-import { UpfrontItemsEditor } from "@/components/UpfrontItemsEditor";
+import { UpfrontSectionsEditor } from "@/components/UpfrontSectionsEditor";
+import type { UpfrontModel } from "@/lib/upfrontSections";
 import { RetainerOptionsEditor } from "@/components/RetainerOptionsEditor";
 
 interface UserProfile {
@@ -87,6 +88,7 @@ interface FormData {
   upfront_items: UpfrontItem[];
   upfront_notes: string;
   upfront_section_title: string;
+  upfront_sections: UpfrontSection[];
   core_section_title: string;
   ongoing_section_title: string;
   retainer_options: RetainerOption[];
@@ -190,6 +192,7 @@ export default function ProposalEditor() {
     upfront_items: [],
     upfront_notes: '',
     upfront_section_title: '',
+    upfront_sections: [{ id: 'default', title: '' }],
     core_section_title: '',
     ongoing_section_title: '',
     retainer_options: [...DEFAULT_RETAINER_OPTIONS],
@@ -279,9 +282,20 @@ export default function ProposalEditor() {
             challenge_intro: data.challenge_intro,
             challenges: (data.challenges || []) as unknown as Challenge[],
             phases: ((data.phases as any[]) || []).map(p => ({ ...p, price: String(p.price || '').replace(/^£/, '').replace(/,/g, '') })) as Phase[],
-            upfront_items: ((data as any).upfront_items || []) as UpfrontItem[],
-            upfront_notes: (data as any).upfront_notes || '',
-            upfront_section_title: (data as any).upfront_section_title || '',
+            ...(() => {
+              const loadedItems = ((data as any).upfront_items || []) as UpfrontItem[];
+              const loadedSections = ((data as any).upfront_sections as UpfrontSection[]) || [];
+              const resolved = loadedSections.length > 0
+                ? loadedSections
+                : [{ id: 'default', title: (data as any).upfront_section_title || '', notes: (data as any).upfront_notes || undefined }];
+              const firstId = resolved[0].id;
+              return {
+                upfront_items: loadedItems.map(it => (it.section_id ? it : { ...it, section_id: firstId })),
+                upfront_sections: resolved,
+                upfront_notes: (data as any).upfront_notes || '',
+                upfront_section_title: (data as any).upfront_section_title || '',
+              };
+            })(),
             core_section_title: (data as any).core_section_title || '',
             ongoing_section_title: (data as any).ongoing_section_title || '',
             retainer_options: (data.retainer_options || []) as unknown as RetainerOption[],
@@ -326,6 +340,8 @@ export default function ProposalEditor() {
       // Base total = always-included items only (optional/choice-group items are added
       // when the client selects them in the customer view).
       upfront_total: computeUpfrontTotal(form.upfront_items),
+      // Legacy single-title mirror for back-compat (customer-view summary label).
+      upfront_section_title: form.upfront_sections[0]?.title ?? form.upfront_section_title,
       contract_file_url: contractFileUrl,
       client_logo_url: clientLogoUrl,
       prepared_by_user_id: form.prepared_by_user_id || null,
@@ -855,13 +871,12 @@ export default function ProposalEditor() {
         )}
 
         {/* Upfront Items */}
-        <UpfrontItemsEditor
+        <UpfrontSectionsEditor
           items={form.upfront_items}
-          onChange={v => updateField('upfront_items', v)}
+          sections={form.upfront_sections}
+          onChange={(model: UpfrontModel) => setForm(prev => ({ ...prev, upfront_items: model.items, upfront_sections: model.sections }))}
           products={products}
           currentServiceTypeId={currentServiceTypeId}
-          sectionTitle={form.upfront_section_title}
-          onSectionTitleChange={v => updateField('upfront_section_title', v)}
           onSaveToLibrary={(name, price, desc) => saveItemToLibrary(name, price, desc, 'upfront')}
         />
 
