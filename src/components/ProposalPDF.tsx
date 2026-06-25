@@ -1,7 +1,7 @@
 import { Document, Image, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { SHOOTHILL_LOGO_URI } from './ServiceAgreementPDF';
 import { SHOOTHILL_WHITE_LOGO_URI } from './shoothillWhiteLogo';
-import { DEFAULT_SAAS_SELLING_POINTS, isChoiceGroupItem, type Proposal, type RetainerOption, type UpfrontItem } from '@/types/proposal';
+import { DEFAULT_SAAS_SELLING_POINTS, isChoiceGroupItem, resolveUpfrontSections, groupItemsBySection, type Proposal, type RetainerOption, type UpfrontItem } from '@/types/proposal';
 
 const NAVY = '#043D5D';
 const BLUE = '#009FE3';
@@ -726,19 +726,39 @@ export function ProposalPDF({
 
         {allUpfrontItems.length > 0 ? (
           <View>
-            <Text style={styles.subHead}>Upfront investment</Text>
-            {allUpfrontItems.map((item, i) => {
-              const price = item.discounted_price ?? item.price;
-              return (
-                <View key={i} style={styles.tableRow}>
-                  <Text style={styles.tableDesc}>
-                    {item.name}
-                    {item.discount_note ? ` (${item.discount_note})` : ''}
-                  </Text>
-                  <Text style={styles.tableAmt}>{fmt(price)}</Text>
-                </View>
+            {(() => {
+              const upfrontSections = resolveUpfrontSections(
+                proposal.upfront_sections,
+                proposal.upfront_section_title,
               );
-            })}
+              const grouped = groupItemsBySection(allUpfrontItems, upfrontSections);
+              return upfrontSections.map(section => {
+                const entries = grouped.get(section.id) || [];
+                if (entries.length === 0) return null;
+                const subtotal = entries.reduce((s, { item }) => s + (item.discounted_price ?? item.price), 0);
+                return (
+                  <View key={section.id} wrap={false}>
+                    <Text style={styles.subHead}>{section.title || 'Upfront investment'}</Text>
+                    {entries.map(({ item, i }) => {
+                      const price = item.discounted_price ?? item.price;
+                      return (
+                        <View key={i} style={styles.tableRow}>
+                          <Text style={styles.tableDesc}>
+                            {item.name}
+                            {item.discount_note ? ` (${item.discount_note})` : ''}
+                          </Text>
+                          <Text style={styles.tableAmt}>{fmt(price)}</Text>
+                        </View>
+                      );
+                    })}
+                    <View style={styles.tableRow}>
+                      <Text style={styles.tableDescBold}>Section subtotal</Text>
+                      <Text style={styles.tableAmtBold}>{fmt(subtotal)}</Text>
+                    </View>
+                  </View>
+                );
+              });
+            })()}
             <View style={styles.tableRow}>
               <Text style={styles.tableDescBold}>Upfront total</Text>
               <Text style={styles.tableAmtBold}>{fmt(displayUpfrontTotal)}</Text>

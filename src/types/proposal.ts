@@ -204,6 +204,7 @@ export interface Proposal {
   upfront_items: UpfrontItem[];
   upfront_total: number;
   upfront_sections?: UpfrontSection[];
+  upfront_section_title?: string;
   retainer_options: RetainerOption[];
   contact_name: string;
   contact_email: string;
