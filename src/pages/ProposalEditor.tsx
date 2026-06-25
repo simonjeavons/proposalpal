@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Challenge, Phase, RetainerOption, UpfrontItem, UpfrontSection, SaasConfig } from "@/types/proposal";
-import { DEFAULT_CHALLENGES, DEFAULT_PHASES, DEFAULT_RETAINER_OPTIONS, DEFAULT_SAAS_SELLING_POINTS, computeUpfrontTotal } from "@/types/proposal";
+import { DEFAULT_CHALLENGES, DEFAULT_PHASES, DEFAULT_RETAINER_OPTIONS, DEFAULT_SAAS_SELLING_POINTS, computeUpfrontTotal, resolveUpfrontSections } from "@/types/proposal";
 import SaasConfigEditor from "@/components/SaasConfigEditor";
 import ViewHistoryPanel from "@/components/ViewHistoryPanel";
 import { Button } from "@/components/ui/button";
@@ -284,10 +284,11 @@ export default function ProposalEditor() {
             phases: ((data.phases as any[]) || []).map(p => ({ ...p, price: String(p.price || '').replace(/^£/, '').replace(/,/g, '') })) as Phase[],
             ...(() => {
               const loadedItems = ((data as any).upfront_items || []) as UpfrontItem[];
-              const loadedSections = ((data as any).upfront_sections as UpfrontSection[]) || [];
-              const resolved = loadedSections.length > 0
-                ? loadedSections
-                : [{ id: 'default', title: (data as any).upfront_section_title || '', notes: (data as any).upfront_notes || undefined }];
+              const resolved = resolveUpfrontSections(
+                (data as any).upfront_sections,
+                (data as any).upfront_section_title,
+                (data as any).upfront_notes,
+              );
               const firstId = resolved[0].id;
               return {
                 upfront_items: loadedItems.map(it => (it.section_id ? it : { ...it, section_id: firstId })),
