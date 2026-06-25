@@ -71,19 +71,20 @@ export interface UpfrontSection {
 
 /**
  * Sections to render for a proposal. Falls back to a single synthesized section
- * built from the legacy upfront_section_title / upfront_notes when no explicit
- * sections are stored (backward compatibility with pre-sections proposals).
+ * built from the legacy upfront_section_title when no explicit sections are stored
+ * (backward compatibility with pre-sections proposals). The proposal-wide
+ * upfront_notes pricing footnote is intentionally NOT copied into the section's
+ * footnote — it renders separately in the details band, so seeding it here would
+ * make it appear twice on legacy proposals.
  */
 export function resolveUpfrontSections(
   sections: UpfrontSection[] | null | undefined,
   legacyTitle?: string | null,
-  legacyNotes?: string | null,
 ): UpfrontSection[] {
   if (sections && sections.length > 0) return sections;
   return [{
     id: 'default',
     title: (legacyTitle && legacyTitle.trim()) ? legacyTitle : DEFAULT_UPFRONT_SECTION_TITLE,
-    notes: legacyNotes || undefined,
   }];
 }
 

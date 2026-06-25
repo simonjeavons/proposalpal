@@ -78,16 +78,18 @@ const section = (over: Partial<UpfrontSection>): UpfrontSection => ({ id: "s", t
 describe("resolveUpfrontSections", () => {
   it("returns stored sections when present", () => {
     const secs = [section({ id: "a", title: "A" })];
-    expect(resolveUpfrontSections(secs, "Legacy", "note")).toBe(secs);
+    expect(resolveUpfrontSections(secs, "Legacy")).toBe(secs);
   });
 
-  it("synthesizes one section from the legacy title/notes when none stored", () => {
-    const out = resolveUpfrontSections([], "Legacy title", "Legacy note");
-    expect(out).toEqual([{ id: "default", title: "Legacy title", notes: "Legacy note" }]);
+  it("synthesizes one section from the legacy title (no footnote) when none stored", () => {
+    const out = resolveUpfrontSections([], "Legacy title");
+    expect(out).toEqual([{ id: "default", title: "Legacy title" }]);
+    // The proposal-wide upfront_notes must NOT seed the section footnote.
+    expect(out[0].notes).toBeUndefined();
   });
 
   it("falls back to the default title when legacy title is blank", () => {
-    const out = resolveUpfrontSections(null, "", null);
+    const out = resolveUpfrontSections(null, "");
     expect(out[0].title).toBe(DEFAULT_UPFRONT_SECTION_TITLE);
     expect(out[0].notes).toBeUndefined();
   });

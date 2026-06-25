@@ -982,7 +982,6 @@ export default function ProposalView() {
                 const upfrontSections = resolveUpfrontSections(
                   proposal.upfront_sections,
                   (proposal as any).upfront_section_title,
-                  proposal.upfront_notes,
                 );
                 const grouped = groupItemsBySection(proposal.upfront_items, upfrontSections);
                 return (

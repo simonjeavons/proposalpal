@@ -287,7 +287,6 @@ export default function ProposalEditor() {
               const resolved = resolveUpfrontSections(
                 (data as any).upfront_sections,
                 (data as any).upfront_section_title,
-                (data as any).upfront_notes,
               );
               const firstId = resolved[0].id;
               return {
