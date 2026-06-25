@@ -864,7 +864,7 @@ git commit -m "feat(proposals): UpfrontSectionsEditor component"
 import { UpfrontSectionsEditor } from "@/components/UpfrontSectionsEditor";
 import type { UpfrontModel } from "@/lib/upfrontSections";
 ```
-2. Ensure `UpfrontSection` is imported from `@/types/proposal` (add to the existing `@/types/proposal` import alongside `UpfrontItem`).
+2. Ensure `UpfrontSection` and `resolveUpfrontSections` are imported from `@/types/proposal` (add to the existing `@/types/proposal` import alongside `UpfrontItem`).
 3. In the `FormData` interface, after `upfront_section_title: string;` (line 89) add:
 ```tsx
   upfront_sections: UpfrontSection[];
@@ -889,10 +889,13 @@ with:
 ```tsx
             ...(() => {
               const loadedItems = ((data as any).upfront_items || []) as UpfrontItem[];
-              const loadedSections = ((data as any).upfront_sections as UpfrontSection[]) || [];
-              const resolved = loadedSections.length > 0
-                ? loadedSections
-                : [{ id: 'default', title: (data as any).upfront_section_title || '', notes: (data as any).upfront_notes || undefined }];
+              // Reuse the canonical helper so the editor synthesizes sections (and the
+              // blank-title default) identically to the customer view / PDF.
+              const resolved = resolveUpfrontSections(
+                (data as any).upfront_sections,
+                (data as any).upfront_section_title,
+                (data as any).upfront_notes,
+              );
               const firstId = resolved[0].id;
               return {
                 upfront_items: loadedItems.map(it => (it.section_id ? it : { ...it, section_id: firstId })),
