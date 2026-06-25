@@ -17,6 +17,10 @@ export interface UpfrontItem {
   // UI-only: remembers the service tag chosen in the two-step solution picker.
   // null = "Universal" explicitly chosen; undefined = not yet chosen. Ignored by PDF/Word.
   service_type_id?: string | null;
+  // Which upfront section this item belongs to. Items with a missing or unknown
+  // section_id render in the first section. The flat upfront_items array stays
+  // canonical for totals/selection; section_id is only a grouping tag.
+  section_id?: string;
 }
 
 /** Unit price of an upfront item, honouring any discount. */
@@ -53,6 +57,64 @@ export function computeUpfrontTotal(
 ): number {
   return (items || []).reduce(
     (sum, item, i) => (isUpfrontItemIncluded(item, i, selected) ? sum + upfrontItemPrice(item) : sum),
+    0,
+  );
+}
+
+export const DEFAULT_UPFRONT_SECTION_TITLE = 'Part 1: One-time project delivery';
+
+export interface UpfrontSection {
+  id: string;
+  title: string;
+  notes?: string;
+}
+
+/**
+ * Sections to render for a proposal. Falls back to a single synthesized section
+ * built from the legacy upfront_section_title / upfront_notes when no explicit
+ * sections are stored (backward compatibility with pre-sections proposals).
+ */
+export function resolveUpfrontSections(
+  sections: UpfrontSection[] | null | undefined,
+  legacyTitle?: string | null,
+  legacyNotes?: string | null,
+): UpfrontSection[] {
+  if (sections && sections.length > 0) return sections;
+  return [{
+    id: 'default',
+    title: (legacyTitle && legacyTitle.trim()) ? legacyTitle : DEFAULT_UPFRONT_SECTION_TITLE,
+    notes: legacyNotes || undefined,
+  }];
+}
+
+/**
+ * Group flat upfront items by section, preserving each item's global index.
+ * Items whose section_id is missing or matches no section fall into the first section.
+ */
+export function groupItemsBySection(
+  items: UpfrontItem[] | null | undefined,
+  sections: UpfrontSection[],
+): Map<string, { item: UpfrontItem; i: number }[]> {
+  const byId = new Map<string, { item: UpfrontItem; i: number }[]>();
+  sections.forEach(s => byId.set(s.id, []));
+  const firstId = sections[0]?.id;
+  (items || []).forEach((item, i) => {
+    const target = item.section_id && byId.has(item.section_id) ? item.section_id : firstId;
+    if (target != null) byId.get(target)!.push({ item, i });
+  });
+  return byId;
+}
+
+/** Subtotal of included items (always-included + selected) within one section. */
+export function computeSectionTotal(
+  items: UpfrontItem[] | null | undefined,
+  sections: UpfrontSection[],
+  sectionId: string,
+  selected: Set<number> = new Set(),
+): number {
+  const grouped = groupItemsBySection(items, sections);
+  return (grouped.get(sectionId) || []).reduce(
+    (sum, { item, i }) => (isUpfrontItemIncluded(item, i, selected) ? sum + upfrontItemPrice(item) : sum),
     0,
   );
 }
@@ -141,6 +203,7 @@ export interface Proposal {
   phases: Phase[];
   upfront_items: UpfrontItem[];
   upfront_total: number;
+  upfront_sections?: UpfrontSection[];
   retainer_options: RetainerOption[];
   contact_name: string;
   contact_email: string;

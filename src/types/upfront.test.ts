@@ -64,3 +64,71 @@ describe("isUpfrontItemIncluded", () => {
     expect(isUpfrontItemIncluded(item({ choice_group: "g" }), 1, new Set([1]))).toBe(true);
   });
 });
+
+import {
+  resolveUpfrontSections,
+  groupItemsBySection,
+  computeSectionTotal,
+  DEFAULT_UPFRONT_SECTION_TITLE,
+  type UpfrontSection,
+} from "./proposal";
+
+const section = (over: Partial<UpfrontSection>): UpfrontSection => ({ id: "s", title: "", ...over });
+
+describe("resolveUpfrontSections", () => {
+  it("returns stored sections when present", () => {
+    const secs = [section({ id: "a", title: "A" })];
+    expect(resolveUpfrontSections(secs, "Legacy", "note")).toBe(secs);
+  });
+
+  it("synthesizes one section from the legacy title/notes when none stored", () => {
+    const out = resolveUpfrontSections([], "Legacy title", "Legacy note");
+    expect(out).toEqual([{ id: "default", title: "Legacy title", notes: "Legacy note" }]);
+  });
+
+  it("falls back to the default title when legacy title is blank", () => {
+    const out = resolveUpfrontSections(null, "", null);
+    expect(out[0].title).toBe(DEFAULT_UPFRONT_SECTION_TITLE);
+    expect(out[0].notes).toBeUndefined();
+  });
+});
+
+describe("groupItemsBySection", () => {
+  const secs = [section({ id: "a" }), section({ id: "b" })];
+
+  it("groups items by section_id, preserving global index", () => {
+    const items = [
+      item({ name: "0", section_id: "a" }),
+      item({ name: "1", section_id: "b" }),
+      item({ name: "2", section_id: "a" }),
+    ];
+    const g = groupItemsBySection(items, secs);
+    expect(g.get("a")!.map(x => x.i)).toEqual([0, 2]);
+    expect(g.get("b")!.map(x => x.i)).toEqual([1]);
+  });
+
+  it("puts items with missing/unknown section_id into the first section", () => {
+    const items = [item({ name: "0" }), item({ name: "1", section_id: "zzz" })];
+    const g = groupItemsBySection(items, secs);
+    expect(g.get("a")!.map(x => x.i)).toEqual([0, 1]);
+    expect(g.get("b")).toEqual([]);
+  });
+});
+
+describe("computeSectionTotal", () => {
+  const secs = [section({ id: "a" }), section({ id: "b" })];
+  const items = [
+    item({ name: "A-always", price: 1000, section_id: "a" }),
+    item({ name: "A-optional", price: 500, optional: true, section_id: "a" }),
+    item({ name: "B-always", price: 200, section_id: "b" }),
+  ];
+
+  it("sums always-included items in the section", () => {
+    expect(computeSectionTotal(items, secs, "a")).toBe(1000);
+    expect(computeSectionTotal(items, secs, "b")).toBe(200);
+  });
+
+  it("adds a selected optional item in the section", () => {
+    expect(computeSectionTotal(items, secs, "a", new Set([1]))).toBe(1500);
+  });
+});
