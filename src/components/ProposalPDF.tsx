@@ -735,6 +735,9 @@ export function ProposalPDF({
               return upfrontSections.map(section => {
                 const entries = grouped.get(section.id) || [];
                 if (entries.length === 0) return null;
+                // Sums the already-included allUpfrontItems (base + selected optional);
+                // the grand "Upfront total" below comes from displayUpfrontTotal. They
+                // reconcile by construction because both operate on the included set.
                 const subtotal = entries.reduce((s, { item }) => s + (item.discounted_price ?? item.price), 0);
                 return (
                   <View key={section.id} wrap={false}>
