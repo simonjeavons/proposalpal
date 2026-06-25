@@ -74,6 +74,10 @@ export function UpfrontSectionsEditor({
                 {sectionItems.length === 0 && (
                   <p className="text-sm text-muted-foreground italic">No items in this section yet.</p>
                 )}
+                {/* Keyed by the global flat-array index `i` (matches the legacy editor). The
+                    cards re-sync their local input state from props on render, so an index
+                    shift after a delete corrects itself; revisit with a stable per-item id if
+                    cards ever hold state that isn't prop-derived. */}
                 {sectionItems.map(({ item, i }) => (
                   <UpfrontItemCard
                     key={i}
