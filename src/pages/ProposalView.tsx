@@ -980,9 +980,9 @@ export default function ProposalView() {
               {/* Upfront */}
               {(proposal.upfront_items || []).length > 0 && (() => {
                 const upfrontSections = resolveUpfrontSections(
-                  (proposal as any).upfront_sections,
+                  proposal.upfront_sections,
                   (proposal as any).upfront_section_title,
-                  (proposal as any).upfront_notes,
+                  proposal.upfront_notes,
                 );
                 const grouped = groupItemsBySection(proposal.upfront_items, upfrontSections);
                 return (
