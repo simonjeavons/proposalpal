@@ -405,6 +405,7 @@ export type Database = {
           upfront_items: Json
           upfront_notes: string | null
           upfront_section_title: string | null
+          upfront_sections: Json
           upfront_total: number
           valid_until: string
           viewed_at: string | null
@@ -461,6 +462,7 @@ export type Database = {
           upfront_items?: Json
           upfront_notes?: string | null
           upfront_section_title?: string | null
+          upfront_sections?: Json
           upfront_total?: number
           valid_until?: string
           viewed_at?: string | null
@@ -517,6 +519,7 @@ export type Database = {
           upfront_items?: Json
           upfront_notes?: string | null
           upfront_section_title?: string | null
+          upfront_sections?: Json
           upfront_total?: number
           valid_until?: string
           viewed_at?: string | null
