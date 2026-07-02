@@ -339,12 +339,14 @@ export async function generateAdhocDocx(input: AdhocDocxInput): Promise<Blob> {
   children.push(heading('Schedule 2 — Charges and Payment Terms'));
   buildPricingChildren(input).forEach(c => children.push(c));
 
-  // Template sections (clauses). A Break Clause block is inserted after the
-  // numbered clauses and before the Schedules, mirroring the PDF.
+  // Template sections (clauses). A Break Clause block is inserted immediately
+  // after the Termination clause (an early-termination right), mirroring the PDF.
   {
+    const termIdx = input.templateSections.findIndex(s => /termination/i.test(s.heading));
     const firstSchedIdx = input.templateSections.findIndex(s => /^Schedule\s/i.test(s.heading));
-    const splitIdx = firstSchedIdx === -1 ? input.templateSections.length : firstSchedIdx;
-    input.templateSections.slice(0, splitIdx).forEach(section => {
+    const insertAfter = termIdx !== -1 ? termIdx
+      : (firstSchedIdx !== -1 ? firstSchedIdx - 1 : input.templateSections.length - 1);
+    input.templateSections.slice(0, insertAfter + 1).forEach(section => {
       children.push(heading(section.heading));
       splitParagraphs(section.body).forEach(p => children.push(p));
     });
@@ -352,7 +354,7 @@ export async function generateAdhocDocx(input: AdhocDocxInput): Promise<Blob> {
       children.push(heading('Break Clause'));
       splitParagraphs(input.breakClause).forEach(p => children.push(p));
     }
-    input.templateSections.slice(splitIdx).forEach(section => {
+    input.templateSections.slice(insertAfter + 1).forEach(section => {
       children.push(heading(section.heading));
       splitParagraphs(section.body).forEach(p => children.push(p));
     });

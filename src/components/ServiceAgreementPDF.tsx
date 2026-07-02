@@ -586,8 +586,9 @@ export function ServiceAgreementPDF({
         ) : null}
 
         {/* Template sections (legal clauses). An optional Break Clause block is
-            inserted after the numbered clauses and before the Schedules. Output is
-            unchanged when no break clause is set. */}
+            rendered immediately after the Termination clause (a break clause is an
+            early-termination right). Falls back to before the Schedules, then the
+            end. Output is unchanged when no break clause is set. */}
         {(() => {
           const renderSection = (section: TemplateSection, i: number) => (
             <View key={i} wrap={false} style={{ marginTop: 2 }}>
@@ -597,13 +598,15 @@ export function ServiceAgreementPDF({
               <Text style={styles.sectionBody}>{section.body}</Text>
             </View>
           );
+          const termIdx = templateSections.findIndex(s => /termination/i.test(s.heading));
           const firstSchedIdx = templateSections.findIndex(s => /^Schedule\s/i.test(s.heading));
-          const splitIdx = firstSchedIdx === -1 ? templateSections.length : firstSchedIdx;
-          const clauses = templateSections.slice(0, splitIdx);
-          const schedules = templateSections.slice(splitIdx);
+          const insertAfter = termIdx !== -1 ? termIdx
+            : (firstSchedIdx !== -1 ? firstSchedIdx - 1 : templateSections.length - 1);
+          const before = templateSections.slice(0, insertAfter + 1);
+          const after = templateSections.slice(insertAfter + 1);
           return (
             <>
-              {clauses.map(renderSection)}
+              {before.map(renderSection)}
               {breakClauseText && breakClauseText.trim() ? (
                 <View wrap={false} style={{ marginTop: 2 }}>
                   <View style={styles.sectionHeader}>
@@ -614,7 +617,7 @@ export function ServiceAgreementPDF({
                   ))}
                 </View>
               ) : null}
-              {schedules.map((section, i) => renderSection(section, splitIdx + i))}
+              {after.map((section, i) => renderSection(section, insertAfter + 1 + i))}
             </>
           );
         })()}

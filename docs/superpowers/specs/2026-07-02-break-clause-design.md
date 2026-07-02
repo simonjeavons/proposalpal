@@ -39,12 +39,12 @@ Both flows (user decision):
 ## PDF / Word rendering
 
 - New optional prop `breakClauseText?: string` on `ServiceAgreementPDF`.
-- Rendered as a dedicated bold-headed **"Break Clause"** block, positioned after
-  the main numbered template clauses and before the template Schedules /
-  Additional Terms / Execution block. Implementation: partition
-  `templateSections` into non-Schedule clauses vs Schedule sections; render
-  clauses, then the Break Clause block (when present), then Schedules. Output is
-  byte-identical to today when no break clause is set.
+- Rendered as a dedicated bold-headed **"Break Clause"** block, positioned
+  immediately after the **Termination** clause — a break clause is an early-
+  termination right, so it belongs with the termination provisions.
+  Implementation: find the Termination clause in `templateSections` and render the
+  block right after it (fallback: before the Schedules, then the end). Output is
+  unchanged when no break clause is set.
 - Word export (`adhocWordExport.ts`): mirror with a "Break Clause" heading +
   paragraphs, following the existing `additionalTermsText` handling.
 
