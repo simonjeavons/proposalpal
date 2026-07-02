@@ -607,16 +607,25 @@ export function ServiceAgreementPDF({
           return (
             <>
               {before.map(renderSection)}
-              {breakClauseText && breakClauseText.trim() ? (
-                <View wrap={false} style={{ marginTop: 2 }}>
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionHeading}>Break Clause</Text>
+              {breakClauseText && breakClauseText.trim() ? (() => {
+                // Number it as the next sub-clause of Termination (e.g. "9.6 Break
+                // Clause") so it reads as part of the termination provisions without
+                // renumbering any following clause or breaking cross-references.
+                const termNum = termIdx !== -1 ? templateSections[termIdx].heading.match(/^(\d+)\./)?.[1] : null;
+                let label = 'Break Clause';
+                if (termNum) {
+                  const subs = [...templateSections[termIdx].body.matchAll(new RegExp('(?:^|\\n)\\s*' + termNum + '\\.(\\d+)', 'g'))].map(m => parseInt(m[1], 10));
+                  if (subs.length) label = `${termNum}.${Math.max(...subs) + 1}  Break Clause`;
+                }
+                return (
+                  <View wrap={false} style={{ marginTop: 2 }}>
+                    <Text style={[styles.sectionBody, { fontFamily: 'Helvetica-Bold', marginBottom: 2 }]}>{label}</Text>
+                    {breakClauseText.split(/\n\n+/).map((para, i) => (
+                      <Text key={i} style={[styles.sectionBody, { marginBottom: 6 }]}>{para}</Text>
+                    ))}
                   </View>
-                  {breakClauseText.split(/\n\n+/).map((para, i) => (
-                    <Text key={i} style={[styles.sectionBody, { marginBottom: 6 }]}>{para}</Text>
-                  ))}
-                </View>
-              ) : null}
+                );
+              })() : null}
               {after.map((section, i) => renderSection(section, insertAfter + 1 + i))}
             </>
           );

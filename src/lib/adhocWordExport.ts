@@ -351,7 +351,14 @@ export async function generateAdhocDocx(input: AdhocDocxInput): Promise<Blob> {
       splitParagraphs(section.body).forEach(p => children.push(p));
     });
     if (input.breakClause && input.breakClause.trim()) {
-      children.push(heading('Break Clause'));
+      // Number as the next sub-clause of Termination (e.g. "9.6 Break Clause").
+      const termNum = termIdx !== -1 ? input.templateSections[termIdx].heading.match(/^(\d+)\./)?.[1] : null;
+      let label = 'Break Clause';
+      if (termNum) {
+        const subs = [...input.templateSections[termIdx].body.matchAll(new RegExp('(?:^|\\n)\\s*' + termNum + '\\.(\\d+)', 'g'))].map(m => parseInt(m[1], 10));
+        if (subs.length) label = `${termNum}.${Math.max(...subs) + 1}  Break Clause`;
+      }
+      children.push(para(label, { bold: true, spacingAfter: 40 }));
       splitParagraphs(input.breakClause).forEach(p => children.push(p));
     }
     input.templateSections.slice(insertAfter + 1).forEach(section => {

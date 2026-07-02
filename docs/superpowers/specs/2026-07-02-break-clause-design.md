@@ -39,12 +39,15 @@ Both flows (user decision):
 ## PDF / Word rendering
 
 - New optional prop `breakClauseText?: string` on `ServiceAgreementPDF`.
-- Rendered as a dedicated bold-headed **"Break Clause"** block, positioned
-  immediately after the **Termination** clause — a break clause is an early-
-  termination right, so it belongs with the termination provisions.
-  Implementation: find the Termination clause in `templateSections` and render the
-  block right after it (fallback: before the Schedules, then the end). Output is
-  unchanged when no break clause is set.
+- Rendered immediately after the **Termination** clause as its **next numbered
+  sub-clause** (e.g. "9.6 Break Clause") — a break clause is an early-termination
+  right, so it belongs within the termination provisions. Numbering it as a
+  sub-clause avoids renumbering any following clause and breaking their
+  cross-references (e.g. the survival list in 9.5). Implementation: find the
+  Termination clause, derive its number and the next free sub-number from its
+  body, and render a bold "N.x Break Clause" label followed by the text (fallback:
+  plain "Break Clause" before the Schedules). Output is unchanged when no break
+  clause is set.
 - Word export (`adhocWordExport.ts`): mirror with a "Break Clause" heading +
   paragraphs, following the existing `additionalTermsText` handling.
 
