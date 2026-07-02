@@ -603,7 +603,7 @@ export default function ProposalView() {
           <div style={{ padding: '22px 32px 18px', borderBottom: '1px solid #DDE8EE', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#009FE3', border: '1px solid #009FE3', padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase' as const, marginTop: 3 }}>{numUnderstanding}</div>
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 6 }}>Client Understanding</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: '#009FE3', marginBottom: 6 }}>Understanding &amp; Challenges</div>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: '#043D5D', letterSpacing: '-.01em' }}>Understanding {proposal.client_name}</h2>
             </div>
           </div>
