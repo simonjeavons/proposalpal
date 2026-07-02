@@ -104,6 +104,7 @@ interface FormData {
   registered_county: string;
   registered_postcode: string;
   payment_terms: string;
+  break_clause: string;
   service_agreement_template_id: string | null;
   partnership_overview: string;
   commercial_opportunity: string;
@@ -208,6 +209,7 @@ export default function ProposalEditor() {
     registered_county: '',
     registered_postcode: '',
     payment_terms: '',
+    break_clause: '',
     service_agreement_template_id: null,
     partnership_overview: '',
     commercial_opportunity: '',
@@ -221,6 +223,11 @@ export default function ProposalEditor() {
     saas_config: { tiers: [], selling_points: [...DEFAULT_SAAS_SELLING_POINTS] },
     notify_customer: false,
   });
+
+  // Whether the "Add break clause" section is expanded. Initialised from the
+  // loaded proposal (open when it already has break-clause text) so the box can
+  // be ticked before any text is typed without persisting a placeholder value.
+  const [breakClauseOpen, setBreakClauseOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -311,6 +318,7 @@ export default function ProposalEditor() {
             registered_county: (data as any).registered_county || '',
             registered_postcode: (data as any).registered_postcode || '',
             payment_terms: (data as any).payment_terms || '',
+            break_clause: (data as any).break_clause || '',
             service_agreement_template_id: (data as any).service_agreement_template_id || null,
             partnership_overview: (data as any).partnership_overview || '',
             commercial_opportunity: (data as any).commercial_opportunity || '',
@@ -324,6 +332,7 @@ export default function ProposalEditor() {
             saas_config: ((data as any).saas_config as SaasConfig) || { tiers: [], selling_points: [...DEFAULT_SAAS_SELLING_POINTS] },
             notify_customer: Boolean((data as any).notify_customer),
           });
+          setBreakClauseOpen(!!(data as any).break_clause);
           setSlug(data.slug);
           setContractFileUrl((data as any).contract_file_url || null);
           setClientLogoUrl((data as any).client_logo_url || null);
@@ -1113,6 +1122,34 @@ export default function ProposalEditor() {
               value={form.payment_terms}
               onChange={e => updateField('payment_terms', e.target.value)}
             />
+          </div>
+          <div className="mt-4">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <Checkbox
+                checked={breakClauseOpen}
+                onCheckedChange={checked => {
+                  const on = Boolean(checked);
+                  setBreakClauseOpen(on);
+                  if (!on) updateField('break_clause', '');
+                }}
+              />
+              <span className="text-sm">
+                <span className="font-medium">Add break clause</span>
+                <span className="block text-xs text-muted-foreground">
+                  Adds a dedicated "Break Clause" section to the generated agreement.
+                </span>
+              </span>
+            </label>
+            {breakClauseOpen && (
+              <textarea
+                autoFocus
+                className="mt-3 w-full border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                rows={4}
+                placeholder="e.g. Either party may terminate this Agreement at the 6-month point of the Initial Term by giving no less than 60 days' prior written notice."
+                value={form.break_clause}
+                onChange={e => updateField('break_clause', e.target.value)}
+              />
+            )}
           </div>
         </Section>
 

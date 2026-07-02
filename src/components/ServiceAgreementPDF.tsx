@@ -33,6 +33,7 @@ export interface ServiceAgreementPDFProps {
   registeredOffice?: string; // pre-formatted address string
   scopeOfWorkText?: string;
   additionalTermsText?: string;
+  breakClauseText?: string;
   // Static — from chosen template
   templateSections: TemplateSection[];
   // Signature data — passed at signing time to embed into execution block
@@ -266,6 +267,7 @@ export function ServiceAgreementPDF({
   registeredOffice,
   scopeOfWorkText,
   additionalTermsText,
+  breakClauseText,
   templateSections,
   clientSignerName,
   clientSignerTitle,
@@ -583,15 +585,39 @@ export function ServiceAgreementPDF({
           </View>
         ) : null}
 
-        {/* Template sections (legal clauses) */}
-        {templateSections.map((section, i) => (
-          <View key={i} wrap={false} style={{ marginTop: 2 }}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionHeading}>{section.heading}</Text>
+        {/* Template sections (legal clauses). An optional Break Clause block is
+            inserted after the numbered clauses and before the Schedules. Output is
+            unchanged when no break clause is set. */}
+        {(() => {
+          const renderSection = (section: TemplateSection, i: number) => (
+            <View key={i} wrap={false} style={{ marginTop: 2 }}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionHeading}>{section.heading}</Text>
+              </View>
+              <Text style={styles.sectionBody}>{section.body}</Text>
             </View>
-            <Text style={styles.sectionBody}>{section.body}</Text>
-          </View>
-        ))}
+          );
+          const firstSchedIdx = templateSections.findIndex(s => /^Schedule\s/i.test(s.heading));
+          const splitIdx = firstSchedIdx === -1 ? templateSections.length : firstSchedIdx;
+          const clauses = templateSections.slice(0, splitIdx);
+          const schedules = templateSections.slice(splitIdx);
+          return (
+            <>
+              {clauses.map(renderSection)}
+              {breakClauseText && breakClauseText.trim() ? (
+                <View wrap={false} style={{ marginTop: 2 }}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionHeading}>Break Clause</Text>
+                  </View>
+                  {breakClauseText.split(/\n\n+/).map((para, i) => (
+                    <Text key={i} style={[styles.sectionBody, { marginBottom: 6 }]}>{para}</Text>
+                  ))}
+                </View>
+              ) : null}
+              {schedules.map((section, i) => renderSection(section, splitIdx + i))}
+            </>
+          );
+        })()}
 
         {/* Additional Terms and Conditions — numbered as next schedule after template-supplied schedules */}
         {additionalTermsText ? (() => {

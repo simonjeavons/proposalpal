@@ -43,6 +43,7 @@ interface AdhocContract {
   registered_postcode: string | null;
   scope_of_work_text: string | null;
   additional_terms_text: string | null;
+  break_clause: string | null;
   programme_title: string;
   agreement_date: string;
   contract_term_months: number | null;
@@ -377,6 +378,7 @@ export default function AdhocSign() {
           templateSections,
           scopeOfWorkText: contract.scope_of_work_text || '',
           additionalTermsText: contract.additional_terms_text || '',
+          breakClauseText: contract.break_clause || '',
           ongoingOptions: contract.ongoing_options,
           contractYearSubtotals,
         })).toBlob();
@@ -465,6 +467,7 @@ export default function AdhocSign() {
         templateSections,
         scopeOfWorkText: contract.scope_of_work_text || '',
         additionalTermsText: contract.additional_terms_text || '',
+        breakClauseText: contract.break_clause || '',
         ongoingOptions: contract.ongoing_options,
         contractYearSubtotals,
         clientSignerName: signerName,
@@ -652,6 +655,7 @@ export default function AdhocSign() {
         ongoingOptions: contract.ongoing_options,
         scopeOfWorkText: contract.scope_of_work_text,
         additionalTermsText: contract.additional_terms_text,
+        breakClause: contract.break_clause,
         paymentTerms: contract.payment_terms,
         templateSections,
         contactName: contract.contact_name,

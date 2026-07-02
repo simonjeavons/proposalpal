@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           additional_terms_text: string | null
           agreement_date: string
+          break_clause: string | null
           client_name: string
           company_reg_number: string
           contact_email: string
@@ -53,6 +54,7 @@ export type Database = {
         Insert: {
           additional_terms_text?: string | null
           agreement_date?: string
+          break_clause?: string | null
           client_name?: string
           company_reg_number?: string
           contact_email?: string
@@ -88,6 +90,7 @@ export type Database = {
         Update: {
           additional_terms_text?: string | null
           agreement_date?: string
+          break_clause?: string | null
           client_name?: string
           company_reg_number?: string
           contact_email?: string
@@ -379,6 +382,7 @@ export type Database = {
           ongoing_section_title: string | null
           organisation: string
           partnership_overview: string
+          break_clause: string | null
           payment_terms: string | null
           phases: Json
           prepared_by: string
@@ -436,6 +440,7 @@ export type Database = {
           ongoing_section_title?: string | null
           organisation?: string
           partnership_overview?: string
+          break_clause?: string | null
           payment_terms?: string | null
           phases?: Json
           prepared_by?: string
@@ -493,6 +498,7 @@ export type Database = {
           ongoing_section_title?: string | null
           organisation?: string
           partnership_overview?: string
+          break_clause?: string | null
           payment_terms?: string | null
           phases?: Json
           prepared_by?: string

@@ -219,6 +219,7 @@ export interface Proposal {
   registered_county?: string;
   registered_postcode?: string;
   payment_terms?: string;
+  break_clause?: string;
   upfront_notes?: string;
   partnership_overview?: string;
   commercial_opportunity?: string;

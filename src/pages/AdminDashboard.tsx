@@ -169,6 +169,8 @@ export default function AdminDashboard() {
   const [savingAdhoc, setSavingAdhoc] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
+  // Whether the ad-hoc "Add break clause" section is expanded (see ProposalEditor for rationale).
+  const [adhocBreakClauseOpen, setAdhocBreakClauseOpen] = useState(false);
   const [adhocLink, setAdhocLink] = useState<string | null>(null);
   const [allAgreements, setAllAgreements] = useState<any[]>([]);
   const [allAgreementsLoading, setAllAgreementsLoading] = useState(false);
@@ -190,6 +192,7 @@ export default function AdminDashboard() {
     templateId: '',
     scopeOfWorkText: '',
     additionalTermsText: '',
+    breakClause: '',
     preparedByUserId: '',
     phases: [] as Phase[],
     upfrontItems: [] as UpfrontItem[],
@@ -518,6 +521,7 @@ export default function AdminDashboard() {
     prepared_by_user_id: adhocForm.preparedByUserId || null,
     scope_of_work_text: adhocForm.scopeOfWorkText || null,
     additional_terms_text: adhocForm.additionalTermsText || null,
+    break_clause: adhocForm.breakClause || null,
     phases: adhocForm.phases,
     upfront_items: adhocForm.upfrontItems,
     ongoing_options: adhocForm.retainerOptions,
@@ -532,8 +536,9 @@ export default function AdminDashboard() {
       contractTermMonths: '',
       contactName: '', contactEmail: '',
       paymentTerms: '50% on commencement / 50% on delivery',
-      templateId: '', scopeOfWorkText: '', additionalTermsText: '', preparedByUserId: '', phases: [], upfrontItems: [], retainerOptions: [], notifyCustomer: false,
+      templateId: '', scopeOfWorkText: '', additionalTermsText: '', breakClause: '', preparedByUserId: '', phases: [], upfrontItems: [], retainerOptions: [], notifyCustomer: false,
     });
+    setAdhocBreakClauseOpen(false);
     setEditingDraftId(null);
     setAdhocLink(null);
   };
@@ -564,6 +569,7 @@ export default function AdminDashboard() {
       templateId: d.template_id || '',
       scopeOfWorkText: d.scope_of_work_text || '',
       additionalTermsText: d.additional_terms_text || '',
+      breakClause: d.break_clause || '',
       preparedByUserId: d.prepared_by_user_id || '',
       phases: Array.isArray(d.phases) ? d.phases : [],
       upfrontItems: Array.isArray(d.upfront_items) ? d.upfront_items : [],
@@ -579,6 +585,7 @@ export default function AdminDashboard() {
           : [],
       notifyCustomer: Boolean(d.notify_customer),
     });
+    setAdhocBreakClauseOpen(!!d.break_clause);
     setEditingDraftId(id);
     setAdhocLink(null);
     setAdhocView('adhoc');
@@ -642,6 +649,7 @@ export default function AdminDashboard() {
         ongoingOptions,
         scopeOfWorkText: c.scope_of_work_text || null,
         additionalTermsText: c.additional_terms_text || null,
+        breakClause: c.break_clause || null,
         paymentTerms: c.payment_terms || '',
         templateSections,
         contactName: c.contact_name || '',
@@ -2505,6 +2513,36 @@ export default function AdminDashboard() {
                     className="w-full border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-y rounded-md"
                   />
                   <p className="text-xs text-muted-foreground mt-2">Added as the next-numbered schedule after the template's schedules. Leave blank to omit.</p>
+                </div>
+
+                {/* Break Clause */}
+                <div className="bg-card border border-border p-5">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <Checkbox
+                      checked={adhocBreakClauseOpen}
+                      onCheckedChange={checked => {
+                        const on = Boolean(checked);
+                        setAdhocBreakClauseOpen(on);
+                        if (!on) setAdhocForm(f => ({ ...f, breakClause: '' }));
+                      }}
+                    />
+                    <span className="text-sm">
+                      <span className="font-medium">Add break clause</span>
+                      <span className="block text-xs text-muted-foreground">
+                        Adds a dedicated "Break Clause" section to the generated agreement.
+                      </span>
+                    </span>
+                  </label>
+                  {adhocBreakClauseOpen && (
+                    <textarea
+                      autoFocus
+                      value={adhocForm.breakClause}
+                      onChange={e => setAdhocForm(f => ({ ...f, breakClause: e.target.value }))}
+                      rows={4}
+                      placeholder="e.g. Either party may terminate this Agreement at the 6-month point of the Initial Term by giving no less than 60 days' prior written notice."
+                      className="mt-3 w-full border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-y rounded-md"
+                    />
+                  )}
                 </div>
 
                 {/* Save buttons */}

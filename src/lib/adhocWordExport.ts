@@ -46,6 +46,7 @@ export interface AdhocDocxInput {
   ongoingOptions: WordOngoingOption[];
   scopeOfWorkText: string | null;
   additionalTermsText: string | null;
+  breakClause: string | null;
   paymentTerms: string;
   templateSections: TemplateSection[];
   contactName: string;
@@ -338,11 +339,24 @@ export async function generateAdhocDocx(input: AdhocDocxInput): Promise<Blob> {
   children.push(heading('Schedule 2 — Charges and Payment Terms'));
   buildPricingChildren(input).forEach(c => children.push(c));
 
-  // Template sections (clauses)
-  input.templateSections.forEach(section => {
-    children.push(heading(section.heading));
-    splitParagraphs(section.body).forEach(p => children.push(p));
-  });
+  // Template sections (clauses). A Break Clause block is inserted after the
+  // numbered clauses and before the Schedules, mirroring the PDF.
+  {
+    const firstSchedIdx = input.templateSections.findIndex(s => /^Schedule\s/i.test(s.heading));
+    const splitIdx = firstSchedIdx === -1 ? input.templateSections.length : firstSchedIdx;
+    input.templateSections.slice(0, splitIdx).forEach(section => {
+      children.push(heading(section.heading));
+      splitParagraphs(section.body).forEach(p => children.push(p));
+    });
+    if (input.breakClause && input.breakClause.trim()) {
+      children.push(heading('Break Clause'));
+      splitParagraphs(input.breakClause).forEach(p => children.push(p));
+    }
+    input.templateSections.slice(splitIdx).forEach(section => {
+      children.push(heading(section.heading));
+      splitParagraphs(section.body).forEach(p => children.push(p));
+    });
+  }
 
   // Additional Terms
   if (input.additionalTermsText) {
