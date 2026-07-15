@@ -598,9 +598,14 @@ export function ServiceAgreementPDF({
             early-termination right). Falls back to before the Schedules, then the
             end. Output is unchanged when no break clause is set. */}
         {(() => {
+          // The section itself must be allowed to wrap across pages: schedules such
+          // as the SLA are taller than a single page, and forcing wrap={false} on the
+          // whole section makes react-pdf overflow it onto one page (visible as
+          // duplicated/overlapping text). Keep only the heading unsplittable, and use
+          // minPresenceAhead so a heading never lands orphaned at the foot of a page.
           const renderSection = (section: TemplateSection, i: number) => (
-            <View key={i} wrap={false} style={{ marginTop: 2 }}>
-              <View style={styles.sectionHeader}>
+            <View key={i} style={{ marginTop: 2 }}>
+              <View style={styles.sectionHeader} wrap={false} minPresenceAhead={40}>
                 <Text style={styles.sectionHeading}>{section.heading}</Text>
               </View>
               <Text style={styles.sectionBody}>{section.body}</Text>
