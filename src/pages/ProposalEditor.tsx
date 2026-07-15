@@ -78,6 +78,7 @@ interface FormData {
   prepared_by_user_id: string;
   proposal_date: string;
   valid_until: string;
+  contract_start_date: string;
   organisation: string;
   sector: string;
   staff: string;
@@ -183,6 +184,7 @@ export default function ProposalEditor() {
     prepared_by_user_id: '',
     proposal_date: today(),
     valid_until: in30Days(),
+    contract_start_date: today(),
     organisation: '',
     sector: '',
     staff: '',
@@ -282,6 +284,7 @@ export default function ProposalEditor() {
             prepared_by_user_id: (data as any).prepared_by_user_id || '',
             proposal_date: data.proposal_date,
             valid_until: data.valid_until,
+            contract_start_date: (data as any).contract_start_date || data.proposal_date,
             organisation: data.organisation,
             sector: data.sector,
             staff: data.staff,
@@ -353,6 +356,7 @@ export default function ProposalEditor() {
       upfront_section_title: form.upfront_sections[0]?.title ?? form.upfront_section_title,
       contract_file_url: contractFileUrl,
       client_logo_url: clientLogoUrl,
+      contract_start_date: form.contract_start_date || null,
       prepared_by_user_id: form.prepared_by_user_id || null,
       lead_team_member_id: preparedUser?.team_member_id || null,
     } as any;
@@ -599,6 +603,7 @@ export default function ProposalEditor() {
             </div>
             <Field label="Proposal Date" value={form.proposal_date} onChange={v => updateField('proposal_date', v)} type="date" />
             <Field label="Valid Until" value={form.valid_until} onChange={v => updateField('valid_until', v)} type="date" />
+            <Field label="Contract Start Date" value={form.contract_start_date} onChange={v => updateField('contract_start_date', v)} type="date" />
           </Grid>
           <label className="flex items-start gap-2 pt-4 mt-2 border-t cursor-pointer">
             <Checkbox

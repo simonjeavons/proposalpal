@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Proposal, Challenge, Phase, RetainerOption, SaasConfig, SaasTier, UpfrontItem } from "@/types/proposal";
 import { computeUpfrontTotal, isUpfrontItemIncluded, upfrontItemPrice } from "@/types/proposal";
+import { formatLongDate } from "@/lib/contractTerm";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const formatCurrency = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -512,6 +513,7 @@ export default function ProposalAccept() {
           organisation: proposal.organisation || '',
           programmeTitle: proposal.programme_title,
           agreementDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+          commencementDate: formatLongDate((proposal as any).contract_start_date || proposal.proposal_date),
           phases: proposal.phases || [],
           upfrontItems: selUpfrontItems,
           coreOptions: coreOpts,
@@ -685,6 +687,7 @@ export default function ProposalAccept() {
           organisation: proposal.organisation || '',
           programmeTitle: proposal.programme_title,
           agreementDate: signingDateStr,
+          commencementDate: formatLongDate((proposal as any).contract_start_date || proposal.proposal_date),
           phases: proposal.phases || [],
           upfrontItems: selUpfrontItems,
           coreOptions: coreOpts,

@@ -371,6 +371,7 @@ export type Database = {
           contact_name: string
           contact_phone: string
           contract_file_url: string | null
+          contract_start_date: string | null
           core_section_title: string | null
           created_at: string
           hide_phase_durations: boolean | null
@@ -429,6 +430,7 @@ export type Database = {
           contact_name?: string
           contact_phone?: string
           contract_file_url?: string | null
+          contract_start_date?: string | null
           core_section_title?: string | null
           created_at?: string
           hide_phase_durations?: boolean | null
@@ -487,6 +489,7 @@ export type Database = {
           contact_name?: string
           contact_phone?: string
           contract_file_url?: string | null
+          contract_start_date?: string | null
           core_section_title?: string | null
           created_at?: string
           hide_phase_durations?: boolean | null

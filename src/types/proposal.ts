@@ -195,6 +195,7 @@ export interface Proposal {
   prepared_by_user_id?: string;
   proposal_date: string;
   valid_until: string;
+  contract_start_date?: string;
   organisation: string;
   sector: string;
   staff: string;

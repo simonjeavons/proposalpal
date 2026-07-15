@@ -16,6 +16,7 @@ export interface ServiceAgreementPDFProps {
   organisation: string;
   programmeTitle: string;
   agreementDate: string;
+  commencementDate?: string; // pre-formatted display string; the contract start date from the proposal
   contractTermMonths?: number | null;
   contractEndDate?: string | null; // pre-formatted display string
   phases: Phase[];
@@ -250,6 +251,7 @@ export function ServiceAgreementPDF({
   organisation,
   programmeTitle,
   agreementDate,
+  commencementDate,
   contractTermMonths,
   contractEndDate,
   phases,
@@ -299,6 +301,12 @@ export function ServiceAgreementPDF({
             <Text style={styles.metaLabel}>Agreement Date</Text>
             <Text style={styles.metaValue}>{agreementDate}</Text>
           </View>
+          {commencementDate ? (
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Commencement Date</Text>
+              <Text style={styles.metaValue}>{commencementDate}</Text>
+            </View>
+          ) : null}
           {contractTermMonths ? (
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>Contract Term</Text>
