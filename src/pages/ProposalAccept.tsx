@@ -5,6 +5,7 @@ import type { Proposal, Challenge, Phase, RetainerOption, SaasConfig, SaasTier, 
 import { computeUpfrontTotal, isUpfrontItemIncluded, upfrontItemPrice } from "@/types/proposal";
 import { formatLongDate } from "@/lib/contractTerm";
 import { Checkbox } from "@/components/ui/checkbox";
+import { trackView } from "@/lib/viewTracking";
 
 const formatCurrency = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -431,10 +432,12 @@ export default function ProposalAccept() {
   const generatedPdfBytesRef = useRef<Uint8Array | null>(null);
 
   const notifyEdgeFunction = async (type: 'viewed' | 'signed', proposalId: string) => {
-    // Skip view tracking entirely for logged-in (internal) users
+    // Views go through the shared tracker so they carry a visit id: this page
+    // is normally reached by clicking through from /p/:slug, and without that
+    // id the same visit would be recorded as two separate views.
     if (type === 'viewed') {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) return;
+      void trackView({ type, proposalId });
+      return;
     }
     fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-proposal`, {
       method: 'POST',

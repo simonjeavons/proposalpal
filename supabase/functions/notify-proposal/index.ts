@@ -35,6 +35,55 @@ function getOptionTotal(opt: { yearlyCosts: number[]; term: number; frequency: s
   }, 0);
 }
 
+// Records a view and reports how it was classified.
+//
+// The public pages track views from client-side JS, so anything that executes
+// JS gets counted -- including email security sandboxes (Microsoft Defender
+// Safe Links and similar) that open every link in a headless browser. A DB
+// trigger classifies each row as human / bot / internal; only 'human' should
+// mark a document as opened or alert its owner.
+//
+// visitId is a per-browser-tab id. A unique index on (fk, visit_id) collapses
+// the repeat inserts caused by the view page and the accept page both firing,
+// plus in-tab refreshes, into a single recorded view.
+async function recordView(
+  supabase: ReturnType<typeof createClient>,
+  table: string,
+  fkColumn: string,
+  fkValue: string,
+  userAgent: string | null,
+  ip: string | null,
+  visitId: string | null,
+  isWebdriver: boolean,
+): Promise<{ isNewVisit: boolean; classification: string }> {
+  const row: Record<string, unknown> = {
+    [fkColumn]: fkValue,
+    user_agent: userAgent ?? null,
+    ip,
+    is_webdriver: isWebdriver === true,
+    visit_id: visitId ?? null,
+  };
+  try {
+    if (visitId) {
+      const { data, error } = await supabase
+        .from(table)
+        .upsert(row, { onConflict: fkColumn + ",visit_id", ignoreDuplicates: true })
+        .select("classification");
+      if (error) return { isNewVisit: false, classification: "unknown" };
+      // ignoreDuplicates returns no row when this visit is already recorded.
+      if (!data || data.length === 0) return { isNewVisit: false, classification: "duplicate" };
+      return { isNewVisit: true, classification: String(data[0].classification) };
+    }
+    // Older cached clients send no visitId; still record, just without dedupe.
+    const { data, error } = await supabase.from(table).insert(row).select("classification");
+    if (error || !data || data.length === 0) return { isNewVisit: false, classification: "unknown" };
+    return { isNewVisit: true, classification: String(data[0].classification) };
+  } catch {
+    // Tracking must never break the customer-facing page.
+    return { isNewVisit: false, classification: "unknown" };
+  }
+}
+
 // Inserts a draft client_onboardings row for a freshly signed contract and
 // emails the assignee. Wrapped in try/catch so a failure here never breaks
 // the sign event — an admin can use the manual "Create onboarding" fallback.
@@ -137,7 +186,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const body = await req.json();
-  const { type, proposalId, contractId, ndaId, reportId, signoffToken, userAgent } = body;
+  const { type, proposalId, contractId, ndaId, reportId, signoffToken, userAgent, visitId, isWebdriver } = body;
 
   if (!type) {
     return new Response(JSON.stringify({ error: "type is required" }), {
@@ -241,11 +290,19 @@ Deno.serve(async (req: Request) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    await supabase.from("onboarding_report_views").insert({
-      report_id: reportId,
-      user_agent: userAgent ?? null,
-      ip: clientIp,
-    });
+    const view = await recordView(
+      supabase, "onboarding_report_views", "report_id", reportId, userAgent ?? null, clientIp, visitId ?? null, isWebdriver === true,
+    );
+    // Scanners, internal traffic and repeat hits within one visit are
+    // recorded but must stay silent: they must not mark the document as
+    // opened or alert the owner. Anything we could not classify (only
+    // reachable on a DB error) still notifies, so a genuine "customer
+    // opened it" signal is never lost to a transient failure.
+    if (["bot", "internal", "duplicate"].includes(view.classification)) {
+      return new Response(JSON.stringify({ ok: true, recorded: view.isNewVisit, emailSkipped: view.classification }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const { data: report } = await supabase
       .from("onboarding_reports")
       .select("id, viewed_at, last_view_email_at, onboarding_id")
@@ -393,11 +450,19 @@ Deno.serve(async (req: Request) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    await supabase.from("contract_views").insert({
-      contract_id: contractId,
-      user_agent: userAgent ?? null,
-      ip: clientIp,
-    });
+    const view = await recordView(
+      supabase, "contract_views", "contract_id", contractId, userAgent ?? null, clientIp, visitId ?? null, isWebdriver === true,
+    );
+    // Scanners, internal traffic and repeat hits within one visit are
+    // recorded but must stay silent: they must not mark the document as
+    // opened or alert the owner. Anything we could not classify (only
+    // reachable on a DB error) still notifies, so a genuine "customer
+    // opened it" signal is never lost to a transient failure.
+    if (["bot", "internal", "duplicate"].includes(view.classification)) {
+      return new Response(JSON.stringify({ ok: true, recorded: view.isNewVisit, emailSkipped: view.classification }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const { data: contract } = await supabase
       .from("adhoc_contracts")
       .select("id, programme_title, client_name, organisation, last_view_email_at, profiles:prepared_by_user_id (email, full_name)")
@@ -524,11 +589,19 @@ Deno.serve(async (req: Request) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    await supabase.from("nda_views").insert({
-      nda_id: ndaId,
-      user_agent: userAgent ?? null,
-      ip: clientIp,
-    });
+    const view = await recordView(
+      supabase, "nda_views", "nda_id", ndaId, userAgent ?? null, clientIp, visitId ?? null, isWebdriver === true,
+    );
+    // Scanners, internal traffic and repeat hits within one visit are
+    // recorded but must stay silent: they must not mark the document as
+    // opened or alert the owner. Anything we could not classify (only
+    // reachable on a DB error) still notifies, so a genuine "customer
+    // opened it" signal is never lost to a transient failure.
+    if (["bot", "internal", "duplicate"].includes(view.classification)) {
+      return new Response(JSON.stringify({ ok: true, recorded: view.isNewVisit, emailSkipped: view.classification }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const { data: nda } = await supabase
       .from("ndas")
       .select("id, company_name, last_view_email_at, profiles:prepared_by_user_id (email, full_name)")
@@ -750,11 +823,19 @@ Deno.serve(async (req: Request) => {
   const upfrontTotalVal = ((proposal as any).upfront_total as number) || 0;
 
   if (type === "viewed") {
-    await supabase.from("proposal_views").insert({
-      proposal_id: proposalId,
-      user_agent: userAgent ?? null,
-      ip: clientIp,
-    });
+    const view = await recordView(
+      supabase, "proposal_views", "proposal_id", proposalId, userAgent ?? null, clientIp, visitId ?? null, isWebdriver === true,
+    );
+    // Scanners, internal traffic and repeat hits within one visit are
+    // recorded but must stay silent: they must not mark the document as
+    // opened or alert the owner. Anything we could not classify (only
+    // reachable on a DB error) still notifies, so a genuine "customer
+    // opened it" signal is never lost to a transient failure.
+    if (["bot", "internal", "duplicate"].includes(view.classification)) {
+      return new Response(JSON.stringify({ ok: true, recorded: view.isNewVisit, emailSkipped: view.classification }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const lastEmailAt = (proposal as any).last_view_email_at as string | null;
     const throttled = lastEmailAt && (Date.now() - new Date(lastEmailAt).getTime() < VIEW_EMAIL_THROTTLE_MS);
     if (!(proposal as any).viewed_at) {

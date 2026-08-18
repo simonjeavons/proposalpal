@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { OnboardingReportPDF } from "@/components/OnboardingReportPDF";
+import { trackView } from "@/lib/viewTracking";
 import type {
   ClientOnboarding,
   OnboardingReport,
@@ -102,16 +103,7 @@ export default function OnboardingReportView() {
       }
       setState({ kind: "ready", report: r, onboarding, serviceTypeName });
 
-      // Fire-and-forget view tracking
-      void fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-proposal`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "onboarding-report-viewed",
-          reportId: r.id,
-          userAgent: navigator.userAgent,
-        }),
-      }).catch(() => { /* swallow */ });
+      void trackView({ type: "onboarding-report-viewed", reportId: r.id });
     })();
     return () => { cancelled = true; };
   }, [viewToken]);

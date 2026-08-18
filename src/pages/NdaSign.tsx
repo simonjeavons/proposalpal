@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatConfidentialityDuration } from "@/components/NdaPDF";
 import { sanitizeNdaHtml } from "@/lib/sanitizeNdaHtml";
 import { plainToNdaHtml } from "@/lib/plainToNdaHtml";
+import { trackView } from "@/lib/viewTracking";
 
 const formatDate = (s: string) => {
   if (!s) return '';
@@ -147,14 +148,7 @@ export default function NdaSign() {
         // Fire view-tracking event (only once, only for non-signed NDAs)
         if (!viewFired.current && n.status !== 'signed') {
           viewFired.current = true;
-          fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-proposal`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '',
-            },
-            body: JSON.stringify({ type: 'nda-viewed', ndaId: n.id, userAgent: navigator.userAgent }),
-          }).catch(() => { /* fire-and-forget */ });
+          void trackView({ type: 'nda-viewed', ndaId: n.id });
         }
 
         // If already signed, show confirmation immediately

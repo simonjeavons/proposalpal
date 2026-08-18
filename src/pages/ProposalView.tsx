@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Proposal, Challenge, Phase, RetainerOption, UpfrontItem, TeamMember, SaasConfig, SaasTier } from "@/types/proposal";
 import { computeUpfrontTotal, isChoiceGroupItem, resolveUpfrontSections, groupItemsBySection, computeSectionTotal } from "@/types/proposal";
 import { isProposalExpired } from "@/lib/proposalStatus";
+import { trackView } from "@/lib/viewTracking";
 
 const ShootHillMark = () => (
   <svg className="absolute -right-[120px] -bottom-[120px] w-[560px] h-[560px] opacity-10 pointer-events-none z-0" viewBox="0 0 199 198" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -70,19 +71,7 @@ export default function ProposalView() {
         } as Proposal;
         setProposal(proposalData);
 
-        // Fire view-tracking event (skip for logged-in internal users)
-        (async () => {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) return;
-          fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-proposal`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '',
-            },
-            body: JSON.stringify({ type: 'viewed', proposalId: data.id, userAgent: navigator.userAgent }),
-          }).catch(() => { /* fire-and-forget */ });
-        })();
+        void trackView({ type: 'viewed', proposalId: data.id });
 
         if (data.client_name) {
           document.title = `Shoothill Proposal for ${data.client_name}`;

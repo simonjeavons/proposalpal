@@ -6,6 +6,7 @@ interface ViewRow {
   viewed_at: string;
   user_agent: string | null;
   ip: string | null;
+  classification: string | null;
 }
 
 interface Props {
@@ -35,7 +36,7 @@ export default function ViewHistoryPanel({ documentType, documentId }: Props) {
     (async () => {
       const { data } = await supabase
         .from(table as any)
-        .select("id, viewed_at, user_agent, ip")
+        .select("id, viewed_at, user_agent, ip, classification")
         .eq(fkCol, documentId)
         .order("viewed_at", { ascending: false })
         .limit(50);
@@ -46,6 +47,12 @@ export default function ViewHistoryPanel({ documentType, documentId }: Props) {
     })();
     return () => { cancelled = true; };
   }, [documentType, documentId]);
+
+  // Bot rows are email security scanners that opened the link automatically;
+  // internal rows are our own team. Neither is a customer view, so they are
+  // kept out of the count and shown separately.
+  const genuine = views.filter(v => (v.classification ?? "human") === "human");
+  const filtered = views.length - genuine.length;
 
   if (!documentId) return null;
 
@@ -61,15 +68,18 @@ export default function ViewHistoryPanel({ documentType, documentId }: Props) {
           View History
         </h3>
         <span style={{ fontSize: 12, color: "#6B7280" }}>
-          {loading ? "Loading…" : `${views.length} view${views.length === 1 ? "" : "s"}`}
+          {loading
+            ? "Loading…"
+            : `${genuine.length} view${genuine.length === 1 ? "" : "s"}` +
+              (filtered > 0 ? ` · ${filtered} filtered` : "")}
         </span>
       </div>
-      {!loading && views.length === 0 && (
+      {!loading && genuine.length === 0 && (
         <div style={{ fontSize: 13, color: "#6B7280" }}>No views yet.</div>
       )}
-      {views.length > 0 && (
+      {genuine.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 260, overflowY: "auto" }}>
-          {views.map(v => (
+          {genuine.map(v => (
             <div key={v.id} style={{
               display: "flex",
               justifyContent: "space-between",

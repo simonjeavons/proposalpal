@@ -1082,10 +1082,13 @@ export default function AdminDashboard() {
       setSignedContracts(map);
     }
 
-    // Load view counts per proposal (tally client-side; table is small)
+    // Load view counts per proposal (tally client-side; table is small).
+    // Only 'human' rows count: bot rows are email security scanners opening
+    // the link, and 'internal' rows are our own team.
     const { data: views } = await supabase
       .from("proposal_views" as any)
-      .select("proposal_id");
+      .select("proposal_id")
+      .eq("classification", "human");
     if (views) {
       const counts: Record<string, number> = {};
       (views as any[]).forEach(v => { counts[v.proposal_id] = (counts[v.proposal_id] || 0) + 1; });
