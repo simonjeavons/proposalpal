@@ -1,5 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import {
+  type Addressee,
+  buildPersonalisation,
+  describeTerm,
+  normaliseOption,
+  getOptionTotal,
+  ongoingTotal,
+  selectOngoingOptions,
+} from "./pricing.ts";
 
 const CC_RECIPIENTS: { email: string; name: string }[] = [
   { email: "sj@shoothill.com", name: "Simon Jeavons" },
@@ -20,19 +29,6 @@ const corsHeaders = {
 
 function fmt(n: number): string {
   return "\u00a3" + n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function getOptionTotal(opt: { yearlyCosts: number[]; term: number; frequency: string }): number {
-  const numYears = Math.ceil(Math.max(opt.term, 1) / 12);
-  const costs: number[] = Array.from({ length: numYears }, (_, y) =>
-    opt.yearlyCosts[y] ?? (opt.yearlyCosts[opt.yearlyCosts.length - 1] ?? 0)
-  );
-  if (opt.frequency === "annual") return costs.reduce((s, c) => s + c, 0);
-  return costs.reduce((s, c, idx) => {
-    const months = idx === numYears - 1 ? (opt.term % 12 || 12) : 12;
-    const periods = opt.frequency === "monthly" ? months : Math.round(months * 52 / 12);
-    return s + c * periods;
-  }, 0);
 }
 
 // Records a view and reports how it was classified.
@@ -148,18 +144,34 @@ async function createOnboardingDraft(
   }
 }
 
-async function sendSendgrid(recipientEmail: string, recipientName: string, subject: string, body: string) {
+// extraRecipients are additional named addressees alongside the primary one.
+// A null/blank/malformed primary is not fatal: buildPersonalisation promotes the
+// standing CC list to the audience so the event still reaches someone.
+async function sendSendgrid(
+  recipientEmail: string | null,
+  recipientName: string,
+  subject: string,
+  body: string,
+  extraRecipients: Addressee[] = [],
+) {
   const sendgridApiKey = Deno.env.get("SENDGRID_API_KEY");
   if (!sendgridApiKey) {
     console.error("SENDGRID_API_KEY secret not set");
     return { ok: false, reason: "no-api-key" };
   }
-  const recipientLower = recipientEmail.toLowerCase();
-  const ccList = CC_RECIPIENTS.filter(c => c.email.toLowerCase() !== recipientLower);
+  const { to, cc } = buildPersonalisation(
+    recipientEmail ? { email: recipientEmail, name: recipientName } : null,
+    extraRecipients,
+    CC_RECIPIENTS,
+  );
+  if (to.length === 0) {
+    console.error("sendSendgrid: no usable recipient for subject:", subject);
+    return { ok: false, reason: "no-recipient" };
+  }
   const payload = {
     personalizations: [{
-      to: [{ email: recipientEmail, name: recipientName }],
-      ...(ccList.length > 0 ? { cc: ccList } : {}),
+      to,
+      ...(cc.length > 0 ? { cc } : {}),
     }],
     from: { email: FROM_EMAIL, name: FROM_NAME },
     subject,
@@ -517,7 +529,7 @@ Deno.serve(async (req: Request) => {
     }
     const { data: contract } = await supabase
       .from("adhoc_contracts")
-      .select("id, client_name, organisation, programme_title, contact_name, contact_email, upfront_items, ongoing_options, signer_name, signer_title, signed_at")
+      .select("id, client_name, organisation, programme_title, contact_name, contact_email, upfront_items, retainer_options, ongoing_options, signer_name, signer_title, signed_at, profiles:prepared_by_user_id (email, full_name)")
       .eq("id", contractId)
       .single();
     if (!contract) {
@@ -525,13 +537,17 @@ Deno.serve(async (req: Request) => {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const recipientEmail = (contract as any).contact_email as string | null;
-    const recipientName = (contract as any).contact_name || "Team";
-    if (!recipientEmail) {
-      return new Response(JSON.stringify({ error: "No contact email on this contract" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // A signature is the single most important thing that happens to a
+    // contract, so it is addressed like every other notification -- to the
+    // owner's profile -- with the free-text contact copied in. Neither being
+    // set is not a reason to send nothing: the CC list still gets it.
+    const ownerProfile = (contract as any).profiles as { email?: string; full_name?: string } | null;
+    const recipientEmail = ownerProfile?.email ?? null;
+    const recipientName = ownerProfile?.full_name || "Team";
+    const contactEmail = (contract as any).contact_email as string | null;
+    const extraRecipients: Addressee[] = contactEmail
+      ? [{ email: contactEmail, name: (contract as any).contact_name || "Team" }]
+      : [];
     const programmeTitle = (contract as any).programme_title || "(Untitled)";
     const clientName = (contract as any).organisation || (contract as any).client_name || "(Unknown)";
     const signerName = (contract as any).signer_name || "Unknown";
@@ -541,13 +557,16 @@ Deno.serve(async (req: Request) => {
       : new Date().toLocaleString("en-GB", { timeZone: "Europe/London" });
     const upfrontItems: { name?: string; type?: string; price: number }[] = (contract as any).upfront_items || [];
     const upfrontTotal = upfrontItems.reduce((s, i) => s + (i.price || 0), 0);
-    const ongoingOptions: { name?: string; yearlyCosts: number[]; term: number; frequency: string }[] = (contract as any).ongoing_options || [];
-    const ongoingLines = ongoingOptions.map(opt => {
-      const total = getOptionTotal(opt);
-      const name = opt.name || "Ongoing";
-      return "  " + name + ": " + fmt(total) + " (over " + opt.term + " months)";
-    });
-    const grandTotal = upfrontTotal + ongoingOptions.reduce((s, opt) => s + getOptionTotal(opt), 0);
+    // Normalised once so the per-option lines and the grand total cannot
+    // disagree with each other.
+    const ongoingOptions = selectOngoingOptions(
+      (contract as any).retainer_options,
+      (contract as any).ongoing_options,
+    ).map(normaliseOption);
+    const ongoingLines = ongoingOptions.map(
+      opt => "  " + opt.name + ": " + fmt(getOptionTotal(opt)) + " (" + describeTerm(opt) + ")",
+    );
+    const grandTotal = upfrontTotal + ongoingTotal(ongoingOptions);
     const subject = "[AD-HOC AGREEMENT] Signed: " + programmeTitle + " - " + clientName;
     const emailBody = [
       "Hi " + recipientName + ",",
@@ -569,9 +588,9 @@ Deno.serve(async (req: Request) => {
       "",
       "- Shoothill Proposal Manager",
     ].join("\n");
-    const r = await sendSendgrid(recipientEmail, recipientName, subject, emailBody);
+    const r = await sendSendgrid(recipientEmail, recipientName, subject, emailBody, extraRecipients);
     if (!r.ok) {
-      return new Response(JSON.stringify({ error: "Failed to send email" }), {
+      return new Response(JSON.stringify({ error: "Failed to send email", reason: r.reason }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
