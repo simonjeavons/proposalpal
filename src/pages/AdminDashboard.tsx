@@ -172,6 +172,7 @@ export default function AdminDashboard() {
   // Whether the ad-hoc "Add break clause" section is expanded (see ProposalEditor for rationale).
   const [adhocBreakClauseOpen, setAdhocBreakClauseOpen] = useState(false);
   const [adhocLink, setAdhocLink] = useState<string | null>(null);
+  const [duplicatedFrom, setDuplicatedFrom] = useState<string | null>(null);
   const [allAgreements, setAllAgreements] = useState<any[]>([]);
   const [allAgreementsLoading, setAllAgreementsLoading] = useState(false);
   const [adhocForm, setAdhocForm] = useState({
@@ -540,10 +541,14 @@ export default function AdminDashboard() {
     });
     setAdhocBreakClauseOpen(false);
     setEditingDraftId(null);
+    setDuplicatedFrom(null);
     setAdhocLink(null);
   };
 
-  const loadDraftForEditing = async (id: string) => {
+  // asCopy: load the contract into the form as a new, unsaved agreement (no
+  // editingDraftId), so saving inserts a fresh row with its own slug and the
+  // original — possibly already signed — is left untouched.
+  const loadDraftForEditing = async (id: string, asCopy = false) => {
     const { data, error } = await supabase
       .from('adhoc_contracts' as any)
       .select('*')
@@ -561,7 +566,7 @@ export default function AdminDashboard() {
       registeredCounty: d.registered_county || '',
       registeredPostcode: d.registered_postcode || '',
       programmeTitle: d.programme_title || '',
-      agreementDate: d.agreement_date || new Date().toISOString().split('T')[0],
+      agreementDate: (!asCopy && d.agreement_date) || new Date().toISOString().split('T')[0],
       contractTermMonths: d.contract_term_months ?? '',
       contactName: d.contact_name || '',
       contactEmail: d.contact_email || '',
@@ -586,9 +591,11 @@ export default function AdminDashboard() {
       notifyCustomer: Boolean(d.notify_customer),
     });
     setAdhocBreakClauseOpen(!!d.break_clause);
-    setEditingDraftId(id);
+    setEditingDraftId(asCopy ? null : id);
+    setDuplicatedFrom(asCopy ? (d.organisation || d.client_name || 'agreement') : null);
     setAdhocLink(null);
     setAdhocView('adhoc');
+    if (asCopy) toast.success('Copy loaded — adjust and save to create a new agreement');
   };
 
   const [adhocWordDownloadingId, setAdhocWordDownloadingId] = useState<string | null>(null);
@@ -2301,6 +2308,19 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
+                {/* Unsaved copy banner */}
+                {!editingDraftId && duplicatedFrom && (
+                  <div className="flex items-center justify-between bg-sky-50 border border-sky-200 dark:bg-sky-900/20 dark:border-sky-700 rounded-md px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Copy className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                      <span className="text-sm font-semibold text-sky-700 dark:text-sky-400">Copy of {duplicatedFrom} — not saved yet. The original is unchanged.</span>
+                    </div>
+                    <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={resetAdhocForm}>
+                      <Plus className="w-3.5 h-3.5" /> Start New
+                    </Button>
+                  </div>
+                )}
+
                 {/* View history (existing drafts only) */}
                 {editingDraftId && (
                   <ViewHistoryPanel documentType="contract" documentId={editingDraftId} />
@@ -2657,6 +2677,16 @@ export default function AdminDashboard() {
                                   onClick={() => downloadAdhocWord(c.id)}
                                 >
                                   <FileText className="w-4 h-4" />
+                                </Button>
+                              )}
+                              {c.source === 'adhoc' && (
+                                <Button
+                                  variant="ghost" size="sm"
+                                  className="text-muted-foreground hover:text-primary"
+                                  title="Duplicate"
+                                  onClick={() => loadDraftForEditing(c.id, true)}
+                                >
+                                  <Copy className="w-4 h-4" />
                                 </Button>
                               )}
                               {c.source === 'adhoc' && (c.status === 'draft' || c.status === 'pending') && (
