@@ -27,3 +27,6 @@ dist-ssr
 .claude/worktrees/
 .claude/launch.json
 .claude/settings.local.json
+
+# Supabase CLI local cache
+supabase/.temp/
