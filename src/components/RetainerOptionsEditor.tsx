@@ -9,6 +9,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { RetainerOption } from "@/types/proposal";
+import { monthRange } from "@/lib/retainerTerm";
 
 interface Product {
   id: string;
@@ -336,19 +337,27 @@ export function RetainerOptionsEditor({
                         </div>
                       </div>
                       <div>
-                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Starts in year</Label>
-                        <select
+                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Starts in month</Label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={60}
                           className={`w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm ${r.rolling_monthly ? 'opacity-40 pointer-events-none' : ''}`}
-                          value={Math.floor((r.starts_after_months ?? 0) / 12) + 1}
+                          value={(r.starts_after_months ?? 0) + 1}
                           onChange={e => {
-                            const year = Number(e.target.value);
-                            updateOption(i, 'starts_after_months', year === 1 ? undefined : (year - 1) * 12);
+                            const month = Math.min(60, Math.max(1, Math.floor(Number(e.target.value)) || 1));
+                            updateOption(i, 'starts_after_months', month === 1 ? undefined : month - 1);
                           }}
                           disabled={!!r.rolling_monthly}
-                        >
-                          {[1, 2, 3, 4, 5].map(y => <option key={y} value={y}>Year {y}</option>)}
-                        </select>
-                        <div className="text-[10px] text-muted-foreground mt-1">Pick the year of the contract this option represents.</div>
+                        />
+                        <div className="text-[10px] text-muted-foreground mt-1">
+                          {(() => {
+                            if (r.rolling_monthly) return 'Rolling options run from the start.';
+                            const range = monthRange(r);
+                            if (range) return `Covers months ${range.start}–${range.end} of the contract.`;
+                            return `Starts in month ${(r.starts_after_months ?? 0) + 1} of the contract.`;
+                          })()}
+                        </div>
                       </div>
                       <div>
                         <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Quantity</Label>

@@ -6,6 +6,7 @@ import { computeUpfrontTotal, isUpfrontItemIncluded, upfrontItemPrice } from "@/
 import { formatLongDate } from "@/lib/contractTerm";
 import { Checkbox } from "@/components/ui/checkbox";
 import { trackView } from "@/lib/viewTracking";
+import { rateSchedule, describeRateSchedule } from "@/lib/retainerTerm";
 
 const formatCurrency = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -586,6 +587,9 @@ export default function ProposalAccept() {
     ...(selectedStandard ? [selectedStandard] : []),
     ...selectedExtras,
   ];
+  // Back-to-back lines (e.g. months 1–3 then 4–12) headline the opening rate, not their sum.
+  const rateSpans = rateSchedule(allSelectedOptions);
+  const headlineOngoing = rateSpans.length > 0 ? rateSpans[0].rate : ongoingTotal;
   const ongoingForYear = (yearIndex: number) =>
     allSelectedOptions.reduce((sum, r) => {
       const freq = r.frequency ?? 'monthly';
@@ -771,7 +775,7 @@ export default function ProposalAccept() {
       selected_upfront_items: isSaas ? [] : [...selectedUpfrontIndices],
       selected_upfront_snapshot: isSaas ? [] : selectedUpfrontItemsList.map(it => ({ name: it.name || it.type || '', price: upfrontItemPrice(it) })),
       upfront_total: isSaas ? 0 : upfront,
-      retainer_price: isSaas ? saasMonthlyPrice : ongoingTotal,
+      retainer_price: isSaas ? saasMonthlyPrice : headlineOngoing,
       first_year_total: isSaas ? saasFirstYear : contractTotal,
       pricing_option: pricingOption,
       signature_data: signatureData,
@@ -878,7 +882,10 @@ export default function ProposalAccept() {
                       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#AAAAAA', marginBottom: 6 }}>
                         {ongoingLabel}{selectedStandard ? ` — ${selectedStandard.name || selectedStandard.type}` : ''}
                       </div>
-                      <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(ongoingTotal)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT {freqSuffix}</span></div>
+                      <div style={{ fontSize: 28, fontWeight: 800, color: '#043D5D', letterSpacing: '-.02em' }}>{formatCurrency(headlineOngoing)}<span style={{ fontSize: 12, fontWeight: 500, color: '#AAAAAA' }}> + VAT {freqSuffix}</span></div>
+                      {rateSpans.length > 0 && (
+                        <div style={{ fontSize: 12, color: '#3A6278', marginTop: 4 }}>{describeRateSchedule(rateSpans, formatCurrency)}</div>
+                      )}
                       {selectedExtras.length > 0 && (
                         <div style={{ fontSize: 12, color: '#3A6278', marginTop: 4 }}>
                           Includes: {selectedExtras.map(r => r?.name || r?.type).filter(Boolean).join(', ')}

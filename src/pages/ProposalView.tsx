@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Proposal, Challenge, Phase, RetainerOption, UpfrontItem, TeamMember, SaasConfig, SaasTier } from "@/types/proposal";
 import { computeUpfrontTotal, isChoiceGroupItem, resolveUpfrontSections, groupItemsBySection, computeSectionTotal } from "@/types/proposal";
 import { isProposalExpired } from "@/lib/proposalStatus";
+import { termLabel, rateSchedule, describeRateSchedule } from "@/lib/retainerTerm";
 import { trackView } from "@/lib/viewTracking";
 
 const ShootHillMark = () => (
@@ -201,12 +202,6 @@ export default function ProposalView() {
     const periods = freq === 'annual' ? r.term_months / 12 : freq === 'weekly' ? r.term_months * 4.33 : r.term_months;
     return optionTotal(r) * periods;
   };
-  const termLabel = (r: RetainerOption) => {
-    if (r.rolling_monthly) return `Monthly rolling · ${r.notice_days ?? 30} days notice`;
-    if (!r.term_months) return null;
-    const base = `${r.term_months}-month term`;
-    return r.starts_after_months && r.starts_after_months > 0 ? `${base} · begins after project delivery` : base;
-  };
   const annualMultiplier = (r: RetainerOption) => {
     if (r.frequency === 'weekly') return 52;
     if (r.frequency === 'annual') return 1;
@@ -224,6 +219,10 @@ export default function ProposalView() {
   const coreTotal = coreOptions.reduce((sum, r) => sum + optionTotal(r), 0);
   const extrasTotal = [...checkedExtras].reduce((sum, i) => sum + optionTotal(optionalExtras[i] ?? { price: 0 }), 0);
   const ongoingTotal = coreTotal + (selectedStandardOption ? optionTotal(selectedStandardOption) : 0) + extrasTotal;
+  // Back-to-back lines (e.g. months 1–3 then 4–12) headline the opening rate, not their sum.
+  const rateSpans = rateSchedule(allSelectedOptions);
+  const headlineOngoing = rateSpans.length > 0 ? rateSpans[0].rate : ongoingTotal;
+  const fmtMoney = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   // Determine dominant frequency for label
   const frequencies = allSelectedOptions.map(r => r.frequency ?? 'monthly');
@@ -1191,8 +1190,8 @@ export default function ProposalView() {
                   {ongoingTotal > 0 && (
                     <div style={{ borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,.12)', paddingRight: isMobile ? 0 : 32 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,.5)', marginBottom: 8 }}>{ongoingLabel}</div>
-                      <div style={{ fontSize: isMobile ? 36 : 42, fontWeight: 900, color: '#00D4FF', letterSpacing: '-.04em', lineHeight: 1, transition: 'all .3s' }}>£{ongoingTotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>+ VAT @ 20% {ongoingFreqSuffix}{selectedStandardOption ? (selectedStandardOption.rolling_monthly ? ` · Monthly rolling · ${selectedStandardOption.notice_days ?? 30} days notice` : selectedStandardOption.term_months ? ` · ${selectedStandardOption.term_months} month term${selectedStandardOption.starts_after_months ? ' · begins after project delivery' : ''}` : '') : ''}</div>
+                      <div style={{ fontSize: isMobile ? 36 : 42, fontWeight: 900, color: '#00D4FF', letterSpacing: '-.04em', lineHeight: 1, transition: 'all .3s' }}>{fmtMoney(headlineOngoing)}</div>
+                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 6 }}>+ VAT @ 20% {ongoingFreqSuffix}{rateSpans.length > 0 ? ` · ${describeRateSchedule(rateSpans, fmtMoney)}` : selectedStandardOption && termLabel(selectedStandardOption) ? ` · ${termLabel(selectedStandardOption)}` : ''}</div>
                     </div>
                   )}
                   {displayUpfrontTotal > 0 && (
