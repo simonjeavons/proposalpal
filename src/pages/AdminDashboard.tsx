@@ -21,6 +21,7 @@ import { RichSectionEditor, type NdaSection } from "@/components/RichSectionEdit
 import { plainToNdaHtml } from "@/lib/plainToNdaHtml";
 import { contractEndDateISO, formatLongDate } from "@/lib/contractTerm";
 import { effectiveStatus } from "@/lib/proposalStatus";
+import { ongoingForYear } from "@/lib/retainerTerm";
 
 interface Profile {
   id: string;
@@ -1326,10 +1327,9 @@ export default function AdminDashboard() {
           const drafts = proposals.filter(p => p.status === 'draft').length;
           const sent = proposals.filter(p => p.status === 'sent').length;
           const accepted = proposals.filter(p => p.status === 'accepted').length;
-          const firstYearTotal = (p: Proposal) => {
-            const monthly = (p.retainer_options || []).reduce((rs: number, r: any) => rs + ((r.quantity ?? 1) * (r.discounted_price ?? r.price ?? 0)), 0);
-            return Number(p.upfront_total || 0) + monthly * 12;
-          };
+          // Year 1 respects each retainer's start month and term (e.g. 3 months at one rate, then 9 at another).
+          const firstYearTotal = (p: Proposal) =>
+            Number(p.upfront_total || 0) + ongoingForYear((p.retainer_options || []) as RetainerOption[], 0);
           const totalUpfront = proposals.reduce((s, p) => s + Number(p.upfront_total || 0), 0);
           const totalMonthly = proposals.reduce((s, p) => {
             return s + (p.retainer_options || []).reduce((rs: number, r: any) => rs + ((r.quantity ?? 1) * (r.discounted_price ?? r.price ?? 0)), 0);
@@ -1447,17 +1447,19 @@ export default function AdminDashboard() {
 
               {/* Row 5: Pipeline by service type */}
               {(() => {
-                const byType: Record<string, { upfront: number; monthly: number; count: number }> = {};
+                const byType: Record<string, { upfront: number; monthly: number; firstYear: number; count: number }> = {};
                 proposals.forEach(p => {
                   const key = p.sector || 'Unassigned';
-                  if (!byType[key]) byType[key] = { upfront: 0, monthly: 0, count: 0 };
+                  if (!byType[key]) byType[key] = { upfront: 0, monthly: 0, firstYear: 0, count: 0 };
                   byType[key].upfront += Number(p.upfront_total || 0);
                   byType[key].monthly += (p.retainer_options || []).reduce((rs: number, r: any) => rs + ((r.quantity ?? 1) * (r.discounted_price ?? r.price ?? 0)), 0);
+                  byType[key].firstYear += firstYearTotal(p);
                   byType[key].count++;
                 });
-                const rows = Object.entries(byType).sort((a, b) => (b[1].upfront + b[1].monthly * 12) - (a[1].upfront + a[1].monthly * 12));
+                const rows = Object.entries(byType).sort((a, b) => b[1].firstYear - a[1].firstYear);
                 const grandUpfront = rows.reduce((s, [, v]) => s + v.upfront, 0);
                 const grandMonthly = rows.reduce((s, [, v]) => s + v.monthly, 0);
+                const grandFirstYear = rows.reduce((s, [, v]) => s + v.firstYear, 0);
                 return rows.length > 0 ? (
                   <div className="bg-card border border-border rounded-md mb-6">
                     <div className="px-5 py-4 border-b border-border">
@@ -1481,7 +1483,7 @@ export default function AdminDashboard() {
                               <td className="px-5 py-2.5 text-center text-muted-foreground">{v.count}</td>
                               <td className="px-5 py-2.5 text-right text-foreground">{fmtGbp(v.upfront)}</td>
                               <td className="px-5 py-2.5 text-right text-foreground">{fmtGbp(v.monthly)}<span className="text-muted-foreground text-xs"> /mo</span></td>
-                              <td className="px-5 py-2.5 text-right font-bold text-foreground">{fmtGbp(v.upfront + v.monthly * 12)}</td>
+                              <td className="px-5 py-2.5 text-right font-bold text-foreground">{fmtGbp(v.firstYear)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1491,7 +1493,7 @@ export default function AdminDashboard() {
                             <td className="px-5 py-2.5 text-center text-foreground">{total}</td>
                             <td className="px-5 py-2.5 text-right text-foreground">{fmtGbp(grandUpfront)}</td>
                             <td className="px-5 py-2.5 text-right text-foreground">{fmtGbp(grandMonthly)}<span className="text-muted-foreground text-xs"> /mo</span></td>
-                            <td className="px-5 py-2.5 text-right text-foreground">{fmtGbp(grandUpfront + grandMonthly * 12)}</td>
+                            <td className="px-5 py-2.5 text-right text-foreground">{fmtGbp(grandFirstYear)}</td>
                           </tr>
                         </tfoot>
                       </table>

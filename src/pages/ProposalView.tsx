@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Proposal, Challenge, Phase, RetainerOption, UpfrontItem, TeamMember, SaasConfig, SaasTier } from "@/types/proposal";
 import { computeUpfrontTotal, isChoiceGroupItem, resolveUpfrontSections, groupItemsBySection, computeSectionTotal } from "@/types/proposal";
 import { isProposalExpired } from "@/lib/proposalStatus";
-import { termLabel, rateSchedule, describeRateSchedule } from "@/lib/retainerTerm";
+import { termLabel, rateSchedule, describeRateSchedule, contractTotals } from "@/lib/retainerTerm";
 import { trackView } from "@/lib/viewTracking";
 
 const ShootHillMark = () => (
@@ -230,73 +230,17 @@ export default function ProposalView() {
   const ongoingLabel = dominantFreq === 'monthly' ? 'Monthly ongoing' : dominantFreq === 'annual' ? 'Annual ongoing' : dominantFreq === 'weekly' ? 'Weekly ongoing' : 'Ongoing';
   const ongoingFreqSuffix = dominantFreq !== 'mixed' ? (FREQ_LABEL[dominantFreq] ?? '/month') : '/year';
 
-  // Per-year ongoing cost respecting each retainer's term length
-  const ongoingForYear = (yearIndex: number) =>
-    allSelectedOptions.reduce((sum, r) => {
-      const freq = r.frequency ?? 'monthly';
-      const yearStartMonth = yearIndex * 12;
-      const yearEndMonth = (yearIndex + 1) * 12;
-
-      // Annual-frequency items bill the full amount in the year each 12-month
-      // billing period begins — not prorated across calendar years.
-      if (freq === 'annual') {
-        if (r.rolling_monthly) {
-          // Rolling annual: bill once per year, in every year
-          return sum + optionTotal(r);
-        }
-        const offset = r.starts_after_months ?? 0;
-        const term = r.term_months ?? 12;
-        // Billing periods start at offset, offset+12, offset+24, ... while < offset+term
-        let count = 0;
-        for (let start = offset; start < offset + term; start += 12) {
-          if (start >= yearStartMonth && start < yearEndMonth) count += 1;
-        }
-        return sum + optionTotal(r) * count;
-      }
-
-      if (r.rolling_monthly) {
-        // Rolling monthly/weekly options contribute to every year — 12 months always
-        const activeMonths = 12;
-        const periods = freq === 'weekly' ? activeMonths * 4.33 : activeMonths;
-        return sum + optionTotal(r) * periods;
-      }
-
-      const offset = r.starts_after_months ?? 0;
-      const term = r.term_months ?? 12;
-      const startMonth = offset;
-      const endMonth = offset + term;
-      const overlapStart = Math.max(yearStartMonth, startMonth);
-      const overlapEnd = Math.min(yearEndMonth, endMonth);
-      if (overlapEnd <= overlapStart) return sum;
-      // Year 1 can be partial (e.g. retainer starts mid-year). Years 2+ are
-      // always billed as full 12-month years whenever the retainer is active
-      // at all, even if the term's tail only covers part of the calendar year.
-      const rawMonths = overlapEnd - overlapStart;
-      const activeMonths = yearIndex === 0 ? rawMonths : 12;
-      const periods = freq === 'weekly' ? activeMonths * 4.33 : activeMonths;
-      return sum + optionTotal(r) * periods;
-    }, 0);
-
-  // Annual cost for first-year (used in summary headline)
-  const annualOngoing = ongoingForYear(0);
-
   // Authoritative upfront total: always-included items + whatever the client has selected
   // (optional add-ons and one choice per group). Recomputed from items + selection so it
   // never disagrees with the accept flow / PDF.
   const displayUpfrontTotal = computeUpfrontTotal(proposal.upfront_items, selectedOptionalItems);
   const upfrontBaseTotal = computeUpfrontTotal(proposal.upfront_items);
   const optionalUpfrontAddOn = displayUpfrontTotal - upfrontBaseTotal;
-  const firstYearTotal = displayUpfrontTotal + annualOngoing;
 
-  // Multi-year totals based on max term
-  const hasRolling = allSelectedOptions.some(r => r.rolling_monthly);
-  const maxTermMonths = Math.max(...allSelectedOptions.filter(r => !r.rolling_monthly).map(r => (r.term_months ?? 12) + (r.starts_after_months ?? 0)), hasRolling ? 36 : 12);
-  const totalYears = Math.min(Math.ceil(maxTermMonths / 12), 5);
-  const yearTotals = Array.from({ length: totalYears }, (_, y) => ({
-    year: y + 1,
-    total: (y === 0 ? displayUpfrontTotal : 0) + ongoingForYear(y),
-  }));
-  const contractTotal = yearTotals.reduce((sum, y) => sum + y.total, 0);
+  // Per-year totals respecting each retainer's start month and term
+  const { yearTotals, firstYearTotal, contractTotal } = contractTotals(allSelectedOptions, displayUpfrontTotal);
+  const annualOngoing = firstYearTotal - displayUpfrontTotal;
+  const totalYears = yearTotals.length;
 
   // Timeline helpers
   const parseWeeks = (d: string) => Math.max(1, parseInt(d?.match(/(\d+)/)?.[1] ?? '1'));

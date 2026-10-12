@@ -82,3 +82,59 @@ export const describeRateSchedule = (spans: RateSpan[], fmt: (n: number) => stri
   const head = first.toMonth === null ? `From month ${first.fromMonth}` : `Months ${first.fromMonth}–${first.toMonth}`;
   return [head, ...rest.map(s => `then ${fmt(s.rate)}/month ${range(s)}`)].join(', ');
 };
+
+/**
+ * Billing for one contract year (0-based), respecting each line's start month and term.
+ * Annual lines bill in the year each 12-month period begins. Year 1 can be partial; years 2+
+ * bill a full 12 months whenever a line is active at all. Rolling lines bill every year.
+ */
+export const ongoingForYear = (options: RateFields[], yearIndex: number): number =>
+  options.reduce((sum, r) => {
+    const freq = r.frequency ?? 'monthly';
+    const yearStartMonth = yearIndex * 12;
+    const yearEndMonth = (yearIndex + 1) * 12;
+
+    if (freq === 'annual') {
+      if (r.rolling_monthly) return sum + lineRate(r);
+      const offset = r.starts_after_months ?? 0;
+      const term = r.term_months ?? 12;
+      let count = 0;
+      for (let start = offset; start < offset + term; start += 12) {
+        if (start >= yearStartMonth && start < yearEndMonth) count += 1;
+      }
+      return sum + lineRate(r) * count;
+    }
+
+    if (r.rolling_monthly) {
+      const periods = freq === 'weekly' ? 12 * 4.33 : 12;
+      return sum + lineRate(r) * periods;
+    }
+
+    const offset = r.starts_after_months ?? 0;
+    const term = r.term_months ?? 12;
+    const overlapStart = Math.max(yearStartMonth, offset);
+    const overlapEnd = Math.min(yearEndMonth, offset + term);
+    if (overlapEnd <= overlapStart) return sum;
+    const activeMonths = yearIndex === 0 ? overlapEnd - overlapStart : 12;
+    const periods = freq === 'weekly' ? activeMonths * 4.33 : activeMonths;
+    return sum + lineRate(r) * periods;
+  }, 0);
+
+/** Per-year totals (upfront in year 1) up to 5 years, plus year-1 and whole-contract totals. */
+export const contractTotals = (options: RateFields[], upfront: number) => {
+  const hasRolling = options.some(r => r.rolling_monthly);
+  const maxTermMonths = Math.max(
+    ...options.filter(r => !r.rolling_monthly).map(r => (r.term_months ?? 12) + (r.starts_after_months ?? 0)),
+    hasRolling ? 36 : 12,
+  );
+  const totalYears = Math.min(Math.ceil(maxTermMonths / 12), 5);
+  const yearTotals = Array.from({ length: totalYears }, (_, y) => ({
+    year: y + 1,
+    total: (y === 0 ? upfront : 0) + ongoingForYear(options, y),
+  }));
+  return {
+    yearTotals,
+    firstYearTotal: yearTotals[0].total,
+    contractTotal: yearTotals.reduce((s, y) => s + y.total, 0),
+  };
+};

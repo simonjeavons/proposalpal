@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { monthRange, delayedRangeNote, termLabel, rateSchedule, describeRateSchedule } from "./retainerTerm";
+import { monthRange, delayedRangeNote, termLabel, rateSchedule, describeRateSchedule, contractTotals } from "./retainerTerm";
 
 describe("monthRange", () => {
   it("covers months 1..term when starting immediately", () => {
@@ -102,5 +102,34 @@ describe("describeRateSchedule", () => {
   });
   it("is empty for an empty schedule", () => {
     expect(describeRateSchedule([], fmt)).toBe("");
+  });
+});
+
+describe("contractTotals", () => {
+  it("prices back-to-back lines by their own months (7Video: 1,300×3 + 975×9)", () => {
+    const out = contractTotals([line(1300, 3), line(975, 9, 3)], 0);
+    expect(out.yearTotals).toEqual([{ year: 1, total: 12675 }]);
+    expect(out.firstYearTotal).toBe(12675);
+    expect(out.contractTotal).toBe(12675);
+  });
+  it("adds upfront to year 1 only", () => {
+    const out = contractTotals([line(100, 24)], 500);
+    expect(out.yearTotals).toEqual([{ year: 1, total: 1700 }, { year: 2, total: 1200 }]);
+    expect(out.contractTotal).toBe(2900);
+  });
+  it("bills a Year-2 line only in year 2", () => {
+    const out = contractTotals([line(100, 12), line(50, 12, 12)], 0);
+    expect(out.yearTotals).toEqual([{ year: 1, total: 1200 }, { year: 2, total: 600 }]);
+  });
+  it("bills annual lines in the year each period starts", () => {
+    const out = contractTotals([{ price: 1000, quantity: 1, term_months: 24, frequency: "annual" }], 0);
+    expect(out.yearTotals).toEqual([{ year: 1, total: 1000 }, { year: 2, total: 1000 }]);
+  });
+  it("shows 3 years for rolling lines", () => {
+    const out = contractTotals([{ price: 100, quantity: 1, rolling_monthly: true }], 0);
+    expect(out.yearTotals.map(y => y.total)).toEqual([1200, 1200, 1200]);
+  });
+  it("treats no options as a 1-year upfront-only contract", () => {
+    expect(contractTotals([], 900).yearTotals).toEqual([{ year: 1, total: 900 }]);
   });
 });

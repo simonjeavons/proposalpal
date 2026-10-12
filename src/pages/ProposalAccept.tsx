@@ -6,7 +6,7 @@ import { computeUpfrontTotal, isUpfrontItemIncluded, upfrontItemPrice } from "@/
 import { formatLongDate } from "@/lib/contractTerm";
 import { Checkbox } from "@/components/ui/checkbox";
 import { trackView } from "@/lib/viewTracking";
-import { rateSchedule, describeRateSchedule } from "@/lib/retainerTerm";
+import { rateSchedule, describeRateSchedule, contractTotals } from "@/lib/retainerTerm";
 
 const formatCurrency = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -503,9 +503,10 @@ export default function ProposalAccept() {
         const stdPrice = selStandard ? (selStandard.quantity ?? 1) * (selStandard.discounted_price ?? selStandard.price) : 0;
         const extrasPrice = selExtras.reduce((sum, r) => sum + (r.quantity ?? 1) * (r.discounted_price ?? r.price), 0);
         const allOpts: RetainerOption[] = [...coreOpts, ...(selStandard ? [selStandard] : []), ...selExtras];
-        const annualAmt = allOpts.reduce((sum, r) => sum + (r.quantity ?? 1) * (r.discounted_price ?? r.price) * (r.frequency === 'weekly' ? 52 : r.frequency === 'annual' ? 1 : 12), 0);
-        const ongoingAmt = coreAmt + stdPrice + extrasPrice;
-        const firstYrTotal = upfrontAmt + annualAmt;
+        // Back-to-back lines show their opening rate; year 1 respects each line's start month and term.
+        const spans = rateSchedule(allOpts);
+        const ongoingAmt = spans.length > 0 ? spans[0].rate : coreAmt + stdPrice + extrasPrice;
+        const firstYrTotal = contractTotals(allOpts, upfrontAmt).firstYearTotal;
 
         const [{ pdf }, { ServiceAgreementPDF }] = await Promise.all([
           import('@react-pdf/renderer'),
@@ -590,59 +591,16 @@ export default function ProposalAccept() {
   // Back-to-back lines (e.g. months 1–3 then 4–12) headline the opening rate, not their sum.
   const rateSpans = rateSchedule(allSelectedOptions);
   const headlineOngoing = rateSpans.length > 0 ? rateSpans[0].rate : ongoingTotal;
-  const ongoingForYear = (yearIndex: number) =>
-    allSelectedOptions.reduce((sum, r) => {
-      const freq = r.frequency ?? 'monthly';
-      const yearStartMonth = yearIndex * 12;
-      const yearEndMonth = (yearIndex + 1) * 12;
-
-      // Annual-frequency items bill the full amount in the year each 12-month
-      // billing period begins — not prorated across calendar years.
-      if (freq === 'annual') {
-        if (r.rolling_monthly) {
-          return sum + optionTotal(r);
-        }
-        const offset = r.starts_after_months ?? 0;
-        const term = r.term_months ?? 12;
-        let count = 0;
-        for (let start = offset; start < offset + term; start += 12) {
-          if (start >= yearStartMonth && start < yearEndMonth) count += 1;
-        }
-        return sum + optionTotal(r) * count;
-      }
-
-      if (r.rolling_monthly) {
-        const activeMonths = 12;
-        const periods = freq === 'weekly' ? activeMonths * 4.33 : activeMonths;
-        return sum + optionTotal(r) * periods;
-      }
-
-      const offset = r.starts_after_months ?? 0;
-      const term = r.term_months ?? 12;
-      const startMonth = offset;
-      const endMonth = offset + term;
-      const overlapStart = Math.max(yearStartMonth, startMonth);
-      const overlapEnd = Math.min(yearEndMonth, endMonth);
-      if (overlapEnd <= overlapStart) return sum;
-      // Year 1 can be partial; Years 2+ always bill as a full 12-month year.
-      const rawMonths = overlapEnd - overlapStart;
-      const activeMonths = yearIndex === 0 ? rawMonths : 12;
-      const periods = freq === 'weekly' ? activeMonths * 4.33 : activeMonths;
-      return sum + optionTotal(r) * periods;
-    }, 0);
-  const annualOngoing = ongoingForYear(0);
+  // Per-year totals respecting each retainer's start month and term
+  const { yearTotals, firstYearTotal: termFirstYear, contractTotal } = contractTotals(allSelectedOptions, upfront);
+  const totalYears = yearTotals.length;
+  const annualOngoing = termFirstYear - upfront;
   const frequencies = allSelectedOptions.map(r => r.frequency ?? 'monthly');
   const dominantFreq = frequencies.length > 0 && frequencies.every(f => f === frequencies[0]) ? frequencies[0] : 'mixed';
   const FREQ_LABEL: Record<string, string> = { weekly: '/wk', monthly: '/mo', annual: '/yr' };
   const freqSuffix = dominantFreq !== 'mixed' ? (FREQ_LABEL[dominantFreq] ?? '/mo') : '/yr';
   const ongoingLabel = dominantFreq === 'annual' ? 'Annual Ongoing' : dominantFreq === 'weekly' ? 'Weekly Ongoing' : 'Monthly Ongoing';
 
-  // Max term for multi-year breakdown
-  const hasRolling = allSelectedOptions.some(r => r.rolling_monthly);
-  const maxTermMonths = Math.max(...allSelectedOptions.filter(r => !r.rolling_monthly).map(r => (r.term_months ?? 12) + (r.starts_after_months ?? 0)), hasRolling ? 36 : 12);
-  const totalYears = Math.min(Math.ceil(maxTermMonths / 12), 5);
-  const firstYearTotal = upfront + annualOngoing;
-  const contractTotal = Array.from({ length: totalYears }, (_, y) => (y === 0 ? upfront : 0) + ongoingForYear(y)).reduce((a, b) => a + b, 0);
 
   const contractFileUrl = (proposal as any).contract_file_url as string | null;
 
@@ -685,9 +643,9 @@ export default function ProposalAccept() {
         const stdPrice = selStandard ? (selStandard.quantity ?? 1) * (selStandard.discounted_price ?? selStandard.price) : 0;
         const extrasPrice = selExtras.reduce((sum, r) => sum + (r.quantity ?? 1) * (r.discounted_price ?? r.price), 0);
         const allOpts2: RetainerOption[] = [...coreOpts, ...(selStandard ? [selStandard] : []), ...selExtras];
-        const annualAmt2 = allOpts2.reduce((sum, r) => sum + (r.quantity ?? 1) * (r.discounted_price ?? r.price) * (r.frequency === 'weekly' ? 52 : r.frequency === 'annual' ? 1 : 12), 0);
-        const ongoingAmt2 = coreAmt + stdPrice + extrasPrice;
-        const firstYrTotal = upfrontAmt + annualAmt2;
+        const spans2 = rateSchedule(allOpts2);
+        const ongoingAmt2 = spans2.length > 0 ? spans2[0].rate : coreAmt + stdPrice + extrasPrice;
+        const firstYrTotal = contractTotals(allOpts2, upfrontAmt).firstYearTotal;
 
         const signedProps = {
           clientName: proposal.client_name,
