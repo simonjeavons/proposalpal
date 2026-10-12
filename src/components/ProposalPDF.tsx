@@ -1,6 +1,7 @@
 import { Document, Image, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { SHOOTHILL_LOGO_URI } from './ServiceAgreementPDF';
 import { SHOOTHILL_WHITE_LOGO_URI } from './shoothillWhiteLogo';
+import { termLabel, rateSchedule } from '@/lib/retainerTerm';
 import { DEFAULT_SAAS_SELLING_POINTS, isChoiceGroupItem, resolveUpfrontSections, groupItemsBySection, type Proposal, type RetainerOption, type UpfrontItem } from '@/types/proposal';
 
 const NAVY = '#043D5D';
@@ -435,14 +436,6 @@ const optionContractTotal = (r: RetainerOption): number | null => {
   return optionTotal(r) * periods;
 };
 
-const termLabel = (r: RetainerOption): string | null => {
-  if (r.rolling_monthly) return `Monthly rolling · ${r.notice_days ?? 30} days notice`;
-  if (!r.term_months) return null;
-  const base = `${r.term_months}-month term`;
-  return r.starts_after_months && r.starts_after_months > 0
-    ? `${base} · begins after project delivery`
-    : base;
-};
 
 const FREQ_SUFFIX: Record<string, string> = { weekly: '/week', monthly: '/month', annual: '/year' };
 
@@ -480,6 +473,7 @@ export function ProposalPDF({
     ...(selectedStandardOption ? [selectedStandardOption] : []),
     ...selectedExtras,
   ];
+  const rateSpans = rateSchedule(allOngoing);
 
   // Always-included items only — optional add-ons and choice-group members appear via
   // selectedOptionalUpfrontItems (whatever the client actually picked).
@@ -810,10 +804,17 @@ export function ProposalPDF({
           </View>
           {allOngoing.length > 0 ? (
             <>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Monthly total</Text>
-                <Text style={styles.summaryValue}>{`${fmt(annualOngoing / 12)}/month`}</Text>
-              </View>
+              {rateSpans.length > 0 ? rateSpans.map((span) => (
+                <View key={span.fromMonth} style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>{span.toMonth === null ? `From month ${span.fromMonth}` : `Months ${span.fromMonth}–${span.toMonth}`}</Text>
+                  <Text style={styles.summaryValue}>{`${fmt(span.rate)}/month`}</Text>
+                </View>
+              )) : (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Monthly total</Text>
+                  <Text style={styles.summaryValue}>{`${fmt(annualOngoing / 12)}/month`}</Text>
+                </View>
+              )}
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Year 1 ongoing</Text>
                 <Text style={styles.summaryValue}>{fmt(annualOngoing)}</Text>

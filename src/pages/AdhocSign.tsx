@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Phase, UpfrontItem, RetainerOption } from "@/types/proposal";
 import { contractEndDateISO, formatLongDate } from "@/lib/contractTerm";
 import { trackView } from "@/lib/viewTracking";
+import { delayedRangeNote } from "@/lib/retainerTerm";
 
 const formatCurrency = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const formatTerm = (months: number) => {
@@ -688,7 +689,7 @@ export default function AdhocSign() {
                 const fixed = contract.ongoing_options.find(o => !o.rolling_monthly);
                 const rolling = contract.ongoing_options.find(o => o.rolling_monthly);
                 const termText = fixed
-                  ? `${formatTerm(fixed.term)}${fixed.starts_after_months ? ' (begins after project delivery)' : ''}`
+                  ? `${formatTerm(fixed.term)}${delayedRangeNote({ term_months: fixed.term, starts_after_months: fixed.starts_after_months }) ? ` (${delayedRangeNote({ term_months: fixed.term, starts_after_months: fixed.starts_after_months })})` : ''}`
                   : rolling
                   ? `Monthly rolling · ${rolling.notice_days ?? 30} days notice`
                   : null;
